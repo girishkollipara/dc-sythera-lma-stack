@@ -2412,7 +2412,7 @@ Resources:
         - !Ref TranscriptEnrichmentPythonLayer
       Description: Lambda function for meeting controls
       MemorySize: 512
-      Timeout: 60
+      Timeout: 180
       FunctionName: !Sub '${LMAStackName}-MeetingControlsLambda'
       Environment:
         Variables:
@@ -2480,6 +2480,10 @@ Resources:
                   - dynamodb:UpdateItem
                   - dynamodb:DeleteItem
                 Resource: !GetAtt EventSourcingTable.Arn
+              - Effect: Allow
+                Action:
+                  - cognito-idp:ListUsers
+                Resource: !Sub "arn:aws:cognito-idp:${AWS::Region}:${AWS::AccountId}:userpool/${UserPoolId}"
               - Effect: Allow
                 Action:
                   - kms:Decrypt
