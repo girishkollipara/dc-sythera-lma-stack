@@ -1,0 +1,74 @@
+[
+ {
+  "name": "GetCallAuth",
+  "functionId": "eoj5g4ptcverzhl5bpgdfrvd2q",
+  "dataSourceName": "CallEventSourcing",
+  "runtime": "VTL"
+ },
+ {
+  "name": "GetCallForAddSeg",
+  "functionId": "ygbufyqq3fbtzp3r4hcchrjogy",
+  "dataSourceName": "CallEventSourcing",
+  "runtime": "VTL"
+ },
+ {
+  "name": "GetCallForSeg",
+  "functionId": "kdackkhwifgrjat5joiot3husu",
+  "dataSourceName": "CallEventSourcing",
+  "runtime": "VTL"
+ },
+ {
+  "name": "GetCallForSub",
+  "functionId": "rmh753xp75ftlixzt6b4pz2fiy",
+  "dataSourceName": "CallEventSourcing",
+  "runtime": "VTL"
+ },
+ {
+  "name": "GetUserProjects",
+  "functionId": "tboyn6taezhd5gbk6xqcstav7y",
+  "dataSourceName": "ProjectMembership",
+  "runtime": "VTL"
+ },
+ {
+  "name": "GetUserProjectsJS",
+  "functionId": "fqtxuulpn5atlohvb4od2outfi",
+  "dataSourceName": "ProjectMembership",
+  "runtime": "APPSYNC_JS"
+ },
+ {
+  "name": "ListCallsDateHourQuery",
+  "functionId": "oe6uotzisvcqrmsnmwr7jeaiwq",
+  "dataSourceName": "CallEventSourcing",
+  "runtime": "VTL"
+ },
+ {
+  "name": "ListCallsDateShardQuery",
+  "functionId": "jfdqw2g7azejnduhhpx66hwstq",
+  "dataSourceName": "CallEventSourcing",
+  "runtime": "VTL"
+ },
+ {
+  "name": "ListCallsQuery",
+  "functionId": "ccdn4s5b7jez3m5gzxx2uremee",
+  "dataSourceName": "CallEventSourcing",
+  "runtime": "VTL"
+ },
+ {
+  "name": "PutSegment",
+  "functionId": "x2ai2kctsrg5xpakgfbxlsrs4q",
+  "dataSourceName": "CallEventSourcing",
+  "runtime": "VTL"
+ },
+ {
+  "name": "QuerySegments",
+  "functionId": "yejebowbnbavnnqvyfpo4nnttq",
+  "dataSourceName": "CallEventSourcing",
+  "runtime": "VTL"
+ },
+ {
+  "name": "QuerySegmentsSentiment",
+  "functionId": "mfxbudlypnau3crnj634lclvdy",
+  "dataSourceName": "CallEventSourcing",
+  "runtime": "VTL"
+ }
+]

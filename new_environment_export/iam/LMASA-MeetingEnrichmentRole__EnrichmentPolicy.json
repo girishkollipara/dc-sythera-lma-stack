@@ -1,0 +1,55 @@
+{
+    "RoleName": "LMASA-MeetingEnrichmentRole",
+    "PolicyName": "EnrichmentPolicy",
+    "PolicyDocument": {
+        "Version": "2012-10-17",
+        "Statement": [
+            {
+                "Sid": "Logs",
+                "Effect": "Allow",
+                "Action": [
+                    "logs:CreateLogGroup",
+                    "logs:CreateLogStream",
+                    "logs:PutLogEvents"
+                ],
+                "Resource": "arn:aws:logs:us-east-1:528757797189:*"
+            },
+            {
+                "Sid": "ReadStream",
+                "Effect": "Allow",
+                "Action": [
+                    "dynamodb:GetRecords",
+                    "dynamodb:GetShardIterator",
+                    "dynamodb:DescribeStream",
+                    "dynamodb:ListStreams"
+                ],
+                "Resource": "arn:aws:dynamodb:us-east-1:528757797189:table/LMASA-AISTACK-4VKHCQQY3CJR-EventSourcingTable-V49M8Y0JQODE/stream/*"
+            },
+            {
+                "Sid": "WriteDisplayFields",
+                "Effect": "Allow",
+                "Action": [
+                    "dynamodb:UpdateItem"
+                ],
+                "Resource": "arn:aws:dynamodb:us-east-1:528757797189:table/LMASA-AISTACK-4VKHCQQY3CJR-EventSourcingTable-V49M8Y0JQODE"
+            },
+            {
+                "Sid": "ReadDirectory",
+                "Effect": "Allow",
+                "Action": [
+                    "cognito-idp:ListUsers"
+                ],
+                "Resource": "arn:aws:cognito-idp:us-east-1:528757797189:userpool/us-east-1_pOCRCo1Wx"
+            },
+            {
+                "Sid": "DecryptStream",
+                "Effect": "Allow",
+                "Action": [
+                    "kms:Decrypt",
+                    "kms:DescribeKey"
+                ],
+                "Resource": "arn:aws:kms:us-east-1:528757797189:key/1fed6af6-44f8-42c1-9e07-d1d8075ae926"
+            }
+        ]
+    }
+}

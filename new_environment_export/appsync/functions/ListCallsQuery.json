@@ -1,0 +1,10 @@
+{
+ "functionId": "ccdn4s5b7jez3m5gzxx2uremee",
+ "functionArn": "arn:aws:appsync:us-east-1:528757797189:apis/lo3gpjswjjdqrh6xn5xkgipeme/functions/ccdn4s5b7jez3m5gzxx2uremee",
+ "name": "ListCallsQuery",
+ "dataSourceName": "CallEventSourcing",
+ "requestMappingTemplate": "#set( $pkPrefix = \"cls#\" )\n\n{\n  \"version\" : \"2017-02-28\",\n  \"operation\" : \"Scan\",\n  \"limit\": $util.defaultIfNull(${ctx.args.limit}, 100),\n  \"nextToken\": $util.toJson($util.defaultIfNullOrBlank($ctx.args.nextToken, null)),\n  \"filter\": {\n    \"expression\": \"begins_with(PK, :prefix)\",\n    \"expressionValues\": {\n      \":prefix\": $util.dynamodb.toDynamoDBJson($pkPrefix),\n    }\n  }\n}\n",
+ "responseMappingTemplate": "#if ( $ctx.error )\n  $util.error($ctx.error.message, $ctx.error.type)\n#end\n\n#set($myProjects = $util.defaultIfNull($ctx.stash.myProjectIds, []))\n#set($me = $ctx.identity.username)\n\n#if(!$ctx.identity.groups.contains(\"Admin\"))\n  #set($myResults = [])\n  #foreach($item in $ctx.result.items)\n      #set($excl = $util.defaultIfNull($item.ExcludedUsers, []))\n      #if($item.Owner == $me\n          || $item.SharedWith.contains($me)\n          || ($item.ProjectId && $myProjects.contains($item.ProjectId) && !$excl.contains($me)))\n          #set($added = $myResults.add($item))\n      #end\n  #end\n  $util.toJson({\"Calls\": $myResults, \"nextToken\": $ctx.result.nextToken})\n#else\n  $util.toJson({\"Calls\": $ctx.result.items, \"nextToken\": $ctx.result.nextToken})\n#end\n",
+ "functionVersion": "2018-05-29",
+ "maxBatchSize": 0
+}

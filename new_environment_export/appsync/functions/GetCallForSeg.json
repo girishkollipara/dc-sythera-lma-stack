@@ -1,0 +1,10 @@
+{
+ "functionId": "kdackkhwifgrjat5joiot3husu",
+ "functionArn": "arn:aws:appsync:us-east-1:528757797189:apis/lo3gpjswjjdqrh6xn5xkgipeme/functions/kdackkhwifgrjat5joiot3husu",
+ "name": "GetCallForSeg",
+ "dataSourceName": "CallEventSourcing",
+ "requestMappingTemplate": "## Fetch the call record so we can read its ProjectId / ExcludedUsers for a call-level check.\n#set( $PK = \"c#${ctx.args.callId}\" )\n{\n  \"version\": \"2018-05-29\",\n  \"operation\": \"GetItem\",\n  \"key\": {\n    \"PK\": $util.dynamodb.toDynamoDBJson($PK),\n    \"SK\": $util.dynamodb.toDynamoDBJson($PK)\n  }\n}\n",
+ "responseMappingTemplate": "## Stash the call's project + block-list. If the call is missing, leave them unset so the\n## after-template falls back to the per-line Owner/SharedWith filter.\n#if(!$ctx.error && $ctx.result)\n  $util.qr($ctx.stash.put(\"callProjectId\", $ctx.result.ProjectId))\n  $util.qr($ctx.stash.put(\"callExcluded\", $util.defaultIfNull($ctx.result.ExcludedUsers, [])))\n#end\n{}\n",
+ "functionVersion": "2018-05-29",
+ "maxBatchSize": 0
+}

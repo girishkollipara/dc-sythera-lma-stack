@@ -1,0 +1,18 @@
+{
+ "typeName": "Subscription",
+ "fieldName": "onAddTranscriptSegment",
+ "resolverArn": "arn:aws:appsync:us-east-1:528757797189:apis/lo3gpjswjjdqrh6xn5xkgipeme/types/Subscription/resolvers/onAddTranscriptSegment",
+ "kind": "PIPELINE",
+ "pipelineConfig": {
+  "functions": [
+   "fqtxuulpn5atlohvb4od2outfi",
+   "rmh753xp75ftlixzt6b4pz2fiy"
+  ]
+ },
+ "maxBatchSize": 0,
+ "runtime": {
+  "name": "APPSYNC_JS",
+  "runtimeVersion": "1.0.0"
+ },
+ "code": "import { util, extensions } from '@aws-appsync/utils';\n\nexport function request() {\n  return { payload: null };\n}\n\n/**\n * Per-meeting live transcript access.\n *\n * onAddTranscriptSegment(CallId) is scoped to ONE meeting, so we check access\n * to that meeting IN CODE (no limit on project-list size) and then deliver its\n * segments with a single CallId filter. The old approach filtered segments by\n * `ProjectId in [myProjects]`, but segments carry no ProjectId, so that clause\n * matched nothing AND blew past AppSync's filter limits for users on many\n * projects - breaking the subscription entirely.\n */\nexport function response(ctx) {\n  const { selectionSetList } = ctx.info;\n  if (!selectionSetList.includes('Owner') || !selectionSetList.includes('SharedWith')) {\n    console.error('You must include the \"Owner\" & \"SharedWith\" fields in the selection set');\n    util.unauthorized();\n  }\n\n  const { groups } = ctx.identity;\n  if (groups && groups.includes('Admin')) {\n    return null; // Admin: AppSync applies the CallId argument filter implicitly.\n  }\n\n  const me = ctx.identity.username;\n  const callId = ctx.args.CallId;\n\n  if (callId && ctx.stash.callFound) {\n    const owner = ctx.stash.callOwner;\n    const shared = ctx.stash.callSharedWith || '';\n    const projectId = ctx.stash.callProjectId;\n    const excluded = ctx.stash.callExcluded || [];\n    const myProjects = ctx.stash.myProjectIds || [];\n    const allowed =\n      owner === me ||\n      shared.includes(me) ||\n      (projectId && myProjects.includes(projectId) && !excluded.includes(me));\n    if (!allowed) {\n      util.unauthorized();\n    }\n    extensions.setSubscriptionFilter(\n      util.transform.toSubscriptionFilter({ CallId: { eq: callId } })\n    );\n    return null;\n  }\n\n  // No CallId, or the call record does not exist yet: fall back to owner/shared\n  // (bounded, safe - a stranger matches neither).\n  extensions.setSubscriptionFilter(\n    util.transform.toSubscriptionFilter({\n      or: [{ Owner: { eq: me } }, { SharedWith: { contains: me } }],\n    })\n  );\n  return null;\n}\n"
+}

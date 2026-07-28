@@ -1,0 +1,15 @@
+{
+ "typeName": "Query",
+ "fieldName": "listCalls",
+ "resolverArn": "arn:aws:appsync:us-east-1:528757797189:apis/lo3gpjswjjdqrh6xn5xkgipeme/types/Query/resolvers/listCalls",
+ "requestMappingTemplate": "{}\n",
+ "responseMappingTemplate": "#if($ctx.error)\n  $util.error($ctx.error.message, $ctx.error.type)\n#end\n$util.toJson($ctx.result)\n",
+ "kind": "PIPELINE",
+ "pipelineConfig": {
+  "functions": [
+   "tboyn6taezhd5gbk6xqcstav7y",
+   "ccdn4s5b7jez3m5gzxx2uremee"
+  ]
+ },
+ "maxBatchSize": 0
+}

@@ -1,0 +1,10 @@
+{
+ "typeName": "Mutation",
+ "fieldName": "deleteTranscriptSegment",
+ "dataSourceName": "CallEventSourcing",
+ "resolverArn": "arn:aws:appsync:us-east-1:528757797189:apis/lo3gpjswjjdqrh6xn5xkgipeme/types/Mutation/resolvers/deleteTranscriptSegment",
+ "requestMappingTemplate": "{\n  \"version\": \"2018-05-29\",\n  \"operation\": \"DeleteItem\",\n  \"key\": {\n    \"PK\": $util.dynamodb.toDynamoDBJson($ctx.args.input.PK),\n    \"SK\": $util.dynamodb.toDynamoDBJson($ctx.args.input.SK),\n  },\n}",
+ "responseMappingTemplate": "$util.toJson($context.result)",
+ "kind": "UNIT",
+ "maxBatchSize": 0
+}

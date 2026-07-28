@@ -1,0 +1,10 @@
+{
+ "typeName": "Mutation",
+ "fieldName": "handleOAuthCallback",
+ "dataSourceName": "OAuthManager",
+ "resolverArn": "arn:aws:appsync:us-east-1:528757797189:apis/lo3gpjswjjdqrh6xn5xkgipeme/types/Mutation/resolvers/handleOAuthCallback",
+ "requestMappingTemplate": "{\n  \"version\": \"2018-05-29\",\n  \"operation\": \"Invoke\",\n  \"payload\": {\n    \"arguments\": $utils.toJson($context.arguments),\n    \"identity\": $utils.toJson($context.identity),\n    \"info\": {\n      \"fieldName\": \"handleOAuthCallback\"\n    }\n  }\n}\n",
+ "responseMappingTemplate": "#if($ctx.error)\n  $util.error($ctx.error.message, $ctx.error.type)\n#end\n$util.toJson($ctx.result)\n",
+ "kind": "UNIT",
+ "maxBatchSize": 0
+}

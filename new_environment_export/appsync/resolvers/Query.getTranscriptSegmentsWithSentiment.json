@@ -1,0 +1,16 @@
+{
+ "typeName": "Query",
+ "fieldName": "getTranscriptSegmentsWithSentiment",
+ "resolverArn": "arn:aws:appsync:us-east-1:528757797189:apis/lo3gpjswjjdqrh6xn5xkgipeme/types/Query/resolvers/getTranscriptSegmentsWithSentiment",
+ "requestMappingTemplate": "{}\n",
+ "responseMappingTemplate": "#if ( $ctx.error )\n  $util.error($ctx.error.message, $ctx.error.type)\n#end\n\n#set($myProjects  = $util.defaultIfNull($ctx.stash.myProjectIds, []))\n#set($callProject = $ctx.stash.callProjectId)\n#set($callExcl    = $util.defaultIfNull($ctx.stash.callExcluded, []))\n#set($isProjectMember = $callProject && $myProjects.contains($callProject) && !$callExcl.contains($ctx.identity.username))\n\n#if($ctx.identity.groups.contains(\"Admin\") || $isProjectMember)\n  $util.toJson({\"TranscriptSegmentsWithSentiment\": $ctx.result.items, \"nextToken\": $ctx.result.nextToken})\n#else\n  ## Adds authorization this resolver previously lacked: per-line Owner/SharedWith filter\n  #set($myResults = [])\n  #foreach($item in $ctx.result.items)\n    #if($item.Owner == $ctx.identity.username || $item.SharedWith.contains($ctx.identity.username))\n      #set($added = $myResults.add($item))\n    #end\n  #end\n  $util.toJson({\"TranscriptSegmentsWithSentiment\": $myResults, \"nextToken\": $ctx.result.nextToken})\n#end\n",
+ "kind": "PIPELINE",
+ "pipelineConfig": {
+  "functions": [
+   "tboyn6taezhd5gbk6xqcstav7y",
+   "kdackkhwifgrjat5joiot3husu",
+   "mfxbudlypnau3crnj634lclvdy"
+  ]
+ },
+ "maxBatchSize": 0
+}

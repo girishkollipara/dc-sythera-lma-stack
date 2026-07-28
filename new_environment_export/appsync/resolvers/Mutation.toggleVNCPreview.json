@@ -1,0 +1,13 @@
+{
+ "typeName": "Mutation",
+ "fieldName": "toggleVNCPreview",
+ "dataSourceName": "CallEventSourcing",
+ "resolverArn": "arn:aws:appsync:us-east-1:528757797189:apis/lo3gpjswjjdqrh6xn5xkgipeme/types/Mutation/resolvers/toggleVNCPreview",
+ "kind": "UNIT",
+ "maxBatchSize": 0,
+ "runtime": {
+  "name": "APPSYNC_JS",
+  "runtimeVersion": "1.0.0"
+ },
+ "code": "import { util } from '@aws-appsync/utils';\n\n/**\n * Request handler for toggleVNCPreview mutation\n * Stores VNC preview control events in DynamoDB\n * Supports both Cognito User Pools and IAM authentication\n */\nexport function request(ctx) {\n  const { CallId, Show } = ctx.arguments.input;\n  \n  // Handle both Cognito and IAM auth\n  let userEmail = 'unknown';\n  if (ctx.identity.claims && ctx.identity.claims.email) {\n    // Cognito User Pools auth\n    userEmail = ctx.identity.claims.email;\n  } else if (ctx.identity.userArn) {\n    // IAM auth - extract from ARN or use username\n    userEmail = ctx.identity.username || ctx.identity.userArn.split('/').pop() || 'lambda';\n  }\n  \n  return {\n    operation: 'PutItem',\n    key: util.dynamodb.toMapValues({\n      PK: `vnc#${CallId}`,\n      SK: `control#${util.time.nowISO8601()}`\n    }),\n    attributeValues: util.dynamodb.toMapValues({\n      CallId,\n      Action: Show ? 'open' : 'close',\n      Timestamp: util.time.nowISO8601(),\n      Success: true,\n      RequestedBy: userEmail,\n      TTL: util.time.nowEpochSeconds() + 86400  // 24 hour TTL\n    })\n  };\n}\n\n/**\n * Response handler for toggleVNCPreview mutation\n * Returns the VNC preview control result\n */\nexport function response(ctx) {\n  if (ctx.error) {\n    util.error(ctx.error.message, ctx.error.type);\n  }\n  return ctx.result;\n}"
+}

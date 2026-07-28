@@ -1,0 +1,4 @@
+# temporarily uncomment debugpy for local debugging
+# XXX
+# debugpy
+cryptography

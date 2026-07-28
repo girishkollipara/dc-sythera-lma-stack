@@ -1,0 +1,14 @@
+{
+    "RoleName": "LMASA-VIRTUALPARTICIPANTS-VirtualParticipantSchedul-7TrZcy7KmFtq",
+    "PolicyName": "VPSchedulerCognitoLookup",
+    "PolicyDocument": {
+        "Version": "2012-10-17",
+        "Statement": [
+            {
+                "Effect": "Allow",
+                "Action": "cognito-idp:AdminGetUser",
+                "Resource": "arn:aws:cognito-idp:us-east-1:528757797189:userpool/us-east-1_pOCRCo1Wx"
+            }
+        ]
+    }
+}

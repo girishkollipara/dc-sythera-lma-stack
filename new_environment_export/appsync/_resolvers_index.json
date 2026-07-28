@@ -1,0 +1,488 @@
+[
+ {
+  "field": "Mutation.addCallCategory",
+  "kind": "UNIT",
+  "dataSourceName": "CallEventSourcing",
+  "pipeline": [],
+  "runtime": "VTL"
+ },
+ {
+  "field": "Mutation.addCallSummaryText",
+  "kind": "UNIT",
+  "dataSourceName": "CallEventSourcing",
+  "pipeline": [],
+  "runtime": "VTL"
+ },
+ {
+  "field": "Mutation.addChatToken",
+  "kind": "UNIT",
+  "dataSourceName": "Subscription",
+  "pipeline": [],
+  "runtime": "APPSYNC_JS"
+ },
+ {
+  "field": "Mutation.addIssuesDetected",
+  "kind": "UNIT",
+  "dataSourceName": "CallEventSourcing",
+  "pipeline": [],
+  "runtime": "VTL"
+ },
+ {
+  "field": "Mutation.addTranscriptSegment",
+  "kind": "PIPELINE",
+  "dataSourceName": null,
+  "pipeline": [
+   "ygbufyqq3fbtzp3r4hcchrjogy",
+   "x2ai2kctsrg5xpakgfbxlsrs4q"
+  ],
+  "runtime": "VTL"
+ },
+ {
+  "field": "Mutation.createCall",
+  "kind": "UNIT",
+  "dataSourceName": "CallEventSourcing",
+  "pipeline": [],
+  "runtime": "VTL"
+ },
+ {
+  "field": "Mutation.createUploadMeeting",
+  "kind": "UNIT",
+  "dataSourceName": "UploadMeetingInitiator",
+  "pipeline": [],
+  "runtime": "APPSYNC_JS"
+ },
+ {
+  "field": "Mutation.createUser",
+  "kind": "UNIT",
+  "dataSourceName": "UserManagement",
+  "pipeline": [],
+  "runtime": "VTL"
+ },
+ {
+  "field": "Mutation.createVirtualParticipant",
+  "kind": "UNIT",
+  "dataSourceName": "VirtualParticipantTable",
+  "pipeline": [],
+  "runtime": "VTL"
+ },
+ {
+  "field": "Mutation.deleteCall",
+  "kind": "UNIT",
+  "dataSourceName": "CallEventSourcing",
+  "pipeline": [],
+  "runtime": "VTL"
+ },
+ {
+  "field": "Mutation.deleteMeetings",
+  "kind": "UNIT",
+  "dataSourceName": "Meetings",
+  "pipeline": [],
+  "runtime": "APPSYNC_JS"
+ },
+ {
+  "field": "Mutation.deleteTranscriptSegment",
+  "kind": "UNIT",
+  "dataSourceName": "CallEventSourcing",
+  "pipeline": [],
+  "runtime": "VTL"
+ },
+ {
+  "field": "Mutation.deleteUser",
+  "kind": "UNIT",
+  "dataSourceName": "UserManagement",
+  "pipeline": [],
+  "runtime": "VTL"
+ },
+ {
+  "field": "Mutation.deleteVirtualParticipants",
+  "kind": "UNIT",
+  "dataSourceName": "VirtualParticipantLambda",
+  "pipeline": [],
+  "runtime": "APPSYNC_JS"
+ },
+ {
+  "field": "Mutation.endVirtualParticipant",
+  "kind": "UNIT",
+  "dataSourceName": "VirtualParticipantLambda",
+  "pipeline": [],
+  "runtime": "APPSYNC_JS"
+ },
+ {
+  "field": "Mutation.generateMCPApiKey",
+  "kind": "UNIT",
+  "dataSourceName": "MCPApiKeyManager",
+  "pipeline": [],
+  "runtime": "VTL"
+ },
+ {
+  "field": "Mutation.handleOAuthCallback",
+  "kind": "UNIT",
+  "dataSourceName": "OAuthManager",
+  "pipeline": [],
+  "runtime": "VTL"
+ },
+ {
+  "field": "Mutation.initOAuthFlow",
+  "kind": "UNIT",
+  "dataSourceName": "OAuthManager",
+  "pipeline": [],
+  "runtime": "VTL"
+ },
+ {
+  "field": "Mutation.installMCPServer",
+  "kind": "UNIT",
+  "dataSourceName": "MCPServerManager",
+  "pipeline": [],
+  "runtime": "VTL"
+ },
+ {
+  "field": "Mutation.revokeMCPApiKey",
+  "kind": "UNIT",
+  "dataSourceName": "MCPApiKeyManager",
+  "pipeline": [],
+  "runtime": "VTL"
+ },
+ {
+  "field": "Mutation.sendChatMessage",
+  "kind": "UNIT",
+  "dataSourceName": "StrandsChat",
+  "pipeline": [],
+  "runtime": "VTL"
+ },
+ {
+  "field": "Mutation.sendProjectChatMessage",
+  "kind": "UNIT",
+  "dataSourceName": "SyntheraProjectChatbot",
+  "pipeline": [],
+  "runtime": "APPSYNC_JS"
+ },
+ {
+  "field": "Mutation.shareCall",
+  "kind": "UNIT",
+  "dataSourceName": "CallEventSourcing",
+  "pipeline": [],
+  "runtime": "VTL"
+ },
+ {
+  "field": "Mutation.shareMeetings",
+  "kind": "UNIT",
+  "dataSourceName": "Meetings",
+  "pipeline": [],
+  "runtime": "APPSYNC_JS"
+ },
+ {
+  "field": "Mutation.shareTranscriptSegment",
+  "kind": "UNIT",
+  "dataSourceName": "CallEventSourcing",
+  "pipeline": [],
+  "runtime": "VTL"
+ },
+ {
+  "field": "Mutation.shareVirtualParticipant",
+  "kind": "UNIT",
+  "dataSourceName": "VirtualParticipantTable",
+  "pipeline": [],
+  "runtime": "VTL"
+ },
+ {
+  "field": "Mutation.toggleVNCPreview",
+  "kind": "UNIT",
+  "dataSourceName": "CallEventSourcing",
+  "pipeline": [],
+  "runtime": "APPSYNC_JS"
+ },
+ {
+  "field": "Mutation.uninstallMCPServer",
+  "kind": "UNIT",
+  "dataSourceName": "MCPServerManager",
+  "pipeline": [],
+  "runtime": "VTL"
+ },
+ {
+  "field": "Mutation.unshareCall",
+  "kind": "UNIT",
+  "dataSourceName": "Subscription",
+  "pipeline": [],
+  "runtime": "VTL"
+ },
+ {
+  "field": "Mutation.unshareVirtualParticipant",
+  "kind": "UNIT",
+  "dataSourceName": "VirtualParticipantTable",
+  "pipeline": [],
+  "runtime": "VTL"
+ },
+ {
+  "field": "Mutation.updateAgent",
+  "kind": "UNIT",
+  "dataSourceName": "CallEventSourcing",
+  "pipeline": [],
+  "runtime": "VTL"
+ },
+ {
+  "field": "Mutation.updateCallAggregation",
+  "kind": "UNIT",
+  "dataSourceName": "CallEventSourcing",
+  "pipeline": [],
+  "runtime": "VTL"
+ },
+ {
+  "field": "Mutation.updateCallStatus",
+  "kind": "UNIT",
+  "dataSourceName": "CallEventSourcing",
+  "pipeline": [],
+  "runtime": "VTL"
+ },
+ {
+  "field": "Mutation.updateChatButtonConfig",
+  "kind": "UNIT",
+  "dataSourceName": "UpdateChatButtonConfigLambda",
+  "pipeline": [],
+  "runtime": "APPSYNC_JS"
+ },
+ {
+  "field": "Mutation.updateLLMPromptTemplate",
+  "kind": "UNIT",
+  "dataSourceName": "UpdateLLMPromptTemplateLambda",
+  "pipeline": [],
+  "runtime": "APPSYNC_JS"
+ },
+ {
+  "field": "Mutation.updateMCPServer",
+  "kind": "UNIT",
+  "dataSourceName": "MCPServerManager",
+  "pipeline": [],
+  "runtime": "VTL"
+ },
+ {
+  "field": "Mutation.updateNovaSonicConfig",
+  "kind": "UNIT",
+  "dataSourceName": "UpdateNovaSonicConfigLambda",
+  "pipeline": [],
+  "runtime": "APPSYNC_JS"
+ },
+ {
+  "field": "Mutation.updatePcaUrl",
+  "kind": "UNIT",
+  "dataSourceName": "CallEventSourcing",
+  "pipeline": [],
+  "runtime": "VTL"
+ },
+ {
+  "field": "Mutation.updateRecordingUrl",
+  "kind": "UNIT",
+  "dataSourceName": "CallEventSourcing",
+  "pipeline": [],
+  "runtime": "VTL"
+ },
+ {
+  "field": "Mutation.updateVirtualParticipant",
+  "kind": "UNIT",
+  "dataSourceName": "VirtualParticipantTable",
+  "pipeline": [],
+  "runtime": "VTL"
+ },
+ {
+  "field": "Query.getCall",
+  "kind": "PIPELINE",
+  "dataSourceName": null,
+  "pipeline": [
+   "tboyn6taezhd5gbk6xqcstav7y",
+   "eoj5g4ptcverzhl5bpgdfrvd2q"
+  ],
+  "runtime": "VTL"
+ },
+ {
+  "field": "Query.getChatButtonConfig",
+  "kind": "UNIT",
+  "dataSourceName": "ChatButtonConfigTable",
+  "pipeline": [],
+  "runtime": "APPSYNC_JS"
+ },
+ {
+  "field": "Query.getLLMPromptTemplate",
+  "kind": "UNIT",
+  "dataSourceName": "LLMPromptTemplateTable",
+  "pipeline": [],
+  "runtime": "APPSYNC_JS"
+ },
+ {
+  "field": "Query.getMCPServer",
+  "kind": "UNIT",
+  "dataSourceName": "MCPServerManager",
+  "pipeline": [],
+  "runtime": "VTL"
+ },
+ {
+  "field": "Query.getNovaSonicConfig",
+  "kind": "UNIT",
+  "dataSourceName": "NovaSonicConfigTable",
+  "pipeline": [],
+  "runtime": "APPSYNC_JS"
+ },
+ {
+  "field": "Query.getTranscriptSegments",
+  "kind": "PIPELINE",
+  "dataSourceName": null,
+  "pipeline": [
+   "tboyn6taezhd5gbk6xqcstav7y",
+   "kdackkhwifgrjat5joiot3husu",
+   "yejebowbnbavnnqvyfpo4nnttq"
+  ],
+  "runtime": "VTL"
+ },
+ {
+  "field": "Query.getTranscriptSegmentsWithSentiment",
+  "kind": "PIPELINE",
+  "dataSourceName": null,
+  "pipeline": [
+   "tboyn6taezhd5gbk6xqcstav7y",
+   "kdackkhwifgrjat5joiot3husu",
+   "mfxbudlypnau3crnj634lclvdy"
+  ],
+  "runtime": "VTL"
+ },
+ {
+  "field": "Query.getVirtualParticipant",
+  "kind": "UNIT",
+  "dataSourceName": "VirtualParticipantTable",
+  "pipeline": [],
+  "runtime": "VTL"
+ },
+ {
+  "field": "Query.listCalls",
+  "kind": "PIPELINE",
+  "dataSourceName": null,
+  "pipeline": [
+   "tboyn6taezhd5gbk6xqcstav7y",
+   "ccdn4s5b7jez3m5gzxx2uremee"
+  ],
+  "runtime": "VTL"
+ },
+ {
+  "field": "Query.listCallsDateHour",
+  "kind": "PIPELINE",
+  "dataSourceName": null,
+  "pipeline": [
+   "tboyn6taezhd5gbk6xqcstav7y",
+   "oe6uotzisvcqrmsnmwr7jeaiwq"
+  ],
+  "runtime": "VTL"
+ },
+ {
+  "field": "Query.listCallsDateShard",
+  "kind": "PIPELINE",
+  "dataSourceName": null,
+  "pipeline": [
+   "tboyn6taezhd5gbk6xqcstav7y",
+   "jfdqw2g7azejnduhhpx66hwstq"
+  ],
+  "runtime": "VTL"
+ },
+ {
+  "field": "Query.listInstalledMCPServers",
+  "kind": "UNIT",
+  "dataSourceName": "MCPServerManager",
+  "pipeline": [],
+  "runtime": "VTL"
+ },
+ {
+  "field": "Query.listMCPApiKeys",
+  "kind": "UNIT",
+  "dataSourceName": "MCPApiKeyManager",
+  "pipeline": [],
+  "runtime": "VTL"
+ },
+ {
+  "field": "Query.listUsers",
+  "kind": "UNIT",
+  "dataSourceName": "UserManagement",
+  "pipeline": [],
+  "runtime": "VTL"
+ },
+ {
+  "field": "Query.listVirtualParticipants",
+  "kind": "UNIT",
+  "dataSourceName": "VirtualParticipantTable",
+  "pipeline": [],
+  "runtime": "VTL"
+ },
+ {
+  "field": "Query.parseMeetingInvitation",
+  "kind": "UNIT",
+  "dataSourceName": "MeetingInvitationParser",
+  "pipeline": [],
+  "runtime": "VTL"
+ },
+ {
+  "field": "Query.queryKnowledgeBase",
+  "kind": "UNIT",
+  "dataSourceName": "KnowledgeBase",
+  "pipeline": [],
+  "runtime": "APPSYNC_JS"
+ },
+ {
+  "field": "Subscription.onAddTranscriptSegment",
+  "kind": "PIPELINE",
+  "dataSourceName": null,
+  "pipeline": [
+   "fqtxuulpn5atlohvb4od2outfi",
+   "rmh753xp75ftlixzt6b4pz2fiy"
+  ],
+  "runtime": "APPSYNC_JS"
+ },
+ {
+  "field": "Subscription.onCreateCall",
+  "kind": "PIPELINE",
+  "dataSourceName": null,
+  "pipeline": [
+   "fqtxuulpn5atlohvb4od2outfi"
+  ],
+  "runtime": "APPSYNC_JS"
+ },
+ {
+  "field": "Subscription.onDeleteCall",
+  "kind": "UNIT",
+  "dataSourceName": "Subscription",
+  "pipeline": [],
+  "runtime": "APPSYNC_JS"
+ },
+ {
+  "field": "Subscription.onShareMeetings",
+  "kind": "UNIT",
+  "dataSourceName": "Subscription",
+  "pipeline": [],
+  "runtime": "APPSYNC_JS"
+ },
+ {
+  "field": "Subscription.onUnshareCall",
+  "kind": "UNIT",
+  "dataSourceName": "Subscription",
+  "pipeline": [],
+  "runtime": "APPSYNC_JS"
+ },
+ {
+  "field": "Subscription.onUpdateCall",
+  "kind": "PIPELINE",
+  "dataSourceName": null,
+  "pipeline": [
+   "fqtxuulpn5atlohvb4od2outfi",
+   "rmh753xp75ftlixzt6b4pz2fiy"
+  ],
+  "runtime": "APPSYNC_JS"
+ },
+ {
+  "field": "Subscription.onUpdateVirtualParticipant",
+  "kind": "UNIT",
+  "dataSourceName": "Subscription",
+  "pipeline": [],
+  "runtime": "APPSYNC_JS"
+ },
+ {
+  "field": "Subscription.onVNCPreviewToggle",
+  "kind": "UNIT",
+  "dataSourceName": "Subscription",
+  "pipeline": [],
+  "runtime": "APPSYNC_JS"
+ }
+]

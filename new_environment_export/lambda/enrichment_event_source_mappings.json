@@ -1,0 +1,36 @@
+{
+    "EventSourceMappings": [
+        {
+            "UUID": "a5940d5d-07ad-4f01-81ba-2bcb800eb832",
+            "StartingPosition": "LATEST",
+            "BatchSize": 100,
+            "MaximumBatchingWindowInSeconds": 0,
+            "ParallelizationFactor": 1,
+            "EventSourceArn": "arn:aws:dynamodb:us-east-1:528757797189:table/LMASA-AISTACK-4VKHCQQY3CJR-EventSourcingTable-V49M8Y0JQODE/stream/2026-05-14T12:00:02.797",
+            "FilterCriteria": {
+                "Filters": [
+                    {
+                        "Pattern": "{\"eventName\": [\"INSERT\"], \"dynamodb\": {\"NewImage\": {\"PK\": {\"S\": [{\"prefix\": \"c#\"}]}}}}"
+                    },
+                    {
+                        "Pattern": "{\"eventName\": [\"INSERT\"], \"dynamodb\": {\"NewImage\": {\"PK\": {\"S\": [{\"prefix\": \"cls#\"}]}}}}"
+                    }
+                ]
+            },
+            "FunctionArn": "arn:aws:lambda:us-east-1:528757797189:function:LMASA-MeetingEnrichment",
+            "LastModified": "2026-07-20T15:28:00-04:00",
+            "LastProcessingResult": "OK",
+            "State": "Enabled",
+            "StateTransitionReason": "User action",
+            "DestinationConfig": {
+                "OnFailure": {}
+            },
+            "MaximumRecordAgeInSeconds": -1,
+            "BisectBatchOnFunctionError": false,
+            "MaximumRetryAttempts": 2,
+            "TumblingWindowInSeconds": 0,
+            "FunctionResponseTypes": [],
+            "EventSourceMappingArn": "arn:aws:lambda:us-east-1:528757797189:event-source-mapping:a5940d5d-07ad-4f01-81ba-2bcb800eb832"
+        }
+    ]
+}

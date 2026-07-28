@@ -1,0 +1,13 @@
+{
+ "typeName": "Mutation",
+ "fieldName": "addChatToken",
+ "dataSourceName": "Subscription",
+ "resolverArn": "arn:aws:appsync:us-east-1:528757797189:apis/lo3gpjswjjdqrh6xn5xkgipeme/types/Mutation/resolvers/addChatToken",
+ "kind": "UNIT",
+ "maxBatchSize": 0,
+ "runtime": {
+  "name": "APPSYNC_JS",
+  "runtimeVersion": "1.0.0"
+ },
+ "code": "/*\n * Copyright (c) 2025 Amazon.com\n * This file is licensed under the MIT License.\n * See the LICENSE file in the project root for full license information.\n */\n\n/**\n * AppSync resolver for addChatToken mutation\n * This is a passthrough resolver that broadcasts tokens to subscribers\n * No DynamoDB storage needed - tokens are ephemeral\n */\n\nexport function request(ctx) {\n  // For NONE data source, just return empty object\n  // The response function will construct the actual return value\n  return {};\n}\n\nexport function response(ctx) {\n  // For NONE data source, construct and return the ChatToken from input\n  const { input } = ctx.arguments;\n  \n  return {\n    CallId: input.CallId,\n    MessageId: input.MessageId,\n    Token: input.Token,\n    IsComplete: input.IsComplete,\n    Sequence: input.Sequence,\n    Timestamp: util.time.nowISO8601(),\n    ThinkingStep: input.ThinkingStep || null\n  };\n}\n"
+}

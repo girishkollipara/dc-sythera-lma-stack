@@ -1,0 +1,283 @@
+{
+    "taskDefinition": {
+        "taskDefinitionArn": "arn:aws:ecs:us-east-1:528757797189:task-definition/LMASA-VIRTUALPARTICIPANTSTACK-1IAVIZT1439R2VirtualParticipantTaskDef:4",
+        "containerDefinitions": [
+            {
+                "name": "scribe",
+                "image": "528757797189.dkr.ecr.us-east-1.amazonaws.com/lmasa-virtualparticipantstack-1iavizt1439r2-imagerepo-l3yrnekcbuxx:name-fix-v1",
+                "cpu": 0,
+                "memory": 15360,
+                "portMappings": [
+                    {
+                        "containerPort": 5901,
+                        "hostPort": 5901,
+                        "protocol": "tcp",
+                        "name": "vnc-websocket"
+                    }
+                ],
+                "essential": true,
+                "environment": [
+                    {
+                        "name": "SAVE_PARTIAL_TRANSCRIPTS",
+                        "value": "true"
+                    },
+                    {
+                        "name": "TRANSCRIBE_LANGUAGE_OPTIONS",
+                        "value": "en-US, es-US"
+                    },
+                    {
+                        "name": "VNC_TARGET_GROUP_ARN",
+                        "value": "arn:aws:elasticloadbalancing:us-east-1:528757797189:targetgroup/LMASA-VNCTa-04QCZFIMYKA8/67236a7104aa7957"
+                    },
+                    {
+                        "name": "INTRO_MESSAGE",
+                        "value": "Hello everyone. I am the Dimcon AI Meeting Assistant, invited by {LMA_USER} to join this meeting.    I assist with meeting transcription, note-taking, action item tracking, and meeting summaries.    This solution is designed, developed, and maintained by Dimcon.    For more information about our platform and team, please visit:  https://syntheraai.com/"
+                    },
+                    {
+                        "name": "TRANSCRIBE_LANGUAGE_CODE",
+                        "value": "en-US"
+                    },
+                    {
+                        "name": "NOVA_SYSTEM_PROMPT",
+                        "value": "You are Alex, an AI meeting assistant. Be concise and helpful."
+                    },
+                    {
+                        "name": "STOP_RECORDING_MESSAGE",
+                        "value": "Live Meeting Assistant stopped."
+                    },
+                    {
+                        "name": "SIMLI_FACE_ID",
+                        "value": ""
+                    },
+                    {
+                        "name": "ALB_LISTENER_ARN",
+                        "value": "arn:aws:elasticloadbalancing:us-east-1:528757797189:listener/app/LMASA--VNCAL-v4ycetI6izpb/320e1e4a4cb656c5/32f1932ddc8b538e"
+                    },
+                    {
+                        "name": "TRANSCRIBE_PII_ENTITY_TYPES",
+                        "value": "BANK_ACCOUNT_NUMBER,BANK_ROUTING,CREDIT_DEBIT_NUMBER,CREDIT_DEBIT_CVV,CREDIT_DEBIT_EXPIRY,PIN,EMAIL,ADDRESS,NAME,PHONE,SSN"
+                    },
+                    {
+                        "name": "RECORDINGS_BUCKET_NAME",
+                        "value": "lmasa-recordingsbucket-8virmwlgow36"
+                    },
+                    {
+                        "name": "CALL_ANALYTICS_FILE_PREFIX",
+                        "value": "lca-call-analytics/"
+                    },
+                    {
+                        "name": "ENABLE_AUDIO_RECORDING",
+                        "value": "true"
+                    },
+                    {
+                        "name": "SHOW_SPEAKER_LABEL",
+                        "value": "false"
+                    },
+                    {
+                        "name": "SHOULD_RECORD_CALL",
+                        "value": "true"
+                    },
+                    {
+                        "name": "CALL_DATA_STREAM_NAME",
+                        "value": "LMASA-CallDataStream-G7f4Y5Yq2P94"
+                    },
+                    {
+                        "name": "NOVA_MODEL_ID",
+                        "value": "amazon.nova-2-sonic-v1:0"
+                    },
+                    {
+                        "name": "VPC_ID",
+                        "value": "vpc-0c04e54d62e77339a"
+                    },
+                    {
+                        "name": "LMA_IDENTITY",
+                        "value": "LMA ({LMA_USER})"
+                    },
+                    {
+                        "name": "AWS_REGION",
+                        "value": "us-east-1"
+                    },
+                    {
+                        "name": "ELEVENLABS_API_KEY",
+                        "value": ""
+                    },
+                    {
+                        "name": "ENABLE_CONTENT_REDACTION",
+                        "value": "true"
+                    },
+                    {
+                        "name": "CUSTOM_VOCABULARY_NAME",
+                        "value": ""
+                    },
+                    {
+                        "name": "ELEVENLABS_AGENT_ID",
+                        "value": ""
+                    },
+                    {
+                        "name": "CUSTOM_LANGUAGE_MODEL_NAME",
+                        "value": ""
+                    },
+                    {
+                        "name": "GRAPHQL_ENDPOINT",
+                        "value": "https://kujxnwymnnfkfpavveu5doevc4.appsync-api.us-east-1.amazonaws.com/graphql"
+                    },
+                    {
+                        "name": "KINESIS_STREAM_NAME",
+                        "value": "LMASA-CallDataStream-G7f4Y5Yq2P94"
+                    },
+                    {
+                        "name": "IS_CONTENT_REDACTION_ENABLED",
+                        "value": "true"
+                    },
+                    {
+                        "name": "SIMLI_TRANSPORT_MODE",
+                        "value": "livekit"
+                    },
+                    {
+                        "name": "NOVA_SONIC_CONFIG_TABLE_NAME",
+                        "value": "LMASA-NOVASONICONFIGSTACK-1PSWUQD03O5BX-NovaSonicConfigTable-MVW52T0R16QE"
+                    },
+                    {
+                        "name": "VOICE_ASSISTANT_WAKE_PHRASES",
+                        "value": "hey alex,ok alex,hi alex,hello alex"
+                    },
+                    {
+                        "name": "TRANSCRIBE_PREFERRED_LANGUAGE",
+                        "value": "None"
+                    },
+                    {
+                        "name": "CLOUDFRONT_DOMAIN",
+                        "value": "d37y4bgk8vdlu.cloudfront.net"
+                    },
+                    {
+                        "name": "VOICE_ASSISTANT_PROVIDER",
+                        "value": "none"
+                    },
+                    {
+                        "name": "DYNAMODB_TABLE_NAME",
+                        "value": "LMASA-AISTACK-4VKHCQQY3CJR-EventSourcingTable-V49M8Y0JQODE"
+                    },
+                    {
+                        "name": "SIMLI_API_KEY",
+                        "value": ""
+                    },
+                    {
+                        "name": "TRANSCRIBE_CONTENT_REDACTION_TYPE",
+                        "value": "PII"
+                    },
+                    {
+                        "name": "APPSYNC_EVENTS_URL",
+                        "value": "wss://3wyr6mmiqjbjjkedah4xshszjm.appsync-realtime-api.us-east-1.amazonaws.com/event"
+                    },
+                    {
+                        "name": "POST_CALL_CONTENT_REDACTION_OUTPUT",
+                        "value": "redacted"
+                    },
+                    {
+                        "name": "RECORDINGS_KEY_PREFIX",
+                        "value": "lma-audio-recordings/"
+                    },
+                    {
+                        "name": "SERVERPORT",
+                        "value": "8080"
+                    },
+                    {
+                        "name": "VP_TASK_REGISTRY_TABLE_NAME",
+                        "value": "LMASA-AISTACK-4VKHCQQY3CJR-VPTaskRegistry"
+                    },
+                    {
+                        "name": "TRANSCRIBE_API_MODE",
+                        "value": "standard"
+                    },
+                    {
+                        "name": "STRANDS_LAMBDA_ARN",
+                        "value": "arn:aws:lambda:us-east-1:528757797189:function:STRANDS-LMASA-MeetingAssist"
+                    },
+                    {
+                        "name": "EXIT_MESSAGE",
+                        "value": "Live Meeting Assistant has left the room."
+                    },
+                    {
+                        "name": "VOICE_ASSISTANT_ACTIVATION_DURATION",
+                        "value": "30"
+                    },
+                    {
+                        "name": "VOICE_ASSISTANT_ACTIVATION_MODE",
+                        "value": "wake_phrase"
+                    },
+                    {
+                        "name": "SERVERHOST",
+                        "value": "0.0.0.0"
+                    },
+                    {
+                        "name": "CONTENT_REDACTION_TYPE",
+                        "value": "PII"
+                    },
+                    {
+                        "name": "START_RECORDING_MESSAGE",
+                        "value": "Live Meeting Assistant started."
+                    }
+                ],
+                "mountPoints": [],
+                "volumesFrom": [],
+                "logConfiguration": {
+                    "logDriver": "awslogs",
+                    "options": {
+                        "awslogs-group": "/LMASA-VIRTUALPARTICIPANTSTACK-1IAVIZT1439R2/fargate/VirtualParticipant",
+                        "awslogs-region": "us-east-1",
+                        "awslogs-stream-prefix": "lmavirtualparticipant"
+                    },
+                    "secretOptions": []
+                },
+                "systemControls": []
+            }
+        ],
+        "family": "LMASA-VIRTUALPARTICIPANTSTACK-1IAVIZT1439R2VirtualParticipantTaskDef",
+        "taskRoleArn": "arn:aws:iam::528757797189:role/LMASA-VIRTUALPARTICIPANTSTACK-1IAVIZT1439R-TaskRole-ucK1rEk4Pt1S",
+        "executionRoleArn": "arn:aws:iam::528757797189:role/LMASA-VIRTUALPARTICIPANTSTACK-1IA-TaskExecutionRole-IpFve9UhqN2l",
+        "networkMode": "awsvpc",
+        "revision": 4,
+        "volumes": [],
+        "status": "ACTIVE",
+        "requiresAttributes": [
+            {
+                "name": "com.amazonaws.ecs.capability.logging-driver.awslogs"
+            },
+            {
+                "name": "ecs.capability.execution-role-awslogs"
+            },
+            {
+                "name": "com.amazonaws.ecs.capability.ecr-auth"
+            },
+            {
+                "name": "com.amazonaws.ecs.capability.docker-remote-api.1.19"
+            },
+            {
+                "name": "com.amazonaws.ecs.capability.task-iam-role"
+            },
+            {
+                "name": "ecs.capability.execution-role-ecr-pull"
+            },
+            {
+                "name": "com.amazonaws.ecs.capability.docker-remote-api.1.18"
+            },
+            {
+                "name": "ecs.capability.task-eni"
+            }
+        ],
+        "placementConstraints": [],
+        "compatibilities": [
+            "EC2",
+            "MANAGED_INSTANCES",
+            "FARGATE"
+        ],
+        "requiresCompatibilities": [
+            "FARGATE"
+        ],
+        "cpu": "4096",
+        "memory": "16384",
+        "registeredAt": "2026-07-16T14:54:27.419000-04:00",
+        "registeredBy": "arn:aws:iam::528757797189:user/yogi9"
+    },
+    "tags": []
+}

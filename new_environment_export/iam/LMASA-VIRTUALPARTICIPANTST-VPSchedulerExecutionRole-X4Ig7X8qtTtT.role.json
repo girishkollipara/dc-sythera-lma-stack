@@ -1,0 +1,30 @@
+{
+    "Role": {
+        "Path": "/",
+        "RoleName": "LMASA-VIRTUALPARTICIPANTST-VPSchedulerExecutionRole-X4Ig7X8qtTtT",
+        "RoleId": "AROAXWHDLWFC7LYOQ6UDM",
+        "Arn": "arn:aws:iam::528757797189:role/LMASA-VIRTUALPARTICIPANTST-VPSchedulerExecutionRole-X4Ig7X8qtTtT",
+        "CreateDate": "2026-05-14T12:23:13+00:00",
+        "AssumeRolePolicyDocument": {
+            "Version": "2012-10-17",
+            "Statement": [
+                {
+                    "Effect": "Allow",
+                    "Principal": {
+                        "Service": [
+                            "scheduler.amazonaws.com",
+                            "events.amazonaws.com"
+                        ]
+                    },
+                    "Action": "sts:AssumeRole"
+                }
+            ]
+        },
+        "Description": "",
+        "MaxSessionDuration": 3600,
+        "RoleLastUsed": {
+            "LastUsedDate": "2026-07-28T15:53:50+00:00",
+            "Region": "us-east-1"
+        }
+    }
+}

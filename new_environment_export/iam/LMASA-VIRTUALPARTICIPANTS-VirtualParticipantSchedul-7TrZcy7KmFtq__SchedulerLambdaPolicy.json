@@ -1,0 +1,56 @@
+{
+    "RoleName": "LMASA-VIRTUALPARTICIPANTS-VirtualParticipantSchedul-7TrZcy7KmFtq",
+    "PolicyName": "SchedulerLambdaPolicy",
+    "PolicyDocument": {
+        "Version": "2012-10-17",
+        "Statement": [
+            {
+                "Action": [
+                    "scheduler:CreateSchedule",
+                    "scheduler:DeleteSchedule",
+                    "scheduler:GetSchedule"
+                ],
+                "Resource": [
+                    "arn:aws:scheduler:us-east-1:528757797189:schedule/LMASA-vp-schedules/*",
+                    "arn:aws:scheduler:us-east-1:528757797189:schedule-group/LMASA-vp-schedules"
+                ],
+                "Effect": "Allow"
+            },
+            {
+                "Action": [
+                    "ecs:RunTask"
+                ],
+                "Resource": [
+                    "arn:aws:ecs:us-east-1:528757797189:task-definition/LMASA-VIRTUALPARTICIPANTSTACK-1IAVIZT1439R2VirtualParticipantTaskDef:3",
+                    "arn:aws:ecs:us-east-1:528757797189:task-definition/LMASA-VIRTUALPARTICIPANTSTACK-1IAVIZT1439R2VirtualParticipantTaskDef:3:*"
+                ],
+                "Effect": "Allow"
+            },
+            {
+                "Action": [
+                    "iam:PassRole"
+                ],
+                "Resource": "arn:aws:iam::528757797189:role/LMASA-VIRTUALPARTICIPANTST-VPSchedulerExecutionRole-X4Ig7X8qtTtT",
+                "Effect": "Allow"
+            },
+            {
+                "Action": [
+                    "dynamodb:DescribeStream",
+                    "dynamodb:GetRecords",
+                    "dynamodb:GetShardIterator",
+                    "dynamodb:ListStreams"
+                ],
+                "Resource": "arn:aws:dynamodb:us-east-1:528757797189:table/LMASA-AISTACK-4VKHCQQY3CJR-VirtualParticipant/stream/2026-05-14T12:00:03.241",
+                "Effect": "Allow"
+            },
+            {
+                "Action": [
+                    "kms:Decrypt",
+                    "kms:DescribeKey"
+                ],
+                "Resource": "arn:aws:kms:us-east-1:528757797189:key/1fed6af6-44f8-42c1-9e07-d1d8075ae926",
+                "Effect": "Allow"
+            }
+        ]
+    }
+}

@@ -1,0 +1,10 @@
+{
+ "functionId": "jfdqw2g7azejnduhhpx66hwstq",
+ "functionArn": "arn:aws:appsync:us-east-1:528757797189:apis/lo3gpjswjjdqrh6xn5xkgipeme/functions/jfdqw2g7azejnduhhpx66hwstq",
+ "name": "ListCallsDateShardQuery",
+ "dataSourceName": "CallEventSourcing",
+ "requestMappingTemplate": "#set( $shardsInDay = 6 )\n#set( $shardDivider = 24 / $shardsInDay )\n#set( $Integer = 0 )\n#set( $now = $util.time.nowISO8601() )\n\n#set( $hourNow = $Integer.parseInt($now.substring(11, 13)) )\n#set( $shardNow = $hourNow / $shardDivider )\n\n#set( $date = $util.defaultIfNullOrBlank($ctx.args.date, $now.substring(0, 10)) )\n#set( $shard = $util.defaultIfNull($ctx.args.shard, $shardNow) )\n\n#if( $shard >= $shardsInDay )\n  $util.error(\"Invalid shard parameter value - must positive and less than ${shardsInDay}\")\n#end\n\n#set( $hourShard = $hour / $shardDivider )\n#set( $shardPad = $date.format(\"%02d\", $shard) )\n\n#set( $PK = \"cls#${date}#s#${shardPad}\" )\n\n{\n  \"version\" : \"2018-05-29\",\n  \"operation\" : \"Query\",\n  \"query\" : {\n    \"expression\": \"PK = :PK\",\n    \"expressionValues\": {\n      \":PK\": $util.dynamodb.toDynamoDBJson($PK),\n    }\n  }\n}\n",
+ "responseMappingTemplate": "#if ( $ctx.error )\n  $util.error($ctx.error.message, $ctx.error.type)\n#end\n\n#set($myProjects = $util.defaultIfNull($ctx.stash.myProjectIds, []))\n#set($me = $ctx.identity.username)\n\n#if(!$ctx.identity.groups.contains(\"Admin\"))\n  #set($myResults = [])\n  #foreach($item in $ctx.result.items)\n      #set($excl = $util.defaultIfNull($item.ExcludedUsers, []))\n      #if($item.Owner == $me\n          || $item.SharedWith.contains($me)\n          || ($item.ProjectId && $myProjects.contains($item.ProjectId) && !$excl.contains($me)))\n          #set($added = $myResults.add($item))\n      #end\n  #end\n  $util.toJson({\"Calls\": $myResults, \"nextToken\": $ctx.result.nextToken})\n#else\n  $util.toJson({\"Calls\": $ctx.result.items, \"nextToken\": $ctx.result.nextToken})\n#end\n",
+ "functionVersion": "2018-05-29",
+ "maxBatchSize": 0
+}

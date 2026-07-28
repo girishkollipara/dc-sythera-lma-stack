@@ -1,0 +1,412 @@
+{
+    "Stacks": [
+        {
+            "StackId": "arn:aws:cloudformation:us-east-1:528757797189:stack/LMASA/f8006560-4f8b-11f1-a283-0eabef24e9b7",
+            "StackName": "LMASA",
+            "Description": "Amazon Transcribe Live Meeting Assist - LMA (v0.3.2) (SO9497)",
+            "Parameters": [
+                {
+                    "ParameterKey": "CloudFrontAllowedGeos",
+                    "ParameterValue": ""
+                },
+                {
+                    "ParameterKey": "VoiceAssistantActivationDuration",
+                    "ParameterValue": "30"
+                },
+                {
+                    "ParameterKey": "CustomVocabularyName",
+                    "ParameterValue": ""
+                },
+                {
+                    "ParameterKey": "AssistantWakePhraseRegEx",
+                    "ParameterValue": "(OK|Okay)[.,! ]*[Aa]ssistant"
+                },
+                {
+                    "ParameterKey": "VPInstanceType",
+                    "ParameterValue": "t3.medium"
+                },
+                {
+                    "ParameterKey": "ElevenLabsApiKey",
+                    "ParameterValue": "****"
+                },
+                {
+                    "ParameterKey": "MCPServerCallbackURLs",
+                    "ParameterValue": "https://us-east-1.quicksight.aws.amazon.com/sn/oauthcallback,https://us-west-2.quicksight.aws.amazon.com/sn/oauthcallback,http://localhost:3000/callback"
+                },
+                {
+                    "ParameterKey": "PrivateSubnet1",
+                    "ParameterValue": ""
+                },
+                {
+                    "ParameterKey": "TranscriptLambdaHookFunctionArn",
+                    "ParameterValue": ""
+                },
+                {
+                    "ParameterKey": "PrivateSubnet2",
+                    "ParameterValue": ""
+                },
+                {
+                    "ParameterKey": "BedrockGuardrailVersion",
+                    "ParameterValue": "DRAFT"
+                },
+                {
+                    "ParameterKey": "EnableDataRetentionOnDelete",
+                    "ParameterValue": "true"
+                },
+                {
+                    "ParameterKey": "BedrockGuardrailId",
+                    "ParameterValue": ""
+                },
+                {
+                    "ParameterKey": "TranscriptLambdaHookFunctionNonPartialOnly",
+                    "ParameterValue": "true"
+                },
+                {
+                    "ParameterKey": "PublicSubnet2",
+                    "ParameterValue": ""
+                },
+                {
+                    "ParameterKey": "BedrockModelId",
+                    "ParameterValue": "global.anthropic.claude-haiku-4-5-20251001-v1:0"
+                },
+                {
+                    "ParameterKey": "TranscribeLanguageOptions",
+                    "ParameterValue": "en-US, es-US"
+                },
+                {
+                    "ParameterKey": "StartOfCallLambdaHookFunctionArn",
+                    "ParameterValue": ""
+                },
+                {
+                    "ParameterKey": "EnableAudioRecording",
+                    "ParameterValue": "true"
+                },
+                {
+                    "ParameterKey": "PublicSubnet1",
+                    "ParameterValue": ""
+                },
+                {
+                    "ParameterKey": "MeetingRecordExpirationInDays",
+                    "ParameterValue": "90"
+                },
+                {
+                    "ParameterKey": "SimliFaceId",
+                    "ParameterValue": ""
+                },
+                {
+                    "ParameterKey": "TranscribePiiEntityTypes",
+                    "ParameterValue": "BANK_ACCOUNT_NUMBER,BANK_ROUTING,CREDIT_DEBIT_NUMBER,CREDIT_DEBIT_CVV,CREDIT_DEBIT_EXPIRY,PIN,EMAIL,ADDRESS,NAME,PHONE,SSN"
+                },
+                {
+                    "ParameterKey": "TavilyApiKey",
+                    "ParameterValue": "****"
+                },
+                {
+                    "ParameterKey": "IsPartialTranscriptEnabled",
+                    "ParameterValue": "true"
+                },
+                {
+                    "ParameterKey": "VoiceAssistantActivationMode",
+                    "ParameterValue": "wake_phrase"
+                },
+                {
+                    "ParameterKey": "VoiceAssistantProvider",
+                    "ParameterValue": "none"
+                },
+                {
+                    "ParameterKey": "BedrockKnowledgeBaseS3DocumentUploadFolderPrefix",
+                    "ParameterValue": ""
+                },
+                {
+                    "ParameterKey": "EndOfCallLambdaHookFunctionArn",
+                    "ParameterValue": ""
+                },
+                {
+                    "ParameterKey": "IsContentRedactionEnabled",
+                    "ParameterValue": "true"
+                },
+                {
+                    "ParameterKey": "PermissionsBoundaryArn",
+                    "ParameterValue": ""
+                },
+                {
+                    "ParameterKey": "MeetingAssistServiceBedrockModelID",
+                    "ParameterValue": "us.anthropic.claude-sonnet-4-5-20250929-v1:0"
+                },
+                {
+                    "ParameterKey": "EnableMCP",
+                    "ParameterValue": "true"
+                },
+                {
+                    "ParameterKey": "TranscribeContentRedactionType",
+                    "ParameterValue": "PII"
+                },
+                {
+                    "ParameterKey": "ModelValidation",
+                    "ParameterValue": "true"
+                },
+                {
+                    "ParameterKey": "VoiceAssistantWakePhrases",
+                    "ParameterValue": "hey alex,ok alex,hi alex,hello alex"
+                },
+                {
+                    "ParameterKey": "CloudWatchLogsExpirationInDays",
+                    "ParameterValue": "90"
+                },
+                {
+                    "ParameterKey": "MeetingAssistService",
+                    "ParameterValue": "STRANDS_BEDROCK"
+                },
+                {
+                    "ParameterKey": "VPC",
+                    "ParameterValue": ""
+                },
+                {
+                    "ParameterKey": "BedrockKnowledgeBaseWebCrawlerScope",
+                    "ParameterValue": "DEFAULT"
+                },
+                {
+                    "ParameterKey": "VPMinInstances",
+                    "ParameterValue": "1"
+                },
+                {
+                    "ParameterKey": "ElevenLabsAgentId",
+                    "ParameterValue": ""
+                },
+                {
+                    "ParameterKey": "AdminEmail",
+                    "ParameterValue": "vamsikrishna.solleti@dimensioncg.com"
+                },
+                {
+                    "ParameterKey": "BedrockKnowledgeBaseId",
+                    "ParameterValue": ""
+                },
+                {
+                    "ParameterKey": "CloudFrontPriceClass",
+                    "ParameterValue": "PriceClass_100"
+                },
+                {
+                    "ParameterKey": "CustomLanguageModelName",
+                    "ParameterValue": ""
+                },
+                {
+                    "ParameterKey": "PostCallSummaryLambdaHookFunctionArn",
+                    "ParameterValue": ""
+                },
+                {
+                    "ParameterKey": "BedrockKnowledgeBaseS3BucketName",
+                    "ParameterValue": ""
+                },
+                {
+                    "ParameterKey": "TranscriptKnowledgeBase",
+                    "ParameterValue": "BEDROCK_KNOWLEDGE_BASE (Create)"
+                },
+                {
+                    "ParameterKey": "AllowedSignUpEmailDomain",
+                    "ParameterValue": "dimensioncg.com,dimcon.com,dimconmail.com,mail.dimensioncg.com"
+                },
+                {
+                    "ParameterKey": "TranscriptionExpirationInDays",
+                    "ParameterValue": "90"
+                },
+                {
+                    "ParameterKey": "SimliApiKey",
+                    "ParameterValue": "****"
+                },
+                {
+                    "ParameterKey": "UseExistingVPC",
+                    "ParameterValue": "false"
+                },
+                {
+                    "ParameterKey": "EndOfCallTranscriptSummary",
+                    "ParameterValue": "BEDROCK"
+                },
+                {
+                    "ParameterKey": "VPLaunchType",
+                    "ParameterValue": "EC2"
+                },
+                {
+                    "ParameterKey": "VPMaxInstances",
+                    "ParameterValue": "10"
+                },
+                {
+                    "ParameterKey": "BedrockKnowledgeBaseWebCrawlerURLs",
+                    "ParameterValue": "https://en.wikipedia.org/wiki/Life_insurance, https://en.wikipedia.org/wiki/Mortgage_loan"
+                },
+                {
+                    "ParameterKey": "AppSyncApiCacheInstanceType",
+                    "ParameterValue": "SMALL"
+                },
+                {
+                    "ParameterKey": "TranscribeLanguageCode",
+                    "ParameterValue": "en-US"
+                },
+                {
+                    "ParameterKey": "TranscribePreferredLanguage",
+                    "ParameterValue": "None"
+                },
+                {
+                    "ParameterKey": "EnableAppSyncApiCache",
+                    "ParameterValue": "false"
+                },
+                {
+                    "ParameterKey": "AudioRecordingExpirationInDays",
+                    "ParameterValue": "90"
+                }
+            ],
+            "CreationTime": "2026-05-14T11:56:40.606000+00:00",
+            "RollbackConfiguration": {},
+            "StackStatus": "CREATE_COMPLETE",
+            "DisableRollback": false,
+            "NotificationARNs": [],
+            "TimeoutInMinutes": 120,
+            "Capabilities": [
+                "CAPABILITY_NAMED_IAM",
+                "CAPABILITY_AUTO_EXPAND"
+            ],
+            "Outputs": [
+                {
+                    "OutputKey": "CognitoUserPoolTokenIssuerUrl",
+                    "OutputValue": "https://cognito-idp.us-east-1.amazonaws.com/us-east-1_pOCRCo1Wx",
+                    "Description": "Cognito User Pool Token Issuer URL"
+                },
+                {
+                    "OutputKey": "LLMCustomPromptSummaryTemplate",
+                    "OutputValue": "https://us-east-1.console.aws.amazon.com/dynamodbv2/home?region=us-east-1#edit-item?itemMode=2&pk=CustomSummaryPromptTemplates&route=ROUTE_ITEM_EXPLORER&sk=&table=LMASA-LLMTEMPLATESTACK-1VS98GJBZTK08-LLMPromptTemplateTable-ISML4PNGS7ZB",
+                    "Description": "Edit the *custom* summary prompts. Attribute values here override the default summary prompts, and are preserved during stack updates."
+                },
+                {
+                    "OutputKey": "RecordingsS3Bucket",
+                    "OutputValue": "lmasa-recordingsbucket-8virmwlgow36",
+                    "Description": "Bucket which contains all the call recordings"
+                },
+                {
+                    "OutputKey": "MCPServerTokenURL",
+                    "OutputValue": "https://lmasa-1778759884233304864.auth.us-east-1.amazoncognito.com/oauth2/token",
+                    "Description": "OAuth token endpoint for obtaining access tokens to LMA's MCP Server. Use this URL to exchange authorization codes for access tokens."
+                },
+                {
+                    "OutputKey": "MCPServerAuthorizationURL",
+                    "OutputValue": "https://lmasa-1778759884233304864.auth.us-east-1.amazoncognito.com/oauth2/authorize",
+                    "Description": "OAuth authorization endpoint for authorization code flow (browser-based authentication). Users will be redirected here to log in with their LMA credentials."
+                },
+                {
+                    "OutputKey": "LMAWebsocketEndpoint",
+                    "OutputValue": "wss://dz09ym3solsvg.cloudfront.net/api/v1/ws",
+                    "Description": "Websocket endpoint for websocket integration"
+                },
+                {
+                    "OutputKey": "CustomChatButtonConfig",
+                    "OutputValue": "https://us-east-1.console.aws.amazon.com/dynamodbv2/home?region=us-east-1#edit-item?itemMode=2&pk=CustomChatButtonConfig&route=ROUTE_ITEM_EXPLORER&table=LMASA-CHATBUTTONCONFIGSTACK-1LA747GZ52FBJ-ChatButtonConfigTable-1CF70C7IP19ZG",
+                    "Description": "Edit the *custom* STRANDS agent chat button configuration. Attribute values here override the default button config, and are preserved during stack updates."
+                },
+                {
+                    "OutputKey": "DefaultChatButtonConfig",
+                    "OutputValue": "https://us-east-1.console.aws.amazon.com/dynamodbv2/home?region=us-east-1#edit-item?itemMode=2&pk=DefaultChatButtonConfig&route=ROUTE_ITEM_EXPLORER&table=LMASA-CHATBUTTONCONFIGSTACK-1LA747GZ52FBJ-ChatButtonConfigTable-1CF70C7IP19ZG",
+                    "Description": "View the *default* STRANDS agent chat button configuration. Do not edit. To override default buttons, add or edit attributes in the custom button config item."
+                },
+                {
+                    "OutputKey": "MCPServerEndpoint",
+                    "OutputValue": "https://lmasa-mcp-gateway-fwshwc5lf9.gateway.bedrock-agentcore.us-east-1.amazonaws.com/mcp",
+                    "Description": "MCP Server endpoint for external applications to connect and access LMA meeting data. Use this URL with Amazon Quick Suite, Claude Desktop, or custom MCP clients."
+                },
+                {
+                    "OutputKey": "CallDataStreamArn",
+                    "OutputValue": "arn:aws:kinesis:us-east-1:528757797189:stream/LMASA-CallDataStream-G7f4Y5Yq2P94",
+                    "Description": "The ARN of Kinesis Data Stream to write the call data to."
+                },
+                {
+                    "OutputKey": "FetchTranscriptLambdaArn",
+                    "OutputValue": "arn:aws:lambda:us-east-1:528757797189:function:LMASA-AISTACK-4VKHCQQY3CJR-FetchTranscript-hSpslyrqLdKX",
+                    "Description": "The ARN of a Lambda function that will process and export a call transcript as a string."
+                },
+                {
+                    "OutputKey": "DefaultNovaSonicConfig",
+                    "OutputValue": "https://us-east-1.console.aws.amazon.com/dynamodbv2/home?region=us-east-1#edit-item?itemMode=2&pk=DefaultNovaSonicConfig&route=ROUTE_ITEM_EXPLORER&table=LMASA-NOVASONICONFIGSTACK-1PSWUQD03O5BX-NovaSonicConfigTable-MVW52T0R16QE",
+                    "Description": "View the *default* Nova Sonic voice assistant configuration. Do not edit - changes will be overwritten on stack updates. To customize, edit the custom config item."
+                },
+                {
+                    "OutputKey": "CallDataStreamName",
+                    "OutputValue": "LMASA-CallDataStream-G7f4Y5Yq2P94",
+                    "Description": "The Name of Kinesis Data Stream to write the call data to."
+                },
+                {
+                    "OutputKey": "ApplicationCloudfrontEndpoint",
+                    "OutputValue": "https://d37y4bgk8vdlu.cloudfront.net/",
+                    "Description": "LMA User Interface URL"
+                },
+                {
+                    "OutputKey": "LMASettingsParameterName",
+                    "OutputValue": "LMASA-LMASettings",
+                    "Description": "Name of the Parameter store setting that holds the LMA Settings"
+                },
+                {
+                    "OutputKey": "ChromeExtensionDownloadUrl",
+                    "OutputValue": "https://d37y4bgk8vdlu.cloudfront.net/lma-chrome-extension-v0.3.2.zip",
+                    "Description": "LMA Chrome Browser extension download link"
+                },
+                {
+                    "OutputKey": "OAuthCallbackUrl",
+                    "OutputValue": "https://d37y4bgk8vdlu.cloudfront.net/#/oauth/callback",
+                    "Description": "OAuth callback URL for MCP server authorization (use this in your OAuth provider configuration)"
+                },
+                {
+                    "OutputKey": "MCPServerClientId",
+                    "OutputValue": "1l3lfbp0v9v2acf7vvlesa53f4",
+                    "Description": "Cognito Client ID for external applications to authenticate with LMA's MCP Server. Use with MCPServerClientSecret to obtain OAuth tokens."
+                },
+                {
+                    "OutputKey": "LLMDefaultPromptSummaryTemplate",
+                    "OutputValue": "https://us-east-1.console.aws.amazon.com/dynamodbv2/home?region=us-east-1#edit-item?itemMode=2&pk=DefaultSummaryPromptTemplates&route=ROUTE_ITEM_EXPLORER&sk=&table=LMASA-LLMTEMPLATESTACK-1VS98GJBZTK08-LLMPromptTemplateTable-ISML4PNGS7ZB",
+                    "Description": "View the *default* summary prompts. Do not edit. To override default prompts, add or edit attributes in the custom summary prompts item."
+                },
+                {
+                    "OutputKey": "CognitoUserPoolClientId",
+                    "OutputValue": "5p2g7f97mp476fgujtn433cd7s",
+                    "Description": "Cognito User Pool Client Id"
+                },
+                {
+                    "OutputKey": "MCPServerClientSecret",
+                    "OutputValue": "1agjcfat1ghajvcdm7ic5hpqj91t9csdu8ehev0j5qnunh417eqo",
+                    "Description": "Cognito Client Secret for external applications. STORE SECURELY! Use with MCPServerClientId to obtain OAuth tokens for MCP Server access."
+                },
+                {
+                    "OutputKey": "SNSCategoryTopicName",
+                    "OutputValue": "LMASA-AISTACK-4VKHCQQY3CJR-CategorySNSTopic-XHZMPiUmbcdz",
+                    "Description": "The name of the SNS Topic for matched category and alert notifications"
+                },
+                {
+                    "OutputKey": "MCPServerApiKeyEndpoint",
+                    "OutputValue": "https://e8xr047hkh.execute-api.us-east-1.amazonaws.com/mcp",
+                    "Description": "REST API Gateway endpoint for API key-authenticated MCP access. Users generate personal API keys in the LMA UI settings and pass them via x-api-key header."
+                },
+                {
+                    "OutputKey": "QuickSightManifestUrl",
+                    "OutputValue": "https://lmasa-recordingsbucket-8virmwlgow36.s3.us-east-1.amazonaws.com/quicksight-recordingsbucket-manifest.json",
+                    "Description": "S3 URL for QuickSight manifest file to import recordings bucket data"
+                },
+                {
+                    "OutputKey": "MCPServerUserPoolId",
+                    "OutputValue": "us-east-1_pOCRCo1Wx",
+                    "Description": "Cognito User Pool ID for MCP Server authentication"
+                },
+                {
+                    "OutputKey": "LocalUITestingEnv",
+                    "OutputValue": "VITE_USER_POOL_ID=us-east-1_pOCRCo1Wx VITE_USER_POOL_CLIENT_ID=5p2g7f97mp476fgujtn433cd7s VITE_IDENTITY_POOL_ID=us-east-1:9186d424-0a3a-4e59-8354-4743a7202f21 VITE_APPSYNC_GRAPHQL_URL=https://kujxnwymnnfkfpavveu5doevc4.appsync-api.us-east-1.amazonaws.com/graphql VITE_AWS_REGION=us-east-1 VITE_SETTINGS_PARAMETER=LMASA-LMASettings VITE_ENABLE_MCP_SERVER=true VITE_MCP_SERVER_ENDPOINT=https://lmasa-mcp-gateway-fwshwc5lf9.gateway.bedrock-agentcore.us-east-1.amazonaws.com/mcp VITE_MCP_SERVER_API_KEY_ENDPOINT=https://e8xr047hkh.execute-api.us-east-1.amazonaws.com/mcp VITE_MCP_SERVER_AUTH_URL=https://lmasa-1778759884233304864.auth.us-east-1.amazoncognito.com/oauth2/authorize VITE_MCP_SERVER_TOKEN_URL=https://lmasa-1778759884233304864.auth.us-east-1.amazoncognito.com/oauth2/token VITE_MCP_SERVER_CLIENT_ID=1l3lfbp0v9v2acf7vvlesa53f4 VITE_MCP_SERVER_USER_POOL_ID=us-east-1_pOCRCo1Wx VITE_OAUTH_CALLBACK_URL=https://d37y4bgk8vdlu.cloudfront.net/#/oauth/callback",
+                    "Description": "Copy to create .env file for local UI testing"
+                },
+                {
+                    "OutputKey": "CustomNovaSonicConfig",
+                    "OutputValue": "https://us-east-1.console.aws.amazon.com/dynamodbv2/home?region=us-east-1#edit-item?itemMode=2&pk=CustomNovaSonicConfig&route=ROUTE_ITEM_EXPLORER&table=LMASA-NOVASONICONFIGSTACK-1PSWUQD03O5BX-NovaSonicConfigTable-MVW52T0R16QE",
+                    "Description": "Edit the *custom* Nova Sonic voice assistant configuration. Attribute values here override the default config and are preserved during stack updates."
+                }
+            ],
+            "Tags": [],
+            "EnableTerminationProtection": false,
+            "DriftInformation": {
+                "StackDriftStatus": "IN_SYNC",
+                "LastCheckTimestamp": "2026-07-07T15:36:52.489000+00:00"
+            }
+        }
+    ]
+}

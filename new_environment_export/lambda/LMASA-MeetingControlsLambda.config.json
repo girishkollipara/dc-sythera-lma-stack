@@ -1,0 +1,59 @@
+{
+    "FunctionName": "LMASA-MeetingControlsLambda",
+    "FunctionArn": "arn:aws:lambda:us-east-1:528757797189:function:LMASA-MeetingControlsLambda",
+    "Runtime": "python3.12",
+    "Role": "arn:aws:iam::528757797189:role/LMASA-AISTACK-4VKHCQQY3CJ-MeetingControlsResolverFu-PvrlHcZGV5g5",
+    "Handler": "index.lambda_handler",
+    "CodeSize": 4544986,
+    "Description": "Lambda function for meeting controls",
+    "Timeout": 180,
+    "MemorySize": 512,
+    "LastModified": "2026-06-12T17:15:00.000+0000",
+    "CodeSha256": "HM5PA0KrMhysu+tVyb0mqFDs2ZkuRECC1jlgMVRbYrA=",
+    "Version": "$LATEST",
+    "Environment": {
+        "Variables": {
+            "VITE_USER_POOL_ID": "us-east-1_pOCRCo1Wx",
+            "APPSYNC_GRAPHQL_URL": "https://kujxnwymnnfkfpavveu5doevc4.appsync-api.us-east-1.amazonaws.com/graphql",
+            "LCA_CALL_EVENTS_TABLE": "LMASA-AISTACK-4VKHCQQY3CJR-EventSourcingTable-V49M8Y0JQODE",
+            "VP_TABLE_NAME": "LMASA-AISTACK-4VKHCQQY3CJR-VirtualParticipant",
+            "KINESIS_STREAM_NAME": "LMASA-CallDataStream-G7f4Y5Yq2P94",
+            "VITE_AWS_REGION": "us-east-1",
+            "S3_RECORDINGS_PREFIX": "lma-audio-recordings/",
+            "VP_TASK_REGISTRY_TABLE_NAME": "LMASA-AISTACK-4VKHCQQY3CJR-VPTaskRegistry",
+            "S3_BUCKET_NAME": "lmasa-recordingsbucket-8virmwlgow36",
+            "COGNITO_USER_POOL_ID": "us-east-1_pOCRCo1Wx",
+            "S3_TRANSCRIPTS_PREFIX": "lma-transcripts/"
+        }
+    },
+    "TracingConfig": {
+        "Mode": "PassThrough"
+    },
+    "RevisionId": "5da824a8-0517-4364-bbcc-2652f701226d",
+    "Layers": [
+        {
+            "Arn": "arn:aws:lambda:us-east-1:528757797189:layer:TranscriptEnrichmentPythonLayer:13",
+            "CodeSize": 20845535
+        }
+    ],
+    "State": "Active",
+    "LastUpdateStatus": "Successful",
+    "PackageType": "Zip",
+    "Architectures": [
+        "arm64"
+    ],
+    "EphemeralStorage": {
+        "Size": 512
+    },
+    "SnapStart": {
+        "ApplyOn": "None",
+        "OptimizationStatus": "Off"
+    },
+    "RuntimeVersionConfig": {
+        "RuntimeVersionArn": "arn:aws:lambda:us-east-1::runtime:9a45ef23f17ace13ca371f8ee68571c08acf0b9a5549dbc9d2a14d9f4e59ba45"
+    },
+    "LoggingConfig": {
+        "LogFormat": "Text",
+        "LogGroup": "/LMASA-AISTACK-4VKHCQQY3CJR/lambda/MeetingControlsResolverFunction"
+    }
+}

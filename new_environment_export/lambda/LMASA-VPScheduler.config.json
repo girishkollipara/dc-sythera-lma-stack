@@ -1,0 +1,56 @@
+{
+    "FunctionName": "LMASA-VPScheduler",
+    "FunctionArn": "arn:aws:lambda:us-east-1:528757797189:function:LMASA-VPScheduler",
+    "Runtime": "python3.12",
+    "Role": "arn:aws:iam::528757797189:role/LMASA-VIRTUALPARTICIPANTS-VirtualParticipantSchedul-7TrZcy7KmFtq",
+    "Handler": "index.lambda_handler",
+    "CodeSize": 3499,
+    "Description": "Virtual Participant Scheduler with EventBridge Scheduler integration",
+    "Timeout": 300,
+    "MemorySize": 512,
+    "LastModified": "2026-07-20T19:57:46.000+0000",
+    "CodeSha256": "BlyG+CZS/nbnCH3Tc8beskPLmdwNWkX2rsxNq3+WiQ4=",
+    "Version": "$LATEST",
+    "Environment": {
+        "Variables": {
+            "SCHEDULER_ROLE_ARN": "arn:aws:iam::528757797189:role/LMASA-VIRTUALPARTICIPANTST-VPSchedulerExecutionRole-X4Ig7X8qtTtT",
+            "SUBNETS": "[\"subnet-035b862c6058f28f2\", \"subnet-00ab6bb3680d64d68\"]",
+            "VP_LAUNCH_TYPE": "FARGATE",
+            "SCHEDULE_GROUP_NAME": "LMASA-vp-schedules",
+            "CLUSTER_ARN": "arn:aws:ecs:us-east-1:528757797189:cluster/LMASA-VIRTUALPARTICIPANTSTACK-1IAVIZT1439R2-Cluster-hEH0LkElgiwp",
+            "VP_TASK_REGISTRY_TABLE_NAME": "LMASA-AISTACK-4VKHCQQY3CJR-VPTaskRegistry",
+            "CONTAINER_NAME": "scribe",
+            "COGNITO_USER_POOL_ID": "us-east-1_pOCRCo1Wx",
+            "TASK_DEFINITION_ARN": "arn:aws:ecs:us-east-1:528757797189:task-definition/LMASA-VIRTUALPARTICIPANTSTACK-1IAVIZT1439R2VirtualParticipantTaskDef:4",
+            "RECORDINGS_BUCKET_NAME": "lmasa-recordingsbucket-8virmwlgow36",
+            "SECURITY_GROUPS": "[\"sg-0fce20b5b14d24cd8\"]",
+            "CALL_DATA_STREAM_NAME": "LMASA-CallDataStream-G7f4Y5Yq2P94",
+            "GRAPHQL_ENDPOINT": "https://kujxnwymnnfkfpavveu5doevc4.appsync-api.us-east-1.amazonaws.com/graphql",
+            "INTRO_MESSAGE_TEMPLATE": "Hello everyone. I am the Dimcon AI Meeting Assistant, invited by {LMA_USER} to join this meeting.    I assist with meeting transcription, note-taking, action item tracking, and meeting summaries.    This solution is designed, developed, and maintained by Dimcon.    For more information about our platform and team, please visit:  https://syntheraai.com/"
+        }
+    },
+    "TracingConfig": {
+        "Mode": "Active"
+    },
+    "RevisionId": "0e521fbd-181f-46e2-b6ad-98f19d5bdbb9",
+    "State": "Active",
+    "LastUpdateStatus": "Successful",
+    "PackageType": "Zip",
+    "Architectures": [
+        "x86_64"
+    ],
+    "EphemeralStorage": {
+        "Size": 512
+    },
+    "SnapStart": {
+        "ApplyOn": "None",
+        "OptimizationStatus": "Off"
+    },
+    "RuntimeVersionConfig": {
+        "RuntimeVersionArn": "arn:aws:lambda:us-east-1::runtime:9819e0b13863c84a43e11f5c724871d909046d3cfb807eeb19460c63f974f26f"
+    },
+    "LoggingConfig": {
+        "LogFormat": "Text",
+        "LogGroup": "/aws/lambda/LMASA-VPScheduler"
+    }
+}

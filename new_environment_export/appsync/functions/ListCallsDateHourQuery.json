@@ -1,0 +1,10 @@
+{
+ "functionId": "oe6uotzisvcqrmsnmwr7jeaiwq",
+ "functionArn": "arn:aws:appsync:us-east-1:528757797189:apis/lo3gpjswjjdqrh6xn5xkgipeme/functions/oe6uotzisvcqrmsnmwr7jeaiwq",
+ "name": "ListCallsDateHourQuery",
+ "dataSourceName": "CallEventSourcing",
+ "requestMappingTemplate": "#set( $shardsInDay = 6 )\n#set( $shardDivider = 24 / $shardsInDay )\n#set( $Integer = 0 )\n#set( $now = $util.time.nowISO8601() )\n\n#set( $hourNow = $Integer.parseInt($now.substring(11, 13)) )\n\n#set( $date = $util.defaultIfNullOrBlank($ctx.args.date, $now.substring(0, 10)) )\n#set( $hour = $util.defaultIfNull($ctx.args.hour, $hourNow) )\n\n#if( $hour < 0 || $hour > 23 )\n  $util.error(\"Invalid hour parameter - value should be between 0 and 23\")\n#end\n\n#set( $hourPad = $date.format(\"%02d\", $hour) )\n#set( $hourShard = $hour / $shardDivider )\n#set( $shardPad = $date.format(\"%02d\", $hourShard) )\n\n#set( $PK = \"cls#${date}#s#${shardPad}\" )\n#set( $skPrefix = \"ts#${date}T${hourPad}\" )\n\n{\n  \"version\" : \"2018-05-29\",\n  \"operation\" : \"Query\",\n  \"query\" : {\n    \"expression\": \"PK = :PK and begins_with(SK, :prefix)\",\n    \"expressionValues\": {\n      \":PK\": $util.dynamodb.toDynamoDBJson($PK),\n      \":prefix\": $util.dynamodb.toDynamoDBJson($skPrefix),\n    },\n  },\n}\n",
+ "responseMappingTemplate": "#if ( $ctx.error )\n  $util.error($ctx.error.message, $ctx.error.type)\n#end\n\n#set($myProjects = $util.defaultIfNull($ctx.stash.myProjectIds, []))\n#set($me = $ctx.identity.username)\n\n#if(!$ctx.identity.groups.contains(\"Admin\"))\n  #set($myResults = [])\n  #foreach($item in $ctx.result.items)\n      #set($excl = $util.defaultIfNull($item.ExcludedUsers, []))\n      #if($item.Owner == $me\n          || $item.SharedWith.contains($me)\n          || ($item.ProjectId && $myProjects.contains($item.ProjectId) && !$excl.contains($me)))\n          #set($added = $myResults.add($item))\n      #end\n  #end\n  $util.toJson({\"Calls\": $myResults, \"nextToken\": $ctx.result.nextToken})\n#else\n  $util.toJson({\"Calls\": $ctx.result.items, \"nextToken\": $ctx.result.nextToken})\n#end\n",
+ "functionVersion": "2018-05-29",
+ "maxBatchSize": 0
+}

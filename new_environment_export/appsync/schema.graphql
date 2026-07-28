@@ -1,0 +1,835 @@
+schema {
+  query: Query
+  mutation: Mutation
+  subscription: Subscription
+}
+
+interface DynamoDbBase {
+  CreatedAt: AWSDateTime!
+  ExpiresAfter: AWSTimestamp
+  PK: ID!
+  SK: ID!
+  UpdatedAt: AWSDateTime
+}
+
+type Call implements DynamoDbBase @aws_cognito_user_pools @aws_iam {
+  AgentId: String
+  CallCategories: [String]
+  CallId: ID!
+  CallSummaryText: String
+  CreatedAt: AWSDateTime!
+  CustomerPhoneNumber: String
+  ExpiresAfter: AWSTimestamp
+  IssuesDetected: String
+  Metadatajson: String
+  Owner: String
+  OwnerEmail: String
+  OwnerName: String
+  PK: ID!
+  PcaUrl: String
+  RecordingUrl: String
+  SK: ID!
+  Sentiment: SentimentAggregation
+  SharedWith: String
+  SharedWithEmails: [String]
+  SharedWithNames: [String]
+  Status: CallStatus
+  SystemPhoneNumber: String
+  TotalConversationDurationMillis: Float
+  UpdatedAt: AWSDateTime!
+}
+
+type CallList @aws_cognito_user_pools @aws_iam {
+  Calls: [CallListItem]
+  nextToken: String
+}
+
+type CallListItem implements DynamoDbBase @aws_cognito_user_pools @aws_iam {
+  CallId: ID!
+  CreatedAt: AWSDateTime!
+  ExpiresAfter: AWSTimestamp
+  Owner: String
+  OwnerEmail: String
+  OwnerName: String
+  PK: ID!
+  SK: ID!
+  SharedWith: String
+  SharedWithEmails: [String]
+  SharedWithNames: [String]
+  UpdatedAt: AWSDateTime!
+}
+
+type ChatButtonConfig @aws_cognito_user_pools @aws_iam {
+  ChatButtonConfigId: ID!
+}
+
+type ChatToken @aws_cognito_user_pools @aws_iam {
+  CallId: ID!
+  IsComplete: Boolean!
+  MessageId: ID!
+  Sequence: Int!
+  ThinkingStep: ThinkingStepData
+  Timestamp: AWSDateTime!
+  Token: String!
+}
+
+type CreateCallOutput @aws_iam {
+  CallId: ID!
+  Owner: String
+  SharedWith: String
+}
+
+type CreateUploadMeetingOutput {
+  callId: String!
+  contentType: String!
+  expiresInSeconds: Int!
+  uploadBucket: String!
+  uploadKey: String!
+  uploadUrl: String!
+}
+
+type DeleteCallOutput @aws_iam {
+  CallId: ID!
+  Owner: String
+  SharedWith: String
+}
+
+type DeleteMeetingsOutput {
+  Result: String
+}
+
+type DeleteTranscriptSegmentOutput @aws_iam {
+  CallId: ID
+}
+
+type DeleteUserOutput @aws_cognito_user_pools {
+  success: Boolean!
+  username: String!
+}
+
+type DeleteVirtualParticipantsOutput @aws_cognito_user_pools @aws_iam {
+  Result: String
+}
+
+type GenerateMCPApiKeyOutput @aws_cognito_user_pools {
+  createdAt: String!
+  keyPrefix: String!
+  keyValue: String!
+}
+
+type InitOAuthFlowOutput @aws_cognito_user_pools @aws_iam {
+  authorizationUrl: String!
+  error: String
+  state: String!
+  success: Boolean
+}
+
+type InstallMCPServerOutput @aws_cognito_user_pools @aws_iam {
+  BuildId: String
+  Message: String
+  ServerId: ID!
+  Success: Boolean!
+}
+
+#   LLM Prompt Summary Templates
+type LLMPromptTemplate @aws_cognito_user_pools @aws_iam {
+  LLMPromptTemplateId: ID!
+}
+
+type MCPApiKey @aws_cognito_user_pools {
+  createdAt: String!
+  enabled: Boolean!
+  keyPrefix: String!
+}
+
+#   MCP Server Management (Account-Level)
+type MCPServer @aws_cognito_user_pools @aws_iam {
+  AccountId: String!
+  AuthConfig: AWSJSON
+  BuildId: String
+  ErrorMessage: String
+  InstalledAt: AWSDateTime
+  Name: String!
+  NpmPackage: String!
+  PackageType: String
+  RequiresAuth: Boolean
+  ServerId: ID!
+  ServerUrl: String
+  Status: String
+  Transport: [String]
+  UpdatedAt: AWSDateTime
+  Version: String
+}
+
+type Mutation @aws_iam {
+  addCallCategory(input: AddCallCategoryInput!): Call
+  addCallSummaryText(input: AddCallSummaryTextInput!): Call
+  addChatToken(input: AddChatTokenInput!): ChatToken @aws_iam
+  addIssuesDetected(input: AddIssuesDetectedInput!): Call
+  addTranscriptSegment(input: AddTranscriptSegmentInput!): TranscriptSegment
+  createCall(input: CreateCallInput!): CreateCallOutput
+  createUploadMeeting(input: CreateUploadMeetingInput!): CreateUploadMeetingOutput @aws_cognito_user_pools
+  createUser(input: CreateUserInput!): User @aws_cognito_user_pools(cognito_groups : ["Admin"])
+  createVirtualParticipant(input: CreateVirtualParticipantInput!): VirtualParticipant @aws_cognito_user_pools @aws_iam
+  deleteCall(input: DeleteCallInput!): DeleteCallOutput
+  deleteMeetings(input: DeleteMeetingsInput!): DeleteMeetingsOutput @aws_cognito_user_pools
+  deleteTranscriptSegment(input: DeleteTranscriptSegmentInput!): DeleteTranscriptSegmentOutput
+  deleteUser(input: DeleteUserInput!): DeleteUserOutput @aws_cognito_user_pools(cognito_groups : ["Admin"])
+  deleteVirtualParticipants(input: DeleteVirtualParticipantsInput!): DeleteVirtualParticipantsOutput @aws_cognito_user_pools @aws_iam
+  endVirtualParticipant(input: EndVirtualParticipantInput!): VirtualParticipant @aws_cognito_user_pools @aws_iam
+  generateMCPApiKey: GenerateMCPApiKeyOutput @aws_cognito_user_pools
+  handleOAuthCallback(input: OAuthCallbackInput!): OAuthCallbackOutput @aws_cognito_user_pools
+  initOAuthFlow(input: InitOAuthFlowInput!): InitOAuthFlowOutput @aws_cognito_user_pools
+  installMCPServer(input: InstallMCPServerInput!): InstallMCPServerOutput @aws_cognito_user_pools
+  revokeMCPApiKey(keyPrefix: String!): Boolean @aws_cognito_user_pools
+  sendChatMessage(input: SendChatMessageInput!): SendChatMessageOutput @aws_cognito_user_pools
+  sendProjectChatMessage(input: SendProjectChatMessageInput!): SendChatMessageOutput @aws_cognito_user_pools
+  shareCall(input: ShareCallInput!): ShareCallOutput
+  shareMeetings(input: ShareMeetingsInput!): ShareMeetingsOutput @aws_cognito_user_pools
+  shareTranscriptSegment(input: ShareTranscriptSegmentInput!): ShareTranscriptSegmentOutput
+  shareVirtualParticipant(input: ShareVirtualParticipantInput!): ShareVirtualParticipantOutput @aws_cognito_user_pools @aws_iam
+  toggleVNCPreview(input: ToggleVNCPreviewInput!): VNCPreviewControl @aws_cognito_user_pools @aws_iam
+  uninstallMCPServer(serverId: ID!): UninstallMCPServerOutput @aws_cognito_user_pools
+  unshareCall(input: UnshareCallInput!): UnshareCallOutput
+  unshareVirtualParticipant(input: UnshareVirtualParticipantInput!): UnshareVirtualParticipantOutput @aws_cognito_user_pools @aws_iam
+  updateAgent(input: UpdateAgentInput!): Call
+  updateCallAggregation(input: UpdateCallAggregationInput!): Call
+  updateCallStatus(input: UpdateCallStatusInput!): Call
+  updateChatButtonConfig(input: UpdateChatButtonConfigInput!): UpdateChatButtonConfigOutput @aws_cognito_user_pools
+  updateLLMPromptTemplate(input: UpdateLLMPromptTemplateInput!): UpdateLLMPromptTemplateOutput @aws_cognito_user_pools
+  updateMCPServer(input: UpdateMCPServerInput!): UpdateMCPServerOutput @aws_cognito_user_pools
+  updateNovaSonicConfig(input: UpdateNovaSonicConfigInput!): UpdateNovaSonicConfigOutput @aws_cognito_user_pools
+  updatePcaUrl(input: UpdatePcaUrlInput!): Call
+  updateRecordingUrl(input: UpdateRecordingUrlInput!): Call
+  updateVirtualParticipant(input: UpdateVirtualParticipantInput!): VirtualParticipant @aws_cognito_user_pools @aws_iam
+}
+
+#   Nova Sonic Voice Assistant Configuration
+type NovaSonicConfig @aws_cognito_user_pools @aws_iam {
+  NovaSonicConfigId: ID!
+}
+
+type OAuthCallbackOutput @aws_cognito_user_pools @aws_iam {
+  error: String
+  serverId: String
+  success: Boolean!
+}
+
+type OverallSentiment @aws_cognito_user_pools @aws_iam {
+  AGENT: Float
+  AGENT_VOICETONE: Float
+  CALLER: Float
+  CALLER_VOICETONE: Float
+}
+
+type Query @aws_cognito_user_pools @aws_iam {
+  getCall(CallId: ID!): Call
+  getChatButtonConfig(ChatButtonConfigId: ID!): ChatButtonConfig @aws_cognito_user_pools @aws_iam
+  getLLMPromptTemplate(LLMPromptTemplateId: ID!): LLMPromptTemplate @aws_cognito_user_pools @aws_iam
+  getMCPServer(serverId: ID!): MCPServer @aws_cognito_user_pools
+  getNovaSonicConfig(NovaSonicConfigId: ID!): NovaSonicConfig @aws_cognito_user_pools @aws_iam
+  getTranscriptSegments(callId: ID!, isPartial: Boolean): TranscriptSegmentList
+  getTranscriptSegmentsWithSentiment(callId: ID!): TranscriptSegmentsWithSentimentList
+  getVirtualParticipant(id: ID!): VirtualParticipant @aws_cognito_user_pools @aws_iam
+  listCalls(endDateTime: AWSDateTime, startDateTime: AWSDateTime): CallList
+  listCallsDateHour(date: AWSDate, hour: Int): CallList
+  listCallsDateShard(date: AWSDate, shard: Int): CallList
+  listInstalledMCPServers: [MCPServer] @aws_cognito_user_pools
+  listMCPApiKeys: [MCPApiKey] @aws_cognito_user_pools
+  listUsers: UserList @aws_cognito_user_pools(cognito_groups : ["Admin"])
+  listVirtualParticipants: [VirtualParticipant] @aws_cognito_user_pools @aws_iam
+  parseMeetingInvitation(invitationText: String!): String @aws_cognito_user_pools @aws_iam
+  queryKnowledgeBase(input: String!, sessionId: String): String
+}
+
+type SendChatMessageOutput @aws_cognito_user_pools @aws_iam {
+  CallId: ID!
+  MessageId: ID!
+  Response: String
+  Sources: [String]
+  Status: String!
+}
+
+type SentimentAggregation @aws_cognito_user_pools @aws_iam {
+  OverallSentiment: OverallSentiment
+  SentimentByPeriod: SentimentByPeriod
+}
+
+type SentimentByChannel @aws_cognito_user_pools @aws_iam {
+  AGENT: [SentimentByChannelEntry]
+  AGENT_VOICETONE: [SentimentByChannelEntry]
+  CALLER: [SentimentByChannelEntry]
+  CALLER_VOICETONE: [SentimentByChannelEntry]
+}
+
+type SentimentByChannelEntry @aws_cognito_user_pools @aws_iam {
+  BeginOffsetMillis: Float
+  EndOffsetMillis: Float
+  Score: Float
+}
+
+type SentimentByPeriod @aws_cognito_user_pools @aws_iam {
+  QUARTER: SentimentByChannel
+}
+
+type SentimentScore @aws_cognito_user_pools @aws_iam {
+  Mixed: Float!
+  Negative: Float!
+  Neutral: Float!
+  Positive: Float!
+}
+
+type ShareCallOutput @aws_iam {
+  CallId: ID!
+  Owner: String
+  SharedWith: String
+}
+
+type ShareMeetingsOutput {
+  Calls: [ID!]
+  Owner: String
+  Result: String
+  SharedWith: String
+}
+
+type ShareTranscriptSegmentOutput @aws_iam {
+  PK: ID
+}
+
+type ShareVirtualParticipantOutput @aws_cognito_user_pools @aws_iam {
+  Owner: String
+  SharedWith: String
+  id: ID!
+}
+
+type Subscription {
+  onAddChatToken(CallId: ID!, MessageId: ID!): ChatToken @aws_subscribe(mutations : ["addChatToken"])
+  onAddTranscriptSegment(CallId: ID, Channel: String): TranscriptSegment @aws_subscribe(mutations : ["addTranscriptSegment"])
+  onCreateCall: CreateCallOutput @aws_subscribe(mutations : ["createCall"])
+  onDeleteCall: DeleteCallOutput @aws_subscribe(mutations : ["deleteCall"])
+  onSendChatMessage(CallId: ID): SendChatMessageOutput @aws_subscribe(mutations : ["sendChatMessage"])
+  onShareMeetings: ShareMeetingsOutput @aws_subscribe(mutations : ["shareMeetings"])
+  onUnshareCall: UnshareCallOutput @aws_subscribe(mutations : ["unshareCall"])
+  onUpdateCall(CallId: ID): Call @aws_subscribe(mutations : ["updateCallStatus", "updateCallAggregation", "updateRecordingUrl", "updatePcaUrl", "updateAgent", "addCallCategory", "addIssuesDetected", "addCallSummaryText"])
+  onUpdateVirtualParticipant: VirtualParticipant @aws_subscribe(mutations : ["updateVirtualParticipant", "endVirtualParticipant"])
+  onVNCPreviewToggle(CallId: ID!): VNCPreviewControl @aws_subscribe(mutations : ["toggleVNCPreview"])
+}
+
+type ThinkingStepData @aws_cognito_user_pools @aws_iam {
+  Content: String
+  Success: Boolean
+  ToolInput: AWSJSON
+  ToolName: String
+  ToolResult: String
+  Type: String!
+}
+
+type TranscriptSegment implements DynamoDbBase @aws_cognito_user_pools @aws_iam {
+  CallId: ID!
+  Channel: Channel!
+  CreatedAt: AWSDateTime!
+  EndTime: Float!
+  ExpiresAfter: AWSTimestamp
+  IsPartial: Boolean!
+  Owner: String
+  PK: ID!
+  SK: ID!
+  SegmentId: ID!
+  Sentiment: Sentiment
+  SentimentScore: SentimentScore
+  SentimentWeighted: Float
+  SharedWith: String
+  Speaker: String!
+  StartTime: Float!
+  Transcript: String!
+  UpdatedAt: AWSDateTime
+}
+
+type TranscriptSegmentList @aws_cognito_user_pools @aws_iam {
+  TranscriptSegments: [TranscriptSegment]
+  nextToken: String
+}
+
+type TranscriptSegmentWithSentiment implements DynamoDbBase @aws_cognito_user_pools @aws_iam {
+  CallId: ID!
+  Channel: Channel!
+  CreatedAt: AWSDateTime!
+  EndTime: Float!
+  ExpiresAfter: AWSTimestamp
+  Owner: String
+  PK: ID!
+  SK: ID!
+  SegmentId: ID!
+  Sentiment: Sentiment
+  SentimentWeighted: Float
+  SharedWith: String
+  Speaker: String!
+  StartTime: Float!
+  UpdatedAt: AWSDateTime
+}
+
+type TranscriptSegmentsWithSentimentList @aws_cognito_user_pools @aws_iam {
+  TranscriptSegmentsWithSentiment: [TranscriptSegmentWithSentiment]
+  nextToken: String
+}
+
+type UninstallMCPServerOutput @aws_cognito_user_pools @aws_iam {
+  Message: String
+  ServerId: ID!
+  Success: Boolean!
+}
+
+type UnshareCallOutput @aws_iam {
+  CallId: ID!
+  SharedWith: [String!]
+}
+
+type UnshareVirtualParticipantOutput @aws_cognito_user_pools @aws_iam {
+  SharedWith: [String!]
+  id: ID!
+}
+
+type UpdateChatButtonConfigOutput @aws_cognito_user_pools @aws_iam {
+  ChatButtonConfigId: ID!
+  Success: Boolean!
+}
+
+type UpdateLLMPromptTemplateOutput @aws_cognito_user_pools @aws_iam {
+  LLMPromptTemplateId: ID!
+  Success: Boolean!
+}
+
+type UpdateMCPServerOutput @aws_cognito_user_pools @aws_iam {
+  BuildId: String
+  Message: String
+  ServerId: ID!
+  Success: Boolean!
+}
+
+type UpdateNovaSonicConfigOutput @aws_cognito_user_pools @aws_iam {
+  NovaSonicConfigId: ID!
+  Success: Boolean!
+}
+
+#   User Management (Admin-only)
+type User @aws_cognito_user_pools {
+  createdAt: AWSDateTime
+  email: String
+  enabled: Boolean
+  role: String!
+  status: String
+  username: String!
+}
+
+type UserList @aws_cognito_user_pools {
+  users: [User]
+}
+
+#   VNC Preview Control
+type VNCPreviewControl @aws_cognito_user_pools @aws_iam {
+  Action: String!
+  CallId: ID!
+  RequestedBy: String
+  Success: Boolean!
+  Timestamp: AWSDateTime!
+}
+
+type VirtualParticipant @aws_cognito_user_pools @aws_iam {
+  CallId: ID
+  Owner: String
+  SharedWith: String
+  createdAt: AWSDateTime
+  id: ID!
+  isScheduled: Boolean
+  manualActionMessage: String
+  manualActionStartTime: AWSDateTime
+  manualActionTimeoutSeconds: Int
+  manualActionType: String
+  meetingId: String
+  meetingName: String
+  meetingPassword: String
+  meetingPlatform: String
+  meetingTime: AWSTimestamp
+  owner: String
+  scheduleId: String
+  scheduledFor: AWSDateTime
+  status: String
+  taskPrivateIp: String
+  updatedAt: AWSDateTime
+  vncEndpoint: String
+  vncPassword: String
+  vncPort: Int
+  vncReady: Boolean
+}
+
+enum CallStatus {
+  ENDED
+  ERRORED
+  STARTED
+  TRANSCRIBING
+}
+
+enum Channel {
+  AGENT
+  AGENT_ASSISTANT
+  AGENT_VOICETONE
+  CALLER
+  CALLER_VOICETONE
+  CATEGORY_MATCH
+  CHAT_ASSISTANT
+}
+
+enum Sentiment {
+  MIXED
+  NEGATIVE
+  NEUTRAL
+  POSITIVE
+}
+
+input AddCallCategoryInput {
+  CallCategories: [String]
+  CallId: ID!
+  Owner: String
+  SharedWith: String
+  UpdatedAt: AWSDateTime
+}
+
+input AddCallSummaryTextInput {
+  CallId: ID!
+  CallSummaryText: String!
+  Owner: String
+  SharedWith: String
+  UpdatedAt: AWSDateTime
+}
+
+input AddChatTokenInput {
+  CallId: ID!
+  IsComplete: Boolean!
+  MessageId: ID!
+  Sequence: Int!
+  ThinkingStep: ThinkingStepDataInput
+  Token: String!
+}
+
+input AddIssuesDetectedInput {
+  CallId: ID!
+  IssuesDetected: String!
+  Owner: String
+  SharedWith: String
+  UpdatedAt: AWSDateTime
+}
+
+input AddTranscriptSegmentInput {
+  CallId: ID!
+  Channel: Channel!
+  CreatedAt: AWSDateTime
+  EndTime: Float!
+  ExpiresAfter: AWSTimestamp
+  IsPartial: Boolean!
+  Owner: String
+  SegmentId: ID!
+  Sentiment: Sentiment
+  SentimentScore: SentimentScoreInput
+  SentimentWeighted: Float
+  SharedWith: String
+  Speaker: String!
+  StartTime: Float!
+  Status: CallStatus!
+  Transcript: String!
+}
+
+input ChatMessageInput {
+  content: String!
+  role: String!
+  timestamp: String
+}
+
+input CreateCallInput {
+  AgentId: String
+  CallId: ID!
+  CreatedAt: AWSDateTime
+  CustomerPhoneNumber: String
+  ExpiresAfter: AWSTimestamp
+  Metadatajson: String
+  Owner: String
+  SharedWith: String
+  SystemPhoneNumber: String
+}
+
+input CreateUploadMeetingInput {
+  agentId: String!
+  callId: String
+  contentType: String!
+  enableDiarization: Boolean
+  fileSize: Float
+  filename: String!
+  fromNumber: String
+  languageCode: String
+  maxSpeakers: Int
+  meetingDateTime: AWSDateTime
+  meetingTopic: String!
+  toNumber: String
+}
+
+input CreateUserInput {
+  email: String!
+  role: String!
+}
+
+input CreateVirtualParticipantInput {
+  isScheduled: Boolean
+  meetingId: String!
+  meetingName: String!
+  meetingPassword: String
+  meetingPlatform: String!
+  meetingTime: AWSTimestamp
+  status: String!
+}
+
+input DeleteCallInput {
+  CallId: ID!
+  ListPK: ID!
+  ListSK: ID!
+  Owner: String
+  SharedWith: String
+}
+
+input DeleteMeetingsInput {
+  Calls: [DeleteMeetingsItem]
+}
+
+input DeleteMeetingsItem {
+  CallId: ID!
+  ListPK: ID!
+  ListSK: ID!
+}
+
+input DeleteTranscriptSegmentInput {
+  PK: ID!
+  SK: ID!
+}
+
+input DeleteUserInput {
+  username: String!
+}
+
+input DeleteVirtualParticipantsInput {
+  ids: [ID!]!
+}
+
+input EndVirtualParticipantInput {
+  endReason: String!
+  endedBy: String
+  id: ID!
+}
+
+#   OAuth 2.1 Flow Types
+input InitOAuthFlowInput {
+  authorizationUrl: String!
+  clientId: String!
+  codeChallenge: String!
+  provider: String!
+  scopes: [String!]
+  serverId: ID!
+  serverName: String
+  serverUrl: String
+  tokenUrl: String!
+}
+
+input InstallMCPServerInput {
+  AuthConfig: AWSJSON
+  Name: String!
+  NpmPackage: String!
+  PackageType: String
+  RequiresAuth: Boolean
+  ServerId: ID!
+  ServerUrl: String
+  Transport: [String]
+  Version: String
+}
+
+input OAuthCallbackInput {
+  code: String!
+  codeVerifier: String
+  state: String!
+}
+
+input OverallSentimentInput {
+  AGENT: Float
+  AGENT_VOICETONE: Float
+  CALLER: Float
+  CALLER_VOICETONE: Float
+}
+
+input SendChatMessageInput {
+  CallId: ID!
+  ConversationHistory: [ChatMessageInput]
+  Message: String!
+}
+
+input SendProjectChatMessageInput {
+  CallIds: [ID!]!
+  ConversationHistory: [ChatMessageInput]
+  Message: String!
+  MessageId: ID
+}
+
+input SentimentAggregationInput {
+  OverallSentiment: OverallSentimentInput
+  SentimentByPeriod: SentimentByPeriodInput
+}
+
+input SentimentByChannelEntryInput {
+  BeginOffsetMillis: Float
+  EndOffsetMillis: Float
+  Score: Float
+}
+
+input SentimentByChannelInput {
+  AGENT: [SentimentByChannelEntryInput]
+  AGENT_VOICETONE: [SentimentByChannelEntryInput]
+  CALLER: [SentimentByChannelEntryInput]
+  CALLER_VOICETONE: [SentimentByChannelEntryInput]
+}
+
+input SentimentByPeriodInput {
+  QUARTER: SentimentByChannelInput
+}
+
+input SentimentScoreInput {
+  Mixed: Float!
+  Negative: Float!
+  Neutral: Float!
+  Positive: Float!
+}
+
+input ShareCallInput {
+  CallId: ID!
+  ListPK: ID!
+  ListSK: ID!
+  Owner: String
+  SharedWith: [String]
+}
+
+input ShareMeetingsInput {
+  Calls: [ShareMeetingsItem]
+  MeetingRecipients: String
+}
+
+input ShareMeetingsItem {
+  CallId: ID!
+  ListPK: ID!
+  ListSK: ID!
+}
+
+input ShareTranscriptSegmentInput {
+  PK: ID!
+  SK: ID!
+  SharedWith: [String!]
+}
+
+input ShareVirtualParticipantInput {
+  Owner: String
+  SharedWith: [String!]!
+  id: ID!
+}
+
+input ThinkingStepDataInput {
+  Content: String
+  Success: Boolean
+  ToolInput: AWSJSON
+  ToolName: String
+  ToolResult: String
+  Type: String!
+}
+
+input ToggleVNCPreviewInput {
+  CallId: ID!
+  Show: Boolean!
+}
+
+input UnshareCallInput {
+  CallId: ID!
+  SharedWith: [String!]
+}
+
+input UnshareVirtualParticipantInput {
+  SharedWith: [String!]!
+  id: ID!
+}
+
+input UpdateAgentInput {
+  AgentId: String!
+  CallId: ID!
+  Owner: String
+  SharedWith: String
+  UpdatedAt: AWSDateTime
+}
+
+input UpdateCallAggregationInput {
+  CallId: ID!
+  Owner: String
+  Sentiment: SentimentAggregationInput
+  SharedWith: String
+  TotalConversationDurationMillis: Float
+  UpdatedAt: AWSDateTime
+}
+
+input UpdateCallStatusInput {
+  CallId: ID!
+  Owner: String
+  SharedWith: String
+  Status: CallStatus!
+  UpdatedAt: AWSDateTime
+}
+
+input UpdateChatButtonConfigInput {
+  ButtonConfig: String!
+  ChatButtonConfigId: ID!
+}
+
+input UpdateLLMPromptTemplateInput {
+  LLMPromptTemplateId: ID!
+  TemplateConfig: String!
+}
+
+input UpdateMCPServerInput {
+  ServerId: ID!
+  Version: String!
+}
+
+input UpdateNovaSonicConfigInput {
+  ConfigData: String!
+  NovaSonicConfigId: ID!
+}
+
+input UpdatePcaUrlInput {
+  CallId: ID!
+  Owner: String
+  PcaUrl: String!
+  SharedWith: String
+  UpdatedAt: AWSDateTime
+}
+
+input UpdateRecordingUrlInput {
+  CallId: ID!
+  Owner: String
+  RecordingUrl: String!
+  SharedWith: String
+  UpdatedAt: AWSDateTime
+}
+
+input UpdateVirtualParticipantInput {
+  CallId: ID
+  id: ID!
+  manualActionMessage: String
+  manualActionStartTime: AWSDateTime
+  manualActionTimeoutSeconds: Int
+  manualActionType: String
+  status: String!
+  taskPrivateIp: String
+  vncEndpoint: String
+  vncPassword: String
+  vncPort: Int
+  vncReady: Boolean
+}

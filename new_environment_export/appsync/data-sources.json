@@ -1,0 +1,219 @@
+[
+ {
+  "dataSourceArn": "arn:aws:appsync:us-east-1:528757797189:apis/lo3gpjswjjdqrh6xn5xkgipeme/datasources/CallEventSourcing",
+  "name": "CallEventSourcing",
+  "description": "Call Analytics Event Sourcing DynamoDB Table",
+  "type": "AMAZON_DYNAMODB",
+  "serviceRoleArn": "arn:aws:iam::528757797189:role/LMASA-AISTACK-4VKHCQQY3CJR-AppSyncDynamoDbRole-K65SfE5yoWP2",
+  "dynamodbConfig": {
+   "tableName": "LMASA-AISTACK-4VKHCQQY3CJR-EventSourcingTable-V49M8Y0JQODE",
+   "awsRegion": "us-east-1",
+   "useCallerCredentials": false,
+   "versioned": false
+  }
+ },
+ {
+  "dataSourceArn": "arn:aws:appsync:us-east-1:528757797189:apis/lo3gpjswjjdqrh6xn5xkgipeme/datasources/ChatButtonConfigTable",
+  "name": "ChatButtonConfigTable",
+  "description": "STRANDS Agent Chat Button Configuration DynamoDB Table",
+  "type": "AMAZON_DYNAMODB",
+  "serviceRoleArn": "arn:aws:iam::528757797189:role/LMASA-AISTACK-4VKHCQQY3CJ-ChatButtonConfigDataSourc-rz4bTHwVs68Q",
+  "dynamodbConfig": {
+   "tableName": "LMASA-CHATBUTTONCONFIGSTACK-1LA747GZ52FBJ-ChatButtonConfigTable-1CF70C7IP19ZG",
+   "awsRegion": "us-east-1",
+   "useCallerCredentials": false,
+   "versioned": false
+  }
+ },
+ {
+  "dataSourceArn": "arn:aws:appsync:us-east-1:528757797189:apis/lo3gpjswjjdqrh6xn5xkgipeme/datasources/KnowledgeBase",
+  "name": "KnowledgeBase",
+  "description": "Interface to Bedrock KB for meeting transcript queries",
+  "type": "AWS_LAMBDA",
+  "serviceRoleArn": "arn:aws:iam::528757797189:role/LMASA-AISTACK-4VKHCQQY3CJR-AppSyncLambdaRole-KSwGhDk7hsOW",
+  "lambdaConfig": {
+   "lambdaFunctionArn": "arn:aws:lambda:us-east-1:528757797189:function:LMASA-AISTACK-4VKHCQQY3CJ-QueryKnowledgeBaseResolv-YmdIMTHNfw96"
+  }
+ },
+ {
+  "dataSourceArn": "arn:aws:appsync:us-east-1:528757797189:apis/lo3gpjswjjdqrh6xn5xkgipeme/datasources/LLMPromptTemplateTable",
+  "name": "LLMPromptTemplateTable",
+  "description": "LLM Prompt Summary Template Configuration DynamoDB Table",
+  "type": "AMAZON_DYNAMODB",
+  "serviceRoleArn": "arn:aws:iam::528757797189:role/LMASA-AISTACK-4VKHCQQY3CJ-LLMPromptTemplateDataSour-wv7S6lcf5gD2",
+  "dynamodbConfig": {
+   "tableName": "LMASA-LLMTEMPLATESTACK-1VS98GJBZTK08-LLMPromptTemplateTable-ISML4PNGS7ZB",
+   "awsRegion": "us-east-1",
+   "useCallerCredentials": false,
+   "versioned": false
+  }
+ },
+ {
+  "dataSourceArn": "arn:aws:appsync:us-east-1:528757797189:apis/lo3gpjswjjdqrh6xn5xkgipeme/datasources/MCPApiKeyManager",
+  "name": "MCPApiKeyManager",
+  "type": "AWS_LAMBDA",
+  "serviceRoleArn": "arn:aws:iam::528757797189:role/LMASA-AISTACK-4VKHCQQY3CJ-MCPApiKeyManagerDataSourc-8f7KycgLlubz",
+  "lambdaConfig": {
+   "lambdaFunctionArn": "arn:aws:lambda:us-east-1:528757797189:function:LMASA-MCPApiKeyManager"
+  }
+ },
+ {
+  "dataSourceArn": "arn:aws:appsync:us-east-1:528757797189:apis/lo3gpjswjjdqrh6xn5xkgipeme/datasources/MCPServerManager",
+  "name": "MCPServerManager",
+  "type": "AWS_LAMBDA",
+  "serviceRoleArn": "arn:aws:iam::528757797189:role/LMASA-AISTACK-4VKHCQQY3CJ-MCPServerManagerDataSourc-IJtLYeXRacYC",
+  "lambdaConfig": {
+   "lambdaFunctionArn": "arn:aws:lambda:us-east-1:528757797189:function:LMASA-AISTACK-4VKHCQQY3CJR-MCPServerManager"
+  }
+ },
+ {
+  "dataSourceArn": "arn:aws:appsync:us-east-1:528757797189:apis/lo3gpjswjjdqrh6xn5xkgipeme/datasources/MeetingInvitationParser",
+  "name": "MeetingInvitationParser",
+  "description": "Data source for parsing meeting invitations using Bedrock AI",
+  "type": "AWS_LAMBDA",
+  "serviceRoleArn": "arn:aws:iam::528757797189:role/LMASA-AISTACK-4VKHCQQY3CJR-AppSyncLambdaRole-KSwGhDk7hsOW",
+  "lambdaConfig": {
+   "lambdaFunctionArn": "arn:aws:lambda:us-east-1:528757797189:function:LMASA-AISTACK-4VKHCQQY3CJ-MeetingInvitationParserF-fW5BYeoPicK2"
+  }
+ },
+ {
+  "dataSourceArn": "arn:aws:appsync:us-east-1:528757797189:apis/lo3gpjswjjdqrh6xn5xkgipeme/datasources/Meetings",
+  "name": "Meetings",
+  "description": "Data source to share meetings",
+  "type": "AWS_LAMBDA",
+  "serviceRoleArn": "arn:aws:iam::528757797189:role/LMASA-AISTACK-4VKHCQQY3CJ-AppSyncMeetingControlsLam-k5CTXwnLb1zD",
+  "lambdaConfig": {
+   "lambdaFunctionArn": "arn:aws:lambda:us-east-1:528757797189:function:LMASA-MeetingControlsLambda"
+  }
+ },
+ {
+  "dataSourceArn": "arn:aws:appsync:us-east-1:528757797189:apis/lo3gpjswjjdqrh6xn5xkgipeme/datasources/NovaSonicConfigTable",
+  "name": "NovaSonicConfigTable",
+  "description": "Nova Sonic Voice Assistant Configuration DynamoDB Table",
+  "type": "AMAZON_DYNAMODB",
+  "serviceRoleArn": "arn:aws:iam::528757797189:role/LMASA-AISTACK-4VKHCQQY3CJ-NovaSonicConfigDataSource-pAlI5e5oLmyq",
+  "dynamodbConfig": {
+   "tableName": "LMASA-NOVASONICONFIGSTACK-1PSWUQD03O5BX-NovaSonicConfigTable-MVW52T0R16QE",
+   "awsRegion": "us-east-1",
+   "useCallerCredentials": false,
+   "versioned": false
+  }
+ },
+ {
+  "dataSourceArn": "arn:aws:appsync:us-east-1:528757797189:apis/lo3gpjswjjdqrh6xn5xkgipeme/datasources/OAuthManager",
+  "name": "OAuthManager",
+  "type": "AWS_LAMBDA",
+  "serviceRoleArn": "arn:aws:iam::528757797189:role/LMASA-AISTACK-4VKHCQQY3CJ-OAuthManagerDataSourceRol-uLhztWN3SeL2",
+  "lambdaConfig": {
+   "lambdaFunctionArn": "arn:aws:lambda:us-east-1:528757797189:function:LMASA-AISTACK-4VKHCQQY3CJR-OAuthManager"
+  }
+ },
+ {
+  "dataSourceArn": "arn:aws:appsync:us-east-1:528757797189:apis/lo3gpjswjjdqrh6xn5xkgipeme/datasources/ProjectMembership",
+  "name": "ProjectMembership",
+  "type": "AMAZON_DYNAMODB",
+  "serviceRoleArn": "arn:aws:iam::528757797189:role/LMASA-AppSyncProjectMembershipRole",
+  "dynamodbConfig": {
+   "tableName": "LMASA-ProjectMembership",
+   "awsRegion": "us-east-1",
+   "useCallerCredentials": false,
+   "versioned": false
+  }
+ },
+ {
+  "dataSourceArn": "arn:aws:appsync:us-east-1:528757797189:apis/lo3gpjswjjdqrh6xn5xkgipeme/datasources/StrandsChat",
+  "name": "StrandsChat",
+  "description": "STRANDS Chat Interface for direct chat messages",
+  "type": "AWS_LAMBDA",
+  "serviceRoleArn": "arn:aws:iam::528757797189:role/LMASA-AISTACK-4VKHCQQY3CJ-AppSyncStrandsChatLambdaR-G5kdbapBy5jk",
+  "lambdaConfig": {
+   "lambdaFunctionArn": "arn:aws:lambda:us-east-1:528757797189:function:LMASA-AISTACK-4VKHCQQY3CJ-StrandsChatInterfaceFunc-censx0kuReyh"
+  }
+ },
+ {
+  "dataSourceArn": "arn:aws:appsync:us-east-1:528757797189:apis/lo3gpjswjjdqrh6xn5xkgipeme/datasources/Subscription",
+  "name": "Subscription",
+  "description": "NONE type data source to set up subscription filtering",
+  "type": "NONE"
+ },
+ {
+  "dataSourceArn": "arn:aws:appsync:us-east-1:528757797189:apis/lo3gpjswjjdqrh6xn5xkgipeme/datasources/SyntheraProjectChatbot",
+  "name": "SyntheraProjectChatbot",
+  "type": "AWS_LAMBDA",
+  "serviceRoleArn": "arn:aws:iam::528757797189:role/service-role/appsync-ds-lam-hRolz0iCyudj-SyntheraProjectChatb",
+  "lambdaConfig": {
+   "lambdaFunctionArn": "arn:aws:lambda:us-east-1:528757797189:function:SyntheraProjectChatbot"
+  },
+  "metricsConfig": "DISABLED"
+ },
+ {
+  "dataSourceArn": "arn:aws:appsync:us-east-1:528757797189:apis/lo3gpjswjjdqrh6xn5xkgipeme/datasources/UpdateChatButtonConfigLambda",
+  "name": "UpdateChatButtonConfigLambda",
+  "description": "Lambda function for updateChatButtonConfig with AF-12 security fix",
+  "type": "AWS_LAMBDA",
+  "serviceRoleArn": "arn:aws:iam::528757797189:role/LMASA-AISTACK-4VKHCQQY3CJ-AppSyncUpdateChatButtonCo-LM4oerHKQKDN",
+  "lambdaConfig": {
+   "lambdaFunctionArn": "arn:aws:lambda:us-east-1:528757797189:function:LMASA-AISTACK-4VKHCQQY3CJ-UpdateChatButtonConfigRe-V3ZBwk47o8fu"
+  }
+ },
+ {
+  "dataSourceArn": "arn:aws:appsync:us-east-1:528757797189:apis/lo3gpjswjjdqrh6xn5xkgipeme/datasources/UpdateLLMPromptTemplateLambda",
+  "name": "UpdateLLMPromptTemplateLambda",
+  "description": "Lambda function for updateLLMPromptTemplate with input validation",
+  "type": "AWS_LAMBDA",
+  "serviceRoleArn": "arn:aws:iam::528757797189:role/LMASA-AISTACK-4VKHCQQY3CJ-AppSyncUpdateLLMPromptTem-q9GAWGLLVFa2",
+  "lambdaConfig": {
+   "lambdaFunctionArn": "arn:aws:lambda:us-east-1:528757797189:function:LMASA-AISTACK-4VKHCQQY3CJ-UpdateLLMPromptTemplateR-HgNuaHdOZf9w"
+  }
+ },
+ {
+  "dataSourceArn": "arn:aws:appsync:us-east-1:528757797189:apis/lo3gpjswjjdqrh6xn5xkgipeme/datasources/UpdateNovaSonicConfigLambda",
+  "name": "UpdateNovaSonicConfigLambda",
+  "description": "Lambda function for updateNovaSonicConfig with input validation",
+  "type": "AWS_LAMBDA",
+  "serviceRoleArn": "arn:aws:iam::528757797189:role/LMASA-AISTACK-4VKHCQQY3CJ-AppSyncUpdateNovaSonicCon-iTwYRuhxSCVc",
+  "lambdaConfig": {
+   "lambdaFunctionArn": "arn:aws:lambda:us-east-1:528757797189:function:LMASA-AISTACK-4VKHCQQY3CJ-UpdateNovaSonicConfigRes-Csbu4B7Obhk9"
+  }
+ },
+ {
+  "dataSourceArn": "arn:aws:appsync:us-east-1:528757797189:apis/lo3gpjswjjdqrh6xn5xkgipeme/datasources/UploadMeetingInitiator",
+  "name": "UploadMeetingInitiator",
+  "description": "AppSync data source for the createUploadMeeting mutation \u2014 invokes the upload-meeting-initiator Lambda to mint a presigned S3 PUT URL.",
+  "type": "AWS_LAMBDA",
+  "serviceRoleArn": "arn:aws:iam::528757797189:role/LMASA-AISTACK-4VKHCQQY3CJ-AppSyncUploadMeetingIniti-OSaOIKyWiURK",
+  "lambdaConfig": {
+   "lambdaFunctionArn": "arn:aws:lambda:us-east-1:528757797189:function:LMASA-UploadMeetingInitiator"
+  }
+ },
+ {
+  "dataSourceArn": "arn:aws:appsync:us-east-1:528757797189:apis/lo3gpjswjjdqrh6xn5xkgipeme/datasources/UserManagement",
+  "name": "UserManagement",
+  "type": "AWS_LAMBDA",
+  "serviceRoleArn": "arn:aws:iam::528757797189:role/LMASA-AISTACK-4VKHCQQY3CJ-UserManagementDataSourceR-S2NevtkOcqhK",
+  "lambdaConfig": {
+   "lambdaFunctionArn": "arn:aws:lambda:us-east-1:528757797189:function:LMASA-AISTACK-4VKHCQQY3CJR-UserManagement"
+  }
+ },
+ {
+  "dataSourceArn": "arn:aws:appsync:us-east-1:528757797189:apis/lo3gpjswjjdqrh6xn5xkgipeme/datasources/VirtualParticipantLambda",
+  "name": "VirtualParticipantLambda",
+  "type": "AWS_LAMBDA",
+  "serviceRoleArn": "arn:aws:iam::528757797189:role/LMASA-AISTACK-4VKHCQQY3CJ-VirtualParticipantLambdaD-FjiCR2hJK0Gs",
+  "lambdaConfig": {
+   "lambdaFunctionArn": "arn:aws:lambda:us-east-1:528757797189:function:LMASA-AISTACK-4VKHCQQY3CJR-VirtualParticipantManager"
+  }
+ },
+ {
+  "dataSourceArn": "arn:aws:appsync:us-east-1:528757797189:apis/lo3gpjswjjdqrh6xn5xkgipeme/datasources/VirtualParticipantTable",
+  "name": "VirtualParticipantTable",
+  "type": "AMAZON_DYNAMODB",
+  "serviceRoleArn": "arn:aws:iam::528757797189:role/LMASA-AISTACK-4VKHCQQY3CJ-VirtualParticipantDataSou-IJlzjslOWLIo",
+  "dynamodbConfig": {
+   "tableName": "LMASA-AISTACK-4VKHCQQY3CJR-VirtualParticipant",
+   "awsRegion": "us-east-1",
+   "useCallerCredentials": false,
+   "versioned": false
+  }
+ }
+]

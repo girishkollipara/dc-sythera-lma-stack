@@ -1,0 +1,13 @@
+{
+ "typeName": "Mutation",
+ "fieldName": "updateLLMPromptTemplate",
+ "dataSourceName": "UpdateLLMPromptTemplateLambda",
+ "resolverArn": "arn:aws:appsync:us-east-1:528757797189:apis/lo3gpjswjjdqrh6xn5xkgipeme/types/Mutation/resolvers/updateLLMPromptTemplate",
+ "kind": "UNIT",
+ "maxBatchSize": 0,
+ "runtime": {
+  "name": "APPSYNC_JS",
+  "runtimeVersion": "1.0.0"
+ },
+ "code": "/*\n * Copyright (c) 2025 Amazon.com\n * This file is licensed under the MIT License.\n * See the LICENSE file in the project root for full license information.\n */\n\n/**\n * AppSync Lambda resolver for updateLLMPromptTemplate mutation\n * Delegates to Lambda function for input validation and security filtering\n */\n\nimport { util } from '@aws-appsync/utils';\n\nexport function request(ctx) {\n  return {\n    operation: 'Invoke',\n    payload: {\n      arguments: ctx.arguments,\n      identity: ctx.identity\n    }\n  };\n}\n\nexport function response(ctx) {\n  if (ctx.error) {\n    util.error(ctx.error.message, ctx.error.type);\n  }\n  return ctx.result;\n}\n"
+}

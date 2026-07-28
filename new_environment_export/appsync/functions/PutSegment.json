@@ -1,0 +1,10 @@
+{
+ "functionId": "x2ai2kctsrg5xpakgfbxlsrs4q",
+ "functionArn": "arn:aws:appsync:us-east-1:528757797189:apis/lo3gpjswjjdqrh6xn5xkgipeme/functions/x2ai2kctsrg5xpakgfbxlsrs4q",
+ "name": "PutSegment",
+ "dataSourceName": "CallEventSourcing",
+ "requestMappingTemplate": "## ---- ADDED: stamp the call's ProjectId / ExcludedUsers onto the segment (from the stash) ----\n#if($ctx.stash.callProjectId)\n  $util.qr($ctx.args.input.put(\"ProjectId\", $ctx.stash.callProjectId))\n#end\n#if($ctx.stash.callExcluded && $ctx.stash.callExcluded.size() > 0)\n  $util.qr($ctx.args.input.put(\"ExcludedUsers\", $ctx.stash.callExcluded))\n#end\n\n## ---- UNCHANGED: original addTranscriptSegment PutItem ----\n#set( $PK = \"trs#${ctx.args.input.CallId}\" )\n#set( $SK = \"s#${ctx.args.input.SegmentId}\" )\n\n#set( $CreatedAt = $util.defaultIfNullOrBlank($ctx.args.input.CreatedAt, $util.time.nowISO8601()) )\n$util.qr($ctx.args.input.put(\"CreatedAt\", ${CreatedAt}))\n\n{\n  \"version\" : \"2018-05-29\",\n  \"operation\": \"PutItem\",\n  \"key\" : {\n    \"PK\": $util.dynamodb.toDynamoDBJson($PK),\n    \"SK\": $util.dynamodb.toDynamoDBJson($SK),\n  },\n  \"attributeValues\": $util.dynamodb.toMapValuesJson($ctx.args.input),\n\n## Conditional block to prevent partial segments from overwriting final segments if they are mutated out of sequence.\n#if(${ctx.args.input.IsPartial})\n  \"condition\": {\n      \"expression\" : \"attribute_not_exists(IsPartial) OR IsPartial = :true\",\n      \"expressionValues\" : {\n          \":true\" : { \"BOOL\" : true }\n      },\n  },\n#end\n}\n",
+ "responseMappingTemplate": "## UNCHANGED from the original addTranscriptSegment response \u00e2\u20ac\u201d preserves the exact\n## \"item put condition failure\" message the CallEventProcessor relies on.\n#if ( $ctx.error )\n  #if ( $ctx.error.type.equals(\"DynamoDB:ConditionalCheckFailedException\") )\n    $util.error(\"item put condition failure\")\n  #else\n    $util.error($ctx.error.message, $ctx.error.type)\n  #end\n#end\n$util.toJson($ctx.result)\n",
+ "functionVersion": "2018-05-29",
+ "maxBatchSize": 0
+}

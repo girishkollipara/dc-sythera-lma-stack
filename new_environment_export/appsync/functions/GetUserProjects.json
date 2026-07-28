@@ -1,0 +1,10 @@
+{
+ "functionId": "tboyn6taezhd5gbk6xqcstav7y",
+ "functionArn": "arn:aws:appsync:us-east-1:528757797189:apis/lo3gpjswjjdqrh6xn5xkgipeme/functions/tboyn6taezhd5gbk6xqcstav7y",
+ "name": "GetUserProjects",
+ "dataSourceName": "ProjectMembership",
+ "requestMappingTemplate": "## Shared function: look up the caller's projects from the ProjectMembership mirror.\n{\n  \"version\": \"2018-05-29\",\n  \"operation\": \"GetItem\",\n  \"key\": {\n    \"PK\": $util.dynamodb.toDynamoDBJson(\"u#${ctx.identity.username}\")\n  }\n}\n",
+ "responseMappingTemplate": "## Stash the caller's project ids for later stages.\n## Fail-open to today's behavior: if the lookup errors or has no row, stash an empty list.\n#if($ctx.error)\n  $util.qr($ctx.stash.put(\"myProjectIds\", []))\n#else\n  $util.qr($ctx.stash.put(\"myProjectIds\", $util.defaultIfNull($ctx.result.ProjectIds, [])))\n#end\n{}\n",
+ "functionVersion": "2018-05-29",
+ "maxBatchSize": 0
+}

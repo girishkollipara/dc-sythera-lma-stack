@@ -1,0 +1,27 @@
+{
+    "Role": {
+        "Path": "/",
+        "RoleName": "LMASA-MeetingEnrichmentRole",
+        "RoleId": "AROAXWHDLWFC77V2OQFZZ",
+        "Arn": "arn:aws:iam::528757797189:role/LMASA-MeetingEnrichmentRole",
+        "CreateDate": "2026-07-20T19:24:57+00:00",
+        "AssumeRolePolicyDocument": {
+            "Version": "2012-10-17",
+            "Statement": [
+                {
+                    "Effect": "Allow",
+                    "Principal": {
+                        "Service": "lambda.amazonaws.com"
+                    },
+                    "Action": "sts:AssumeRole"
+                }
+            ]
+        },
+        "Description": "Enriches new LMA meeting records with owner display names",
+        "MaxSessionDuration": 3600,
+        "RoleLastUsed": {
+            "LastUsedDate": "2026-07-28T18:07:46+00:00",
+            "Region": "us-east-1"
+        }
+    }
+}

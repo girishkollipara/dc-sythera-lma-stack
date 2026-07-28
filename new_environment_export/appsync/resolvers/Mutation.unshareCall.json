@@ -1,0 +1,10 @@
+{
+ "typeName": "Mutation",
+ "fieldName": "unshareCall",
+ "dataSourceName": "Subscription",
+ "resolverArn": "arn:aws:appsync:us-east-1:528757797189:apis/lo3gpjswjjdqrh6xn5xkgipeme/types/Mutation/resolvers/unshareCall",
+ "requestMappingTemplate": "{\n  \"version\": \"2018-05-29\",\n  \"payload\": $util.toJson($context)\n}",
+ "responseMappingTemplate": "#if ( $ctx.error )\n  $util.error($ctx.error.message, $ctx.error.type)\n#end\n\n$util.toJson({\"CallId\": $ctx.args.input.CallId, \"SharedWith\": $ctx.args.input.SharedWith})\n",
+ "kind": "UNIT",
+ "maxBatchSize": 0
+}

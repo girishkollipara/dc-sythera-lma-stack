@@ -1,0 +1,45 @@
+{
+    "RoleName": "LMASA-VIRTUALPARTICIPANTST-VPSchedulerExecutionRole-X4Ig7X8qtTtT",
+    "PolicyName": "ECSTaskExecution",
+    "PolicyDocument": {
+        "Version": "2012-10-17",
+        "Statement": [
+            {
+                "Action": [
+                    "ecs:RunTask"
+                ],
+                "Resource": [
+                    "arn:aws:ecs:us-east-1:528757797189:task-definition/LMASA-VIRTUALPARTICIPANTSTACK-1IAVIZT1439R2VirtualParticipantTaskDef:3",
+                    "arn:aws:ecs:us-east-1:528757797189:task-definition/LMASA-VIRTUALPARTICIPANTSTACK-1IAVIZT1439R2VirtualParticipantTaskDef:3:*",
+                    "arn:aws:ecs:us-east-1:528757797189:task-definition/LMASA-VIRTUALPARTICIPANTSTACK-1IAVIZT1439R2VirtualParticipantTaskDef:4",
+                    "arn:aws:ecs:us-east-1:528757797189:task-definition/LMASA-VIRTUALPARTICIPANTSTACK-1IAVIZT1439R2VirtualParticipantTaskDef:4:*"
+                ],
+                "Effect": "Allow"
+            },
+            {
+                "Condition": {
+                    "StringEquals": {
+                        "ecs:CreateAction": "RunTask"
+                    }
+                },
+                "Action": [
+                    "ecs:TagResource"
+                ],
+                "Resource": "*",
+                "Effect": "Allow"
+            },
+            {
+                "Condition": {
+                    "StringLike": {
+                        "iam:PassedToService": "ecs-tasks.amazonaws.com"
+                    }
+                },
+                "Action": [
+                    "iam:PassRole"
+                ],
+                "Resource": "*",
+                "Effect": "Allow"
+            }
+        ]
+    }
+}

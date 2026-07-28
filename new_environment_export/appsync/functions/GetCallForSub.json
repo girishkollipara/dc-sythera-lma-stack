@@ -1,0 +1,10 @@
+{
+ "functionId": "rmh753xp75ftlixzt6b4pz2fiy",
+ "functionArn": "arn:aws:appsync:us-east-1:528757797189:apis/lo3gpjswjjdqrh6xn5xkgipeme/functions/rmh753xp75ftlixzt6b4pz2fiy",
+ "name": "GetCallForSub",
+ "dataSourceName": "CallEventSourcing",
+ "requestMappingTemplate": "## Subscription access check: fetch the call so we can read Owner/SharedWith/ProjectId.\n## CallId may be absent (non-scoped subscribe) - fetch a key that cannot exist so the\n## response falls back to the owner/shared filter.\n#set( $cid = $util.defaultIfNullOrBlank($ctx.args.CallId, \"__none__\") )\n#set( $PK = \"c#${cid}\" )\n{\n  \"version\": \"2018-05-29\",\n  \"operation\": \"GetItem\",\n  \"key\": {\n    \"PK\": $util.dynamodb.toDynamoDBJson($PK),\n    \"SK\": $util.dynamodb.toDynamoDBJson($PK)\n  }\n}\n",
+ "responseMappingTemplate": "## Stash the call's identity fields for the code-based access check.\n#if(!$ctx.error && $ctx.result)\n  $util.qr($ctx.stash.put(\"callFound\", true))\n  $util.qr($ctx.stash.put(\"callOwner\", $util.defaultIfNull($ctx.result.Owner, \"\")))\n  $util.qr($ctx.stash.put(\"callSharedWith\", $util.defaultIfNull($ctx.result.SharedWith, \"\")))\n  $util.qr($ctx.stash.put(\"callProjectId\", $ctx.result.ProjectId))\n  $util.qr($ctx.stash.put(\"callExcluded\", $util.defaultIfNull($ctx.result.ExcludedUsers, [])))\n#else\n  $util.qr($ctx.stash.put(\"callFound\", false))\n#end\n{}\n",
+ "functionVersion": "2018-05-29",
+ "maxBatchSize": 0
+}

@@ -1,0 +1,67 @@
+{
+    "imageDetails": [
+        {
+            "registryId": "528757797189",
+            "repositoryName": "lmasa-virtualparticipantstack-1iavizt1439r2-imagerepo-l3yrnekcbuxx",
+            "imageDigest": "sha256:48618181aac47f8c6302100a5960bdf9fc3ee61bb46610afa31b93dbf30ea848",
+            "imageSizeInBytes": 29068922,
+            "imagePushedAt": "2026-05-14T08:22:56.768000-04:00",
+            "imageManifestMediaType": "application/vnd.oci.image.manifest.v1+json",
+            "artifactMediaType": "application/vnd.amazon.soci.index.v1+json"
+        },
+        {
+            "registryId": "528757797189",
+            "repositoryName": "lmasa-virtualparticipantstack-1iavizt1439r2-imagerepo-l3yrnekcbuxx",
+            "imageDigest": "sha256:5412ce240b79e78cf5ffe8a2c27946215a82e103880611b0c14bf476d14978f6",
+            "imageSizeInBytes": 558729628,
+            "imagePushedAt": "2026-07-16T14:54:09.519000-04:00",
+            "imageManifestMediaType": "application/vnd.oci.image.manifest.v1+json",
+            "artifactMediaType": "application/vnd.oci.image.config.v1+json",
+            "lastRecordedPullTime": "2026-07-28T09:04:50.359000-04:00"
+        },
+        {
+            "registryId": "528757797189",
+            "repositoryName": "lmasa-virtualparticipantstack-1iavizt1439r2-imagerepo-l3yrnekcbuxx",
+            "imageDigest": "sha256:a0fac2c46117a3ef470ab08bdd78d4c5760af8d7cf0f5920da9ec0718b7d6976",
+            "imageSizeInBytes": 1345,
+            "imagePushedAt": "2026-07-16T14:54:09.495000-04:00",
+            "imageManifestMediaType": "application/vnd.oci.image.manifest.v1+json",
+            "artifactMediaType": "application/vnd.oci.image.config.v1+json"
+        },
+        {
+            "registryId": "528757797189",
+            "repositoryName": "lmasa-virtualparticipantstack-1iavizt1439r2-imagerepo-l3yrnekcbuxx",
+            "imageDigest": "sha256:1c9401589f82ce86bcd2439b31a46c5548e13ee273291c8de1a33795a0fb7ac2",
+            "imageSizeInBytes": 1632970959,
+            "imagePushedAt": "2026-05-14T08:22:56.446000-04:00",
+            "imageManifestMediaType": "application/vnd.oci.image.manifest.v1+json",
+            "artifactMediaType": "application/vnd.oci.image.config.v1+json"
+        },
+        {
+            "registryId": "528757797189",
+            "repositoryName": "lmasa-virtualparticipantstack-1iavizt1439r2-imagerepo-l3yrnekcbuxx",
+            "imageDigest": "sha256:32cf092cb0b864564d2dc5b9f8cc8328a8a3a6f0129f0e03ad6464e3574fa463",
+            "imageTags": [
+                "pre-name-fix-20260514"
+            ],
+            "imageSizeInBytes": 558691449,
+            "imagePushedAt": "2026-05-14T08:19:52.132000-04:00",
+            "imageManifestMediaType": "application/vnd.docker.distribution.manifest.v2+json",
+            "artifactMediaType": "application/vnd.docker.container.image.v1+json",
+            "lastRecordedPullTime": "2026-07-16T16:34:20.420000-04:00"
+        },
+        {
+            "registryId": "528757797189",
+            "repositoryName": "lmasa-virtualparticipantstack-1iavizt1439r2-imagerepo-l3yrnekcbuxx",
+            "imageDigest": "sha256:58a82af8d245b0fbd98b84f1edb975fbdfa628aadf012fa71b2006ea9496d1de",
+            "imageTags": [
+                "name-fix-v1",
+                "latest"
+            ],
+            "imageSizeInBytes": 558729628,
+            "imagePushedAt": "2026-07-16T14:54:09.884000-04:00",
+            "imageManifestMediaType": "application/vnd.oci.image.index.v1+json",
+            "lastRecordedPullTime": "2026-07-28T09:04:50.716000-04:00"
+        }
+    ]
+}

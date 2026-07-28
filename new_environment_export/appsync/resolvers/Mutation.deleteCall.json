@@ -1,0 +1,10 @@
+{
+ "typeName": "Mutation",
+ "fieldName": "deleteCall",
+ "dataSourceName": "CallEventSourcing",
+ "resolverArn": "arn:aws:appsync:us-east-1:528757797189:apis/lo3gpjswjjdqrh6xn5xkgipeme/types/Mutation/resolvers/deleteCall",
+ "requestMappingTemplate": "#set( $PK = \"c#${ctx.args.input.CallId}\" )\n{\n  \"version\": \"2018-05-29\",\n  \"operation\": \"TransactWriteItems\",\n  \"transactItems\": [\n    {\n      \"table\": \"LMASA-AISTACK-4VKHCQQY3CJR-EventSourcingTable-V49M8Y0JQODE\",\n      \"operation\": \"DeleteItem\",\n      \"key\": {\n        \"PK\": $util.dynamodb.toDynamoDBJson($PK),\n        \"SK\": $util.dynamodb.toDynamoDBJson($PK),\n      }\n    },\n    {\n      \"table\": \"LMASA-AISTACK-4VKHCQQY3CJR-EventSourcingTable-V49M8Y0JQODE\",\n      \"operation\": \"DeleteItem\",\n      \"key\" : {\n        \"PK\": $util.dynamodb.toDynamoDBJson($ctx.args.input.ListPK),\n        \"SK\": $util.dynamodb.toDynamoDBJson($ctx.args.input.ListSK),\n      },\n    },\n  ],\n}",
+ "responseMappingTemplate": "#if ( $ctx.error )\n  $util.error($ctx.error.message, $ctx.error.type)\n#end\n\n$util.toJson({\"CallId\": $ctx.args.input.CallId, \"Owner\": $ctx.args.input.Owner, \"SharedWith\": $ctx.args.input.SharedWith})\n",
+ "kind": "UNIT",
+ "maxBatchSize": 0
+}
