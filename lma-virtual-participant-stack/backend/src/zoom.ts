@@ -10,7 +10,7 @@ import {
     classifyJoinState,
 } from './ai-dom-resolver.js';
 import { startDialogWatchdog } from './dialog-watchdog.js';
-import { humanClick, humanType } from './prejoin-actions.js';
+import { humanClick, humanType, typeReliably } from './prejoin-actions.js';
 import { fetchZoomCredentials, loginToZoom, dismissPostLoginInterstitials } from './zoom-login.js';
 
 // Zoom's audio/video toggles use SVG icons inside a clickable <button>.
@@ -946,27 +946,8 @@ export default class Zoom {
                 { maxRetries: 6, delayMs: 500 },
             );
             if (nameResult) {
-                await nameResult.element.evaluate((el: Element) => {
-                    const i = el as HTMLInputElement;
-                    i.focus();
-                    i.value = '';
-                });
                 console.log(`Setting display name to scribe identity ("${details.scribeIdentity}").`);
-                await humanType(page, nameResult.element, details.scribeIdentity);
-                const got = await nameResult.element.evaluate(
-                    (el: Element) => (el as HTMLInputElement).value || '',
-                );
-                if (got !== details.scribeIdentity) {
-                    console.warn(
-                        `Display-name value mismatch (expected "${details.scribeIdentity}", got "${got}") — clearing and re-typing.`,
-                    );
-                    await nameResult.element.evaluate((el: Element) => {
-                        const i = el as HTMLInputElement;
-                        i.focus();
-                        i.value = '';
-                    });
-                    await humanType(page, nameResult.element, details.scribeIdentity);
-                }
+                await typeReliably(page, nameResult.element, details.scribeIdentity);
             } else if (!signedInToZoom) {
                 console.log('LMA Virtual Participant was unable to join the meeting.');
                 throw new Error('Meeting not found or invalid meeting ID');

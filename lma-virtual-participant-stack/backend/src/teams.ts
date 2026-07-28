@@ -9,7 +9,7 @@ import { simliAvatar } from './simli-avatar.js';
 import { agentSpeakingDetector } from './agent-speaking-detector.js';
 import { findElementWithFallback, classifyJoinState, isResolverEnabled } from './ai-dom-resolver.js';
 import { startDialogWatchdog } from './dialog-watchdog.js';
-import { humanClick, humanType } from './prejoin-actions.js';
+import { humanClick, typeReliably } from './prejoin-actions.js';
 
 export default class Teams {
     private endRequested: Promise<ExitInfo>;
@@ -561,29 +561,11 @@ export default class Teams {
         // bypassing Playwright's actionability/pointer-events hit-test. The
         // Teams light-meetings pre-join floats a transient shroud over the form
         // while it finishes hydrating, and a plain ElementHandle.type() throws
-        // "failed pointer_events check: element is covered by <unknown>". Clear
-        // first, then verify the value landed and re-type once (the shroud can
-        // swallow the first keystroke burst), mirroring the Zoom handler.
-        await nameRes.element.evaluate((el: Element) => {
-            const i = el as HTMLInputElement;
-            i.focus();
-            i.value = '';
-        });
-        await humanType(page, nameRes.element, details.scribeIdentity);
-        const typedName = await nameRes.element.evaluate(
-            (el: Element) => (el as HTMLInputElement).value || '',
-        );
-        if (typedName !== details.scribeIdentity) {
-            console.warn(
-                `Display-name value mismatch (expected "${details.scribeIdentity}", got "${typedName}") — clearing and re-typing.`,
-            );
-            await nameRes.element.evaluate((el: Element) => {
-                const i = el as HTMLInputElement;
-                i.focus();
-                i.value = '';
-            });
-            await humanType(page, nameRes.element, details.scribeIdentity);
-        }
+        // "failed pointer_events check: element is covered by <unknown>".
+        // typeReliably retries (clear + retype, verifying each attempt) since
+        // the shroud can swallow more than one keystroke burst, mirroring the
+        // Zoom handler.
+        await typeReliably(page, nameRes.element, details.scribeIdentity);
         // The field already holds focus from humanType, so press Enter via the
         // keyboard (no pointer hit-test) to commit any name autocomplete.
         await page.keyboard.press('Enter');

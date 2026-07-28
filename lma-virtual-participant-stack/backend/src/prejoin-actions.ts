@@ -64,3 +64,43 @@ export async function humanType(
     await element.evaluate((el) => (el as HTMLElement).focus());
     await page.keyboard.type(text, { delay: 50 + Math.floor(Math.random() * 70) });
 }
+
+const TYPE_RELIABLY_MAX_ATTEMPTS = 6;
+const TYPE_RELIABLY_RETRY_DELAY_MS = 500;
+
+/**
+ * humanType a value into a field and verify it landed, retrying (clear +
+ * retype) up to TYPE_RELIABLY_MAX_ATTEMPTS times. Pre-join display-name
+ * fields keep hydrating after the input already exists, so a single retry
+ * can still land on a shroud that swallows the keystrokes — this loop is for
+ * exactly that field, not general-purpose typing. Falls through rather than
+ * throwing on final failure — joining with a wrong name is better than not
+ * joining and losing the recording.
+ */
+export async function typeReliably(
+    page: Page,
+    element: ElementHandle<Element>,
+    text: string,
+): Promise<boolean> {
+    for (let attempt = 1; attempt <= TYPE_RELIABLY_MAX_ATTEMPTS; attempt++) {
+        await element.evaluate((el: Element) => {
+            const i = el as HTMLInputElement;
+            i.focus();
+            i.value = '';
+        });
+        await humanType(page, element, text);
+        const actual = await element.evaluate((el: Element) => (el as HTMLInputElement).value || '');
+        if (actual === text) {
+            if (attempt > 1) {
+                console.log(`Display name entered correctly on attempt ${attempt}.`);
+            }
+            return true;
+        }
+        console.warn(
+            `Display-name value mismatch (expected "${text}", got "${actual}") — retrying ${attempt}/${TYPE_RELIABLY_MAX_ATTEMPTS}.`,
+        );
+        await new Promise((resolve) => setTimeout(resolve, TYPE_RELIABLY_RETRY_DELAY_MS));
+    }
+    console.warn('Display name still incorrect after all attempts — joining anyway.');
+    return false;
+}
