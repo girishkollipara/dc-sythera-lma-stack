@@ -26,6 +26,7 @@ def execute(
     meeting_id: str,
     meeting_password: Optional[str] = None,
     user_id: str = None,
+    username: str = None,
     is_admin: bool = False,
     use_stored_zoom_credentials: bool = True,
 ) -> Dict[str, Any]:
@@ -37,7 +38,9 @@ def execute(
         meeting_platform: Platform (Zoom, Teams, Chime, Webex)
         meeting_id: Meeting ID (numeric ID only, not URL)
         meeting_password: Optional meeting password
-        user_id: User ID for access control
+        user_id: User ID for access control (Cognito sub - not human-readable)
+        username: Human-readable identity (Cognito username or email) for the
+            bot's on-screen display name. Falls back to user_id if not given.
         is_admin: Whether user is admin
         use_stored_zoom_credentials: When the user has stored Zoom
             credentials in LMA, sign in to Zoom with them before joining
@@ -180,7 +183,7 @@ def execute(
                 "meetingPassword": meeting_password or "",
                 "meetingName": meeting_name,
                 "meetingTime": "",  # Empty string triggers immediate RunTask path
-                "userName": user_id or "mcp-server-user",
+                "userName": username or user_id or "mcp-server-user",
                 "virtualParticipantId": vp_id,
                 # Always populate userSub when we know it so the persistent
                 # Chromium profile (Phase C4) is keyed correctly. userZoomSub

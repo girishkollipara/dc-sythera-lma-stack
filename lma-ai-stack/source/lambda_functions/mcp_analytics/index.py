@@ -163,6 +163,7 @@ def lambda_handler(event: Dict[str, Any], context: Any) -> Dict[str, Any]:
                 meeting_id=tool_input.get("meetingId"),
                 meeting_password=tool_input.get("meetingPassword"),
                 user_id=user_id,
+                username=username,
                 is_admin=is_admin,
                 # Default ON; pass useStoredZoomCredentials=false to opt-out.
                 use_stored_zoom_credentials=tool_input.get("useStoredZoomCredentials", True),
@@ -423,6 +424,7 @@ def execute_tool_call(msg_id, tool_name, arguments, user_id, username, is_admin)
                 meeting_id=arguments.get("meetingId"),
                 meeting_password=arguments.get("meetingPassword"),
                 user_id=user_id,
+                username=username,
                 is_admin=is_admin,
                 use_stored_zoom_credentials=arguments.get("useStoredZoomCredentials", True),
             )

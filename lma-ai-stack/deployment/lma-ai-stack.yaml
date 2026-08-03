@@ -146,6 +146,17 @@ Parameters:
       redaction logic, profanity filtering, or custom rules to highlight patterns
       in the transcript.
 
+  ProjectMembershipTableArn:
+    Default: ""
+    Type: String
+    AllowedPattern: "^(|arn:aws:dynamodb:.*)$"
+    Description: >
+      (Optional) ARN of an externally-managed DynamoDB table mapping users to
+      the projects they belong to (PK = u#<cognitoUsername>, attribute
+      ProjectIds). Not created by this stack. When provided, LMA's AppSync
+      API registers it as a data source so the UI can scope meeting access
+      by project. Leave blank to disable project-scoped access.
+
   TranscriptLambdaHookFunctionNonPartialOnly:
     Type: String
     Default: "true"
@@ -591,6 +602,10 @@ Conditions:
     !Equals [!Ref IsLambdaAgentAssistEnabled, "true"]
   ShouldEnableTranscriptLambdaHookFunction:
     !Not [!Equals [!Ref TranscriptLambdaHookFunctionArn, ""]]
+  ShouldEnableProjectMembership:
+    !Not [!Equals [!Ref ProjectMembershipTableArn, ""]]
+  ShouldDisableProjectMembership:
+    !Equals [!Ref ProjectMembershipTableArn, ""]
   ShouldEnableStartOfCallLambdaHookFunction:
     !Not [!Equals [!Ref StartOfCallLambdaHookFunctionArn, ""]]
   ShouldEnablePostCallSummaryLambdaHookFunction:
@@ -3190,6 +3205,387 @@ Resources:
                     "kms:ViaService": !Sub "dynamodb.${AWS::Region}.amazonaws.com"
 
   ##########################################################################
+  # Project Membership - externally-managed table, LMA-owned data source.
+  # Only created when ProjectMembershipTableArn is provided; the table
+  # itself is not part of this stack (see parameter description).
+  ##########################################################################
+
+  ProjectMembershipDataSource:
+    Type: AWS::AppSync::DataSource
+    Condition: ShouldEnableProjectMembership
+    Properties:
+      ApiId: !GetAtt AppSyncApiEncrypted.ApiId
+      Name: ProjectMembership
+      Description: >-
+        Externally-managed table mapping users to their project
+        memberships. Read-only from LMA's perspective.
+      Type: AMAZON_DYNAMODB
+      ServiceRoleArn: !GetAtt ProjectMembershipDataSourceRole.Arn
+      DynamoDBConfig:
+        TableName: !Select [1, !Split ["/", !Ref ProjectMembershipTableArn]]
+        AwsRegion: !Ref AWS::Region
+
+  ProjectMembershipDataSourceRole:
+    Type: AWS::IAM::Role
+    Condition: ShouldEnableProjectMembership
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Effect: Allow
+            Action: sts:AssumeRole
+            Principal:
+              Service: appsync.amazonaws.com
+      Policies:
+        - PolicyName: DynamoDBReadOnlyAccess
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - dynamodb:GetItem
+                Resource: !Ref ProjectMembershipTableArn
+
+  # Shared pipeline-function building block: look up the caller's project
+  # memberships. Used as the first step in front of the queries/resolvers
+  # that need to filter results by project. Fails open (empty list, not an
+  # error) if the lookup errors or the user has no membership row, so this
+  # can never be the reason a request fails outright.
+  GetUserProjectsFunction:
+    Type: AWS::AppSync::FunctionConfiguration
+    Condition: ShouldEnableProjectMembership
+    Properties:
+      ApiId: !GetAtt AppSyncApiEncrypted.ApiId
+      Name: GetUserProjects
+      DataSourceName: !GetAtt ProjectMembershipDataSource.Name
+      FunctionVersion: "2018-05-29"
+      RequestMappingTemplate: |
+        ## Shared function: look up the caller's projects from the ProjectMembership mirror.
+        {
+          "version": "2018-05-29",
+          "operation": "GetItem",
+          "key": {
+            "PK": $util.dynamodb.toDynamoDBJson("u#${ctx.identity.username}")
+          }
+        }
+      ResponseMappingTemplate: |
+        ## Stash the caller's project ids for later stages.
+        ## Fail-open to today's behavior: if the lookup errors or has no row, stash an empty list.
+        #if($ctx.error)
+          $util.qr($ctx.stash.put("myProjectIds", []))
+        #else
+          $util.qr($ctx.stash.put("myProjectIds", $util.defaultIfNull($ctx.result.ProjectIds, [])))
+        #end
+        {}
+
+  # Same lookup as GetUserProjectsFunction, but on the newer JS runtime -
+  # subscriptions (onCreateCall, onUpdateCall, onAddTranscriptSegment) and
+  # the addTranscriptSegment mutation pipeline require APPSYNC_JS, not VTL.
+  GetUserProjectsJSFunction:
+    Type: AWS::AppSync::FunctionConfiguration
+    Condition: ShouldEnableProjectMembership
+    Properties:
+      ApiId: !GetAtt AppSyncApiEncrypted.ApiId
+      Name: GetUserProjectsJS
+      DataSourceName: !GetAtt ProjectMembershipDataSource.Name
+      CodeS3Location: ../source/appsync/getUserProjectsJS.js
+      Runtime:
+        Name: APPSYNC_JS
+        RuntimeVersion: 1.0.0
+
+  # Subscription access check: fetch the call being subscribed to so its
+  # Owner/SharedWith/ProjectId can be checked explicitly, instead of relying
+  # only on the client-supplied subscription filter (subscription.js) to
+  # exclude a caller after the fact. Uses the table this stack already owns
+  # - no dependency on the external ProjectMembership table.
+  GetCallForSubFunction:
+    Type: AWS::AppSync::FunctionConfiguration
+    Properties:
+      ApiId: !GetAtt AppSyncApiEncrypted.ApiId
+      Name: GetCallForSub
+      DataSourceName: !GetAtt AppSyncDataSource.Name
+      FunctionVersion: "2018-05-29"
+      RequestMappingTemplate: |
+        ## Subscription access check: fetch the call so we can read Owner/SharedWith/ProjectId.
+        ## CallId may be absent (non-scoped subscribe) - fetch a key that cannot exist so the
+        ## response falls back to the owner/shared filter.
+        #set( $cid = $util.defaultIfNullOrBlank($ctx.args.CallId, "__none__") )
+        #set( $PK = "c#${cid}" )
+        {
+          "version": "2018-05-29",
+          "operation": "GetItem",
+          "key": {
+            "PK": $util.dynamodb.toDynamoDBJson($PK),
+            "SK": $util.dynamodb.toDynamoDBJson($PK)
+          }
+        }
+      ResponseMappingTemplate: |
+        ## Stash the call's identity fields for the code-based access check.
+        #if(!$ctx.error && $ctx.result)
+          $util.qr($ctx.stash.put("callFound", true))
+          $util.qr($ctx.stash.put("callOwner", $util.defaultIfNull($ctx.result.Owner, "")))
+          $util.qr($ctx.stash.put("callSharedWith", $util.defaultIfNull($ctx.result.SharedWith, "")))
+          $util.qr($ctx.stash.put("callProjectId", $ctx.result.ProjectId))
+          $util.qr($ctx.stash.put("callExcluded", $util.defaultIfNull($ctx.result.ExcludedUsers, [])))
+        #else
+          $util.qr($ctx.stash.put("callFound", false))
+        #end
+        {}
+
+  # Query.getCall main step: fetch the call, then apply the access check
+  # (Admin, Owner, SharedWith, or in-project-and-not-excluded). Same table
+  # this stack already owns; the project check reads ctx.stash.myProjectIds,
+  # which is an empty list (never a match) when that stash was never set -
+  # i.e. this degrades safely to today's owner/sharedWith-only check.
+  GetCallAuthFunction:
+    Type: AWS::AppSync::FunctionConfiguration
+    Properties:
+      ApiId: !GetAtt AppSyncApiEncrypted.ApiId
+      Name: GetCallAuth
+      DataSourceName: !GetAtt AppSyncDataSource.Name
+      FunctionVersion: "2018-05-29"
+      RequestMappingTemplate: |
+        ## getCall main step: fetch the call record (same GetItem as the original UNIT resolver).
+        #set( $PK = "c#${ctx.args.CallId}" )
+        {
+          "version": "2018-05-29",
+          "operation": "GetItem",
+          "key": {
+            "PK": $util.dynamodb.toDynamoDBJson($PK),
+            "SK": $util.dynamodb.toDynamoDBJson($PK)
+          }
+        }
+      ResponseMappingTemplate: |
+        #if ( $ctx.error )
+          $util.error($ctx.error.message, $ctx.error.type)
+        #end
+
+        #set($isCognitoUser = true)
+        #if($ctx.identity.userArn && $ctx.identity.userArn.contains(":assumed-role/"))
+          #set($isCognitoUser = false)
+        #end
+
+        ## ---- project access (excluded users do not get the project path) ----
+        #set($myProjects = $util.defaultIfNull($ctx.stash.myProjectIds, []))
+        #set($excluded   = $util.defaultIfNull($ctx.result.ExcludedUsers, []))
+        #set($inProject  = $ctx.result.ProjectId && $myProjects.contains($ctx.result.ProjectId) && !$excluded.contains($ctx.identity.username))
+
+        #if($isCognitoUser
+            && !$ctx.identity.groups.contains("Admin")
+            && $ctx.result.Owner != $ctx.identity.username
+            && !$ctx.result.SharedWith.contains($ctx.identity.username)
+            && !$inProject)
+              $util.error("User $ctx.identity.username is not authorized", "AuthorizationError")
+        #else
+          $util.toJson($ctx.result)
+        #end
+
+  # Mutation.addTranscriptSegment pre-step: read the call so its ProjectId /
+  # ExcludedUsers can be stamped onto the new segment row (PutSegment, the
+  # next step in that pipeline). If the call is missing, leaves the stash
+  # unset - PutSegment then falls back to its per-line Owner/SharedWith check.
+  GetCallForAddSegFunction:
+    Type: AWS::AppSync::FunctionConfiguration
+    Properties:
+      ApiId: !GetAtt AppSyncApiEncrypted.ApiId
+      Name: GetCallForAddSeg
+      DataSourceName: !GetAtt AppSyncDataSource.Name
+      FunctionVersion: "2018-05-29"
+      RequestMappingTemplate: |
+        ## Read the call record so we can stamp its ProjectId / ExcludedUsers onto the new segment.
+        #set( $PK = "c#${ctx.args.input.CallId}" )
+        {
+          "version": "2018-05-29",
+          "operation": "GetItem",
+          "key": {
+            "PK": $util.dynamodb.toDynamoDBJson($PK),
+            "SK": $util.dynamodb.toDynamoDBJson($PK)
+          }
+        }
+      ResponseMappingTemplate: |
+        ## Stash the call's project + block-list. If the call is missing, leave them unset so the
+        ## after-template falls back to the per-line Owner/SharedWith filter.
+        #if(!$ctx.error && $ctx.result)
+          $util.qr($ctx.stash.put("callProjectId", $ctx.result.ProjectId))
+          $util.qr($ctx.stash.put("callExcluded", $util.defaultIfNull($ctx.result.ExcludedUsers, [])))
+        #end
+        {}
+
+  # Same idea as GetCallForAddSeg, for the read-side (getTranscriptSegments /
+  # getTranscriptSegmentsWithSentiment) instead of the write-side.
+  GetCallForSegFunction:
+    Type: AWS::AppSync::FunctionConfiguration
+    Properties:
+      ApiId: !GetAtt AppSyncApiEncrypted.ApiId
+      Name: GetCallForSeg
+      DataSourceName: !GetAtt AppSyncDataSource.Name
+      FunctionVersion: "2018-05-29"
+      RequestMappingTemplate: |
+        ## Fetch the call record so we can read its ProjectId / ExcludedUsers for a call-level check.
+        #set( $PK = "c#${ctx.args.callId}" )
+        {
+          "version": "2018-05-29",
+          "operation": "GetItem",
+          "key": {
+            "PK": $util.dynamodb.toDynamoDBJson($PK),
+            "SK": $util.dynamodb.toDynamoDBJson($PK)
+          }
+        }
+      ResponseMappingTemplate: |
+        ## Stash the call's project + block-list. If the call is missing, leave them unset so the
+        ## after-template falls back to the per-line Owner/SharedWith filter.
+        #if(!$ctx.error && $ctx.result)
+          $util.qr($ctx.stash.put("callProjectId", $ctx.result.ProjectId))
+          $util.qr($ctx.stash.put("callExcluded", $util.defaultIfNull($ctx.result.ExcludedUsers, [])))
+        #end
+        {}
+
+  # Mutation.addTranscriptSegment main step: identical PutItem to today's
+  # UNIT resolver (source/appsync/addTranscriptSegment.request.vtl,
+  # confirmed byte-for-byte match), plus stamping the ProjectId/ExcludedUsers
+  # that GetCallForAddSeg stashed onto the new segment row.
+  PutSegmentFunction:
+    Type: AWS::AppSync::FunctionConfiguration
+    Properties:
+      ApiId: !GetAtt AppSyncApiEncrypted.ApiId
+      Name: PutSegment
+      DataSourceName: !GetAtt AppSyncDataSource.Name
+      FunctionVersion: "2018-05-29"
+      RequestMappingTemplate: |
+        ## ---- ADDED: stamp the call's ProjectId / ExcludedUsers onto the segment (from the stash) ----
+        #if($ctx.stash.callProjectId)
+          $util.qr($ctx.args.input.put("ProjectId", $ctx.stash.callProjectId))
+        #end
+        #if($ctx.stash.callExcluded && $ctx.stash.callExcluded.size() > 0)
+          $util.qr($ctx.args.input.put("ExcludedUsers", $ctx.stash.callExcluded))
+        #end
+
+        ## ---- UNCHANGED: original addTranscriptSegment PutItem ----
+        #set( $PK = "trs#${ctx.args.input.CallId}" )
+        #set( $SK = "s#${ctx.args.input.SegmentId}" )
+
+        #set( $CreatedAt = $util.defaultIfNullOrBlank($ctx.args.input.CreatedAt, $util.time.nowISO8601()) )
+        $util.qr($ctx.args.input.put("CreatedAt", ${CreatedAt}))
+
+        {
+          "version" : "2018-05-29",
+          "operation": "PutItem",
+          "key" : {
+            "PK": $util.dynamodb.toDynamoDBJson($PK),
+            "SK": $util.dynamodb.toDynamoDBJson($SK),
+          },
+          "attributeValues": $util.dynamodb.toMapValuesJson($ctx.args.input),
+
+        ## Conditional block to prevent partial segments from overwriting final segments if they are mutated out of sequence.
+        #if(${ctx.args.input.IsPartial})
+          "condition": {
+              "expression" : "attribute_not_exists(IsPartial) OR IsPartial = :true",
+              "expressionValues" : {
+                  ":true" : { "BOOL" : true }
+              },
+          },
+        #end
+        }
+      ResponseMappingTemplate: |
+        ## UNCHANGED from the original addTranscriptSegment response - preserves the exact
+        ## "item put condition failure" message the CallEventProcessor relies on.
+        #if ( $ctx.error )
+          #if ( $ctx.error.type.equals("DynamoDB:ConditionalCheckFailedException") )
+            $util.error("item put condition failure")
+          #else
+            $util.error($ctx.error.message, $ctx.error.type)
+          #end
+        #end
+        $util.toJson($ctx.result)
+
+  # Query.getTranscriptSegments main step: identical Query to today's UNIT
+  # resolver (source/appsync/getTranscriptSegments.request.vtl, confirmed
+  # byte-for-byte match). Authorization happens after, in the resolver's
+  # own response template, same as it does today.
+  QuerySegmentsFunction:
+    Type: AWS::AppSync::FunctionConfiguration
+    Properties:
+      ApiId: !GetAtt AppSyncApiEncrypted.ApiId
+      Name: QuerySegments
+      DataSourceName: !GetAtt AppSyncDataSource.Name
+      FunctionVersion: "2018-05-29"
+      RequestMappingTemplate: |
+        #set( $PK = "trs#${ctx.args.callId}" )
+        #set( $isPartial = $util.defaultIfNull($ctx.args.isPartial, false) )
+
+        {
+          "version" : "2018-05-29",
+          "operation" : "Query",
+          "query" : {
+            "expression": "#PK = :PK",
+            "expressionNames": {
+              "#PK": "PK",
+            },
+            "expressionValues": {
+              ":PK": $util.dynamodb.toDynamoDBJson($PK),
+            },
+          },
+          "filter": {
+            "expression": "#IsPartial = :isPartial",
+            "expressionNames": {
+              "#IsPartial": "IsPartial",
+            },
+            "expressionValues": {
+              ":isPartial": $util.dynamodb.toDynamoDBJson($isPartial),
+            },
+          },
+        }
+      ResponseMappingTemplate: |
+        ## Return the query result unchanged; authorization happens in the resolver after-template.
+        #if($ctx.error)
+          $util.error($ctx.error.message, $ctx.error.type)
+        #end
+        $util.toJson($ctx.result)
+
+  # Same as QuerySegmentsFunction, for Query.getTranscriptSegmentsWithSentiment
+  # (always excludes partial segments - matches today's
+  # getTranscriptSegmentsWithSentiment.request.vtl).
+  QuerySegmentsSentimentFunction:
+    Type: AWS::AppSync::FunctionConfiguration
+    Properties:
+      ApiId: !GetAtt AppSyncApiEncrypted.ApiId
+      Name: QuerySegmentsSentiment
+      DataSourceName: !GetAtt AppSyncDataSource.Name
+      FunctionVersion: "2018-05-29"
+      RequestMappingTemplate: |
+        #set( $PK = "trs#${ctx.args.callId}" )
+        #set( $isPartial = false )
+
+        {
+          "version" : "2018-05-29",
+          "operation" : "Query",
+          "query" : {
+            "expression": "#PK = :PK",
+            "expressionNames": {
+              "#PK": "PK",
+            },
+            "expressionValues": {
+              ":PK": $util.dynamodb.toDynamoDBJson($PK),
+            },
+          },
+          "filter": {
+            "expression": "#IsPartial = :isPartial",
+            "expressionNames": {
+              "#IsPartial": "IsPartial"
+            },
+            "expressionValues": {
+              ":isPartial": $util.dynamodb.toDynamoDBJson($isPartial)
+            },
+          },
+        }
+      ResponseMappingTemplate: |
+        ## Return the query result unchanged; authorization happens in the resolver after-template.
+        #if($ctx.error)
+          $util.error($ctx.error.message, $ctx.error.type)
+        #end
+        $util.toJson($ctx.result)
+
+  ##########################################################################
   # LLM Prompt Template Config - Lambda, IAM, DataSources
   ##########################################################################
 
@@ -3638,8 +4034,11 @@ Resources:
       TransitEncryptionEnabled: true
       AtRestEncryptionEnabled: true
 
+  # Unchanged today's behavior - active when project access is off (no
+  # ProjectMembershipTableArn provided).
   GetCallAppSyncResolver:
     Type: AWS::AppSync::Resolver
+    Condition: ShouldDisableProjectMembership
     DependsOn: AppSyncSchema
     Properties:
       ApiId: !GetAtt AppSyncApiEncrypted.ApiId
@@ -3648,6 +4047,28 @@ Resources:
       FieldName: getCall
       RequestMappingTemplateS3Location: ../source/appsync/getCall.request.vtl
       ResponseMappingTemplateS3Location: ../source/appsync/getCall.response.vtl
+
+  # Same field, active when project access is on: look up the caller's
+  # projects, then fetch+authorize the call (Admin/Owner/SharedWith/Project).
+  GetCallWithProjectAccessAppSyncResolver:
+    Type: AWS::AppSync::Resolver
+    Condition: ShouldEnableProjectMembership
+    DependsOn: AppSyncSchema
+    Properties:
+      ApiId: !GetAtt AppSyncApiEncrypted.ApiId
+      TypeName: Query
+      FieldName: getCall
+      Kind: PIPELINE
+      PipelineConfig:
+        Functions:
+          - !GetAtt GetUserProjectsFunction.FunctionId
+          - !GetAtt GetCallAuthFunction.FunctionId
+      RequestMappingTemplate: "{}"
+      ResponseMappingTemplate: |
+        #if($ctx.error)
+          $util.error($ctx.error.message, $ctx.error.type)
+        #end
+        $util.toJson($ctx.result)
 
   CreateCallAppSyncResolver:
     Type: AWS::AppSync::Resolver
@@ -3821,16 +4242,28 @@ Resources:
       RequestMappingTemplateS3Location: ../source/appsync/updateCall.request.vtl
       ResponseMappingTemplateS3Location: ../source/appsync/dDbPutCondition.response.vtl
 
+  # Pipeline: fetch the parent call's ProjectId/ExcludedUsers, then write the
+  # segment with those stamped on. Unconditional - neither step depends on
+  # the external ProjectMembership table, only on the call record this stack
+  # already owns.
   AddTranscriptSegmentAppSyncResolver:
     Type: AWS::AppSync::Resolver
     DependsOn: AppSyncSchema
     Properties:
       ApiId: !GetAtt AppSyncApiEncrypted.ApiId
-      DataSourceName: !GetAtt AppSyncDataSource.Name
       TypeName: Mutation
       FieldName: addTranscriptSegment
-      RequestMappingTemplateS3Location: ../source/appsync/addTranscriptSegment.request.vtl
-      ResponseMappingTemplateS3Location: ../source/appsync/dDbPutCondition.response.vtl
+      Kind: PIPELINE
+      PipelineConfig:
+        Functions:
+          - !GetAtt GetCallForAddSegFunction.FunctionId
+          - !GetAtt PutSegmentFunction.FunctionId
+      RequestMappingTemplate: "{}"
+      ResponseMappingTemplate: |
+        #if($ctx.error)
+          $util.error($ctx.error.message, $ctx.error.type)
+        #end
+        $util.toJson($ctx.result)
 
   DeleteTranscriptSegmentAppSyncResolver:
     Type: AWS::AppSync::Resolver
@@ -4099,8 +4532,10 @@ Resources:
       TypeName: Query
       FieldName: getCallCount
 
+  # Unchanged today's behavior - active when project access is off.
   GetTranscriptSegmentsAppSyncResolver:
     Type: AWS::AppSync::Resolver
+    Condition: ShouldDisableProjectMembership
     DependsOn: AppSyncSchema
     Properties:
       ApiId: !GetAtt AppSyncApiEncrypted.ApiId
@@ -4110,16 +4545,141 @@ Resources:
       RequestMappingTemplateS3Location: ../source/appsync/getTranscriptSegments.request.vtl
       ResponseMappingTemplateS3Location: ../source/appsync/getTranscriptSegments.response.vtl
 
-  GetTranscriptSegmentsWithSentimentAppSyncResolver:
+  # Active when project access is on. Preserves today's IAM-caller bypass
+  # (a Lambda calling with AWS creds - e.g. Meeting Controls - always gets
+  # unrestricted access, checked BEFORE touching identity.groups, same as
+  # today) and today's exact Owner/SharedWith fallback filter; adds an
+  # Admin-or-project-member fast path for real Cognito users.
+  GetTranscriptSegmentsWithProjectAccessAppSyncResolver:
     Type: AWS::AppSync::Resolver
+    Condition: ShouldEnableProjectMembership
     DependsOn: AppSyncSchema
     Properties:
       ApiId: !GetAtt AppSyncApiEncrypted.ApiId
-      DataSourceName: !GetAtt AppSyncDataSource.Name
+      TypeName: Query
+      FieldName: getTranscriptSegments
+      Kind: PIPELINE
+      PipelineConfig:
+        Functions:
+          - !GetAtt GetUserProjectsFunction.FunctionId
+          - !GetAtt GetCallForSegFunction.FunctionId
+          - !GetAtt QuerySegmentsFunction.FunctionId
+      RequestMappingTemplate: "{}"
+      ResponseMappingTemplate: |
+        #if ( $ctx.error )
+          $util.error($ctx.error.message, $ctx.error.type)
+        #end
+
+        #set($isCognitoUser = true)
+        #if($ctx.identity.userArn && $ctx.identity.userArn.contains(":assumed-role/"))
+          #set($isCognitoUser = false)
+        #end
+
+        #set($myProjects  = $util.defaultIfNull($ctx.stash.myProjectIds, []))
+        #set($callProject = $ctx.stash.callProjectId)
+        #set($callExcl    = $util.defaultIfNull($ctx.stash.callExcluded, []))
+        #set($isProjectMember = $callProject && $myProjects.contains($callProject) && !$callExcl.contains($ctx.identity.username))
+
+        #if(!$isCognitoUser || $ctx.identity.groups.contains("Admin") || $isProjectMember)
+          $util.toJson({"TranscriptSegments": $ctx.result.items, "nextToken": $ctx.result.nextToken})
+        #else
+          #set($myResults = [])
+          #foreach($item in $ctx.result.items)
+            #if($item.Owner == $ctx.identity.username || $item.SharedWith.contains($ctx.identity.username))
+              #set($added = $myResults.add($item))
+            #end
+          #end
+          $util.toJson({"TranscriptSegments": $myResults, "nextToken": $ctx.result.nextToken})
+        #end
+
+  # SECURITY FIX (both variants below): the S3-templated version of this
+  # resolver had NO authorization check - any logged-in caller could read
+  # any call's sentiment-annotated transcript by CallId. Both variants add
+  # the same Owner/SharedWith/Admin check already used by the sibling
+  # getTranscriptSegments resolver; the "with project access" variant adds
+  # the project-member fast path on top.
+  #
+  # Active when project access is off: fetch + query, then apply the
+  # Owner/SharedWith/Admin check (no project-member path - no stash data).
+  GetTranscriptSegmentsWithSentimentAppSyncResolver:
+    Type: AWS::AppSync::Resolver
+    Condition: ShouldDisableProjectMembership
+    DependsOn: AppSyncSchema
+    Properties:
+      ApiId: !GetAtt AppSyncApiEncrypted.ApiId
       TypeName: Query
       FieldName: getTranscriptSegmentsWithSentiment
-      RequestMappingTemplateS3Location: ../source/appsync/getTranscriptSegmentsWithSentiment.request.vtl
-      ResponseMappingTemplateS3Location: ../source/appsync/getTranscriptSegmentsWithSentiment.response.vtl
+      Kind: PIPELINE
+      PipelineConfig:
+        Functions:
+          - !GetAtt GetCallForSegFunction.FunctionId
+          - !GetAtt QuerySegmentsSentimentFunction.FunctionId
+      RequestMappingTemplate: "{}"
+      ResponseMappingTemplate: |
+        #if ( $ctx.error )
+          $util.error($ctx.error.message, $ctx.error.type)
+        #end
+
+        #set($isCognitoUser = true)
+        #if($ctx.identity.userArn && $ctx.identity.userArn.contains(":assumed-role/"))
+          #set($isCognitoUser = false)
+        #end
+
+        #if(!$isCognitoUser || $ctx.identity.groups.contains("Admin"))
+          $util.toJson({"TranscriptSegmentsWithSentiment": $ctx.result.items, "nextToken": $ctx.result.nextToken})
+        #else
+          #set($myResults = [])
+          #foreach($item in $ctx.result.items)
+            #if($item.Owner == $ctx.identity.username || $item.SharedWith.contains($ctx.identity.username))
+              #set($added = $myResults.add($item))
+            #end
+          #end
+          $util.toJson({"TranscriptSegmentsWithSentiment": $myResults, "nextToken": $ctx.result.nextToken})
+        #end
+
+  # Active when project access is on: same fix, plus the project-member fast
+  # path (mirrors GetTranscriptSegmentsWithProjectAccessAppSyncResolver).
+  GetTranscriptSegmentsWithSentimentAndProjectAccessAppSyncResolver:
+    Type: AWS::AppSync::Resolver
+    Condition: ShouldEnableProjectMembership
+    DependsOn: AppSyncSchema
+    Properties:
+      ApiId: !GetAtt AppSyncApiEncrypted.ApiId
+      TypeName: Query
+      FieldName: getTranscriptSegmentsWithSentiment
+      Kind: PIPELINE
+      PipelineConfig:
+        Functions:
+          - !GetAtt GetUserProjectsFunction.FunctionId
+          - !GetAtt GetCallForSegFunction.FunctionId
+          - !GetAtt QuerySegmentsSentimentFunction.FunctionId
+      RequestMappingTemplate: "{}"
+      ResponseMappingTemplate: |
+        #if ( $ctx.error )
+          $util.error($ctx.error.message, $ctx.error.type)
+        #end
+
+        #set($isCognitoUser = true)
+        #if($ctx.identity.userArn && $ctx.identity.userArn.contains(":assumed-role/"))
+          #set($isCognitoUser = false)
+        #end
+
+        #set($myProjects  = $util.defaultIfNull($ctx.stash.myProjectIds, []))
+        #set($callProject = $ctx.stash.callProjectId)
+        #set($callExcl    = $util.defaultIfNull($ctx.stash.callExcluded, []))
+        #set($isProjectMember = $callProject && $myProjects.contains($callProject) && !$callExcl.contains($ctx.identity.username))
+
+        #if(!$isCognitoUser || $ctx.identity.groups.contains("Admin") || $isProjectMember)
+          $util.toJson({"TranscriptSegmentsWithSentiment": $ctx.result.items, "nextToken": $ctx.result.nextToken})
+        #else
+          #set($myResults = [])
+          #foreach($item in $ctx.result.items)
+            #if($item.Owner == $ctx.identity.username || $item.SharedWith.contains($ctx.identity.username))
+              #set($added = $myResults.add($item))
+            #end
+          #end
+          $util.toJson({"TranscriptSegmentsWithSentiment": $myResults, "nextToken": $ctx.result.nextToken})
+        #end
 
   OnCreateCallAppSyncResolver:
     Type: AWS::AppSync::Resolver
@@ -4134,15 +4694,43 @@ Resources:
         Name: APPSYNC_JS
         RuntimeVersion: 1.0.0
 
+  # Active when project access is off: CallId-scoped access check against
+  # the call record (Owner/SharedWith only - no project-lookup step, so the
+  # project-membership check in subscriptionCallScoped.js's shared code
+  # never matches). Same JS file as the "on" variant below.
   OnUpdateCallAppSyncResolver:
     Type: AWS::AppSync::Resolver
+    Condition: ShouldDisableProjectMembership
     DependsOn: AppSyncSchema
     Properties:
       ApiId: !GetAtt AppSyncApiEncrypted.ApiId
       TypeName: Subscription
       FieldName: onUpdateCall
-      DataSourceName: !GetAtt SubscriptionDataSource.Name
-      CodeS3Location: ../source/appsync/subscription.js
+      Kind: PIPELINE
+      PipelineConfig:
+        Functions:
+          - !GetAtt GetCallForSubFunction.FunctionId
+      CodeS3Location: ../source/appsync/subscriptionCallScoped.js
+      Runtime:
+        Name: APPSYNC_JS
+        RuntimeVersion: 1.0.0
+
+  # Active when project access is on: adds the project-lookup step ahead of
+  # the same call-scoped check, so project membership can grant access too.
+  OnUpdateCallWithProjectAccessAppSyncResolver:
+    Type: AWS::AppSync::Resolver
+    Condition: ShouldEnableProjectMembership
+    DependsOn: AppSyncSchema
+    Properties:
+      ApiId: !GetAtt AppSyncApiEncrypted.ApiId
+      TypeName: Subscription
+      FieldName: onUpdateCall
+      Kind: PIPELINE
+      PipelineConfig:
+        Functions:
+          - !GetAtt GetUserProjectsJSFunction.FunctionId
+          - !GetAtt GetCallForSubFunction.FunctionId
+      CodeS3Location: ../source/appsync/subscriptionCallScoped.js
       Runtime:
         Name: APPSYNC_JS
         RuntimeVersion: 1.0.0
@@ -4186,15 +4774,39 @@ Resources:
         Name: APPSYNC_JS
         RuntimeVersion: 1.0.0
 
+  # Same pattern as OnUpdateCall above - see those two resolvers for the
+  # off/on explanation.
   OnAddTranscriptSegmentAppSyncResolver:
     Type: AWS::AppSync::Resolver
+    Condition: ShouldDisableProjectMembership
     DependsOn: AppSyncSchema
     Properties:
       ApiId: !GetAtt AppSyncApiEncrypted.ApiId
       TypeName: Subscription
       FieldName: onAddTranscriptSegment
-      DataSourceName: !GetAtt SubscriptionDataSource.Name
-      CodeS3Location: ../source/appsync/subscription.js
+      Kind: PIPELINE
+      PipelineConfig:
+        Functions:
+          - !GetAtt GetCallForSubFunction.FunctionId
+      CodeS3Location: ../source/appsync/subscriptionCallScoped.js
+      Runtime:
+        Name: APPSYNC_JS
+        RuntimeVersion: 1.0.0
+
+  OnAddTranscriptSegmentWithProjectAccessAppSyncResolver:
+    Type: AWS::AppSync::Resolver
+    Condition: ShouldEnableProjectMembership
+    DependsOn: AppSyncSchema
+    Properties:
+      ApiId: !GetAtt AppSyncApiEncrypted.ApiId
+      TypeName: Subscription
+      FieldName: onAddTranscriptSegment
+      Kind: PIPELINE
+      PipelineConfig:
+        Functions:
+          - !GetAtt GetUserProjectsJSFunction.FunctionId
+          - !GetAtt GetCallForSubFunction.FunctionId
+      CodeS3Location: ../source/appsync/subscriptionCallScoped.js
       Runtime:
         Name: APPSYNC_JS
         RuntimeVersion: 1.0.0
@@ -5094,6 +5706,16 @@ Resources:
         $util.qr($input.put("status", $ctx.args.input.status))
         $util.qr($input.put("owner", $owner))
         $util.qr($input.put("Owner", $owner))
+
+        ## Display name for the VP container. Only ID tokens carry an email
+        ## claim - access tokens (and IAM callers) do not, so leave the
+        ## attribute off and let VPScheduler look it up via Cognito in that
+        ## case. Not exposed in the schema - VPScheduler reads it straight
+        ## off the DynamoDB stream record, not through AppSync.
+        #if($ctx.identity.claims && !$util.isNullOrBlank($ctx.identity.claims.get("email")))
+          $util.qr($input.put("ownerEmail", $ctx.identity.claims.get("email")))
+        #end
+
         $util.qr($input.put("SharedWith", ""))
         $util.qr($input.put("createdAt", $now))
         $util.qr($input.put("updatedAt", $now))

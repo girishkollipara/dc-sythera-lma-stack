@@ -346,6 +346,16 @@ Parameters:
       redaction logic, profanity filtering, or custom rules to highlight patterns
       in the transcript.
 
+  ProjectMembershipTableArn:
+    Default: ""
+    Type: String
+    AllowedPattern: "^(|arn:aws:dynamodb:.*)$"
+    Description: >
+      (Optional) ARN of an externally-managed DynamoDB table mapping users to
+      the projects they belong to. Not created by this stack. When provided,
+      LMA's AppSync API registers it as a data source so the UI can scope
+      meeting access by project. Leave blank to disable project-scoped access.
+
   TranscriptLambdaHookFunctionNonPartialOnly:
     Type: String
     Default: "true"
@@ -2362,6 +2372,7 @@ Resources:
         TranscriptionExpirationInDays: !Ref TranscriptionExpirationInDays
         TranscriptLambdaHookFunctionArn: !Ref TranscriptLambdaHookFunctionArn
         TranscriptLambdaHookFunctionNonPartialOnly: !Ref TranscriptLambdaHookFunctionNonPartialOnly
+        ProjectMembershipTableArn: !Ref ProjectMembershipTableArn
         EndOfCallTranscriptSummary: !Ref EndOfCallTranscriptSummary
         BedrockModelId: !Ref BedrockModelId
         EndOfCallLambdaHookFunctionArn: !Ref EndOfCallLambdaHookFunctionArn
@@ -2566,6 +2577,7 @@ Resources:
       # yamllint enable rule:line-length
       Parameters:
         LMAStackName: !Ref AWS::StackName
+        UserPoolId: !GetAtt COGNITOSTACK.Outputs.UserPoolId
         StrandsLambdaArn: !If
           - ShouldUseAnyStrandsBedrock
           - !Sub "arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:STRANDS-${AWS::StackName}-MeetingAssist"

@@ -16,6 +16,15 @@ RBAC: we apply Owner / SharedWith filtering post-query, matching the
 behaviour of the deprecated listCalls* VTL resolvers (see the old
 `listCalls.response.vtl` which filtered by $identity).
 
+KNOWN GAP: unlike the single-item access checks elsewhere in this stack
+(e.g. the getCall / addTranscriptSegment / subscription pipeline functions),
+this resolver does not yet check project membership (ProjectId /
+ExcludedUsers) - only Owner / SharedWith / Admin. A user who can only see a
+meeting via project membership will not see it here. Deliberately left as-is
+for now; fixing it means this Lambda doing its own ProjectMembership lookup
+(it can't use the AppSync pipeline "stash" the VTL/JS functions rely on),
+gated the same way as everything else behind ProjectMembershipTableArn.
+
 Performance: O(matched items) instead of O(total table items).
 Scaling: single `ItemType="call"` hot partition is acceptable at
 expected volumes (<< DDB per-partition read limit in on-demand mode)

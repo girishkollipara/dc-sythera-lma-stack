@@ -10,6 +10,13 @@ Parameters:
     Type: String
     Description: LMA Stack Name
 
+  UserPoolId:
+    Type: String
+    Description: >-
+      Cognito User Pool ID. Used by the VP Scheduler Lambda to look up a
+      user's display name when it wasn't already captured at meeting-creation
+      time (e.g. the caller only had an access token, not an ID token).
+
   StrandsLambdaArn:
     Type: String
     Default: ""
@@ -2509,6 +2516,15 @@ Resources:
                   - "kms:Decrypt"
                   - "kms:DescribeKey"
                 Resource: !Ref CustomerManagedEncryptionKeyArn
+              - Effect: Allow
+                Action:
+                  # Read-only lookup of a user's display name when no
+                  # readable name was already captured at meeting-creation
+                  # time. No write/admin actions - this can only look users
+                  # up, never modify them.
+                  - cognito-idp:AdminGetUser
+                  - cognito-idp:ListUsers
+                Resource: !Sub "arn:${AWS::Partition}:cognito-idp:${AWS::Region}:${AWS::AccountId}:userpool/${UserPoolId}"
 
   # Virtual Participant Scheduler Lambda Function
   VirtualParticipantSchedulerFunction:
@@ -2541,7 +2557,33 @@ Resources:
           
           scheduler_client = boto3.client('scheduler')
           ecs_client = boto3.client('ecs')
-          
+          cognito_client = boto3.client('cognito-idp')
+
+          def resolve_display_name(owner, owner_email, user_sub):
+              # ownerEmail is saved at meeting-creation time when it was
+              # available (ID token). When it wasn't (access token, or an
+              # older row from before this existed), fall back to asking
+              # Cognito directly, using the sub we do have. If that also
+              # comes up empty, fall back to the raw owner value rather than
+              # failing the launch over a display-name lookup.
+              if owner_email:
+                  return owner_email
+              if not user_sub:
+                  return owner
+              try:
+                  resp = cognito_client.list_users(
+                      UserPoolId=os.environ['USER_POOL_ID'],
+                      Filter=f'sub = "{user_sub}"',
+                  )
+                  users = resp.get('Users', [])
+                  if not users:
+                      return owner
+                  attrs = {a['Name']: a['Value'] for a in users[0].get('Attributes', [])}
+                  return attrs.get('email') or attrs.get('given_name') or owner
+              except Exception as e:
+                  logger.warning(f"Cognito lookup failed for sub {user_sub}: {str(e)}")
+                  return owner
+
           def lambda_handler(event, context):
               logger.info("Processing VP scheduler request")
               logger.info(f"Event: {json.dumps(event, default=str)}")
@@ -2575,7 +2617,10 @@ Resources:
 
                               # User identity for persistent profile + stored Zoom creds.
                               # Absent on older rows / guest-only flows.
+                              owner = new_image.get('owner', {}).get('S', '')
+                              owner_email = new_image.get('ownerEmail', {}).get('S', '')
                               user_sub = new_image.get('userSub', {}).get('S', '')
+                              display_name = resolve_display_name(owner, owner_email, user_sub)
                               user_zoom_sub = new_image.get('userZoomSub', {}).get('S', '')
                               # Per-VP video toggle. Default ON when absent (older rows).
                               # ECS env values must be strings, so coerce the bool.
@@ -2609,7 +2654,7 @@ Resources:
                                               {'Name': 'MEETING_PASSWORD', 'Value': new_image.get('meetingPassword', {}).get('S', '')},
                                               {'Name': 'MEETING_NAME', 'Value': new_image.get('meetingName', {}).get('S', '')},
                                               {'Name': 'MEETING_TIME', 'Value': str(meeting_time_int)},
-                                              {'Name': 'LMA_USER', 'Value': new_image.get('owner', {}).get('S', '')},
+                                              {'Name': 'LMA_USER', 'Value': display_name},
                                               {'Name': 'LMA_USER_SUB', 'Value': user_sub},
                                               {'Name': 'ZOOM_CREDENTIALS_SECRET_NAME', 'Value': zoom_secret_name},
                                               {'Name': 'GRAPHQL_ENDPOINT', 'Value': os.environ.get('GRAPHQL_ENDPOINT', '')},
@@ -2681,6 +2726,7 @@ Resources:
           VP_LAUNCH_TYPE: !Ref VPLaunchType
           LMA_STACK_NAME: !Ref LMAStackName
           LOG_LEVEL: !Ref LogLevel
+          USER_POOL_ID: !Ref UserPoolId
   # DynamoDB Event Source Mapping for Scheduler Lambda
   VirtualParticipantSchedulerEventSourceMapping:
     Type: AWS::Lambda::EventSourceMapping
