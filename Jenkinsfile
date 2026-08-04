@@ -59,6 +59,27 @@ pipeline {
             }
         }
 
+        stage('Check Environment') {
+            steps {
+                sh '''
+                    echo "Checking required build tools on this agent (jenkins user, jenkins PATH)..."
+                    MISSING=0
+                    for cmd in bash node npm docker zip python3 pip3 virtualenv aws sam make; do
+                        if command -v "$cmd" >/dev/null 2>&1; then
+                            echo "OK       $cmd -> $(command -v $cmd) ($($cmd --version 2>&1 | head -1))"
+                        else
+                            echo "MISSING  $cmd"
+                            MISSING=1
+                        fi
+                    done
+                    if [ "$MISSING" -eq 1 ]; then
+                        echo "One or more required tools are missing on this Jenkins agent - see CLAUDE.md for the full prerequisite list."
+                        exit 1
+                    fi
+                '''
+            }
+        }
+
         stage('Setup CLI') {
             steps {
                 sh 'make setup-cli'
