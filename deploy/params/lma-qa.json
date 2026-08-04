@@ -1,0 +1,10 @@
+[
+  {
+    "ParameterKey": "AdminEmail",
+    "ParameterValue": "girish.kollipara@dimensioncg.com"
+  },
+  {
+    "ParameterKey": "AllowedSignUpEmailDomain",
+    "ParameterValue": "dimensioncg.com"
+  }
+]
