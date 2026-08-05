@@ -56,6 +56,12 @@ pipeline {
         REGION = 'us-east-1'
         CFN_BUCKET_BASENAME = 'lma-artifacts'
         CFN_PREFIX = 'lma'
+        // make setup-cli installs the `lma` CLI into .venv/bin, not
+        // system-wide. Each pipeline stage is a fresh shell, so activating
+        // the venv in one stage doesn't carry over to the next - putting
+        // .venv/bin on PATH globally here means every later stage (Publish,
+        // etc.) can find `lma` without needing to re-activate it each time.
+        PATH = "${env.WORKSPACE}/.venv/bin:${env.PATH}"
     }
 
     stages {
