@@ -21,11 +21,14 @@
       "Effect": "Allow",
       "Action": [
         "s3:PutObject",
+        "s3:PutObjectAcl",
         "s3:GetObject",
         "s3:ListBucket",
         "s3:CreateBucket",
         "s3:HeadBucket",
-        "s3:GetBucketLocation"
+        "s3:GetBucketLocation",
+        "s3:PutBucketVersioning",
+        "s3:GetBucketVersioning"
       ],
       "Resource": [
         "arn:aws:s3:::lma-artifacts-qa-us-east-1",
