@@ -56,12 +56,6 @@ pipeline {
         REGION = 'us-east-1'
         CFN_BUCKET_BASENAME = 'lma-artifacts'
         CFN_PREFIX = 'lma'
-        // make setup-cli installs the `lma` CLI into .venv/bin, not
-        // system-wide. Each pipeline stage is a fresh shell, so activating
-        // the venv in one stage doesn't carry over to the next - putting
-        // .venv/bin on PATH globally here means every later stage (Publish,
-        // etc.) can find `lma` without needing to re-activate it each time.
-        PATH = "${env.WORKSPACE}/.venv/bin:${env.PATH}"
     }
 
     stages {
@@ -119,18 +113,17 @@ pipeline {
         stage('Publish') {
             when { expression { env.DEPLOY_ENV != null } }
             steps {
-                // Temporary diagnostic - the .venv/bin PATH fix isn't taking
-                // effect as expected; this pins down exactly why before
-                // guessing again.
-                sh '''
-                    echo "PATH is: $PATH"
-                    echo "WORKSPACE is: $WORKSPACE"
-                    echo "Contents of $WORKSPACE/.venv/bin:"
-                    ls -la "$WORKSPACE/.venv/bin" 2>&1 || echo "(that directory does not exist)"
-                    echo "which lma:"
-                    which lma 2>&1 || echo "(not found)"
-                '''
-                sh "./publish.sh ${CFN_BUCKET_BASENAME}-${env.DEPLOY_ENV} ${CFN_PREFIX} ${REGION}"
+                // Jenkins' Docker Pipeline plugin does not reliably carry a
+                // self-referencing PATH from the top-level environment{}
+                // block into the container (confirmed - it showed up as the
+                // plain default PATH, no .venv/bin). Activating the venv
+                // directly in this one shell step sidesteps that entirely -
+                // `.` runs in the current shell, so publish.sh right after
+                // it on the same line inherits the activated PATH.
+                sh """
+                    . .venv/bin/activate
+                    ./publish.sh ${CFN_BUCKET_BASENAME}-${env.DEPLOY_ENV} ${CFN_PREFIX} ${REGION}
+                """
             }
         }
 
