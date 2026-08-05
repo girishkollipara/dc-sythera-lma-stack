@@ -96,7 +96,11 @@ pipeline {
 
         stage('Setup CLI') {
             steps {
-                sh 'make setup-cli'
+                // setup-cli alone assumes .venv already exists - setup-python
+                // is what actually creates it (make setup-cli's own error,
+                // "No such file or directory" on .venv/bin/pip, is exactly
+                // this - the venv was never created first).
+                sh 'make setup-python setup-cli'
             }
         }
 
