@@ -14,6 +14,16 @@
 
 FROM node:20-bookworm
 
+# Jenkins' Docker Pipeline plugin runs this container as its own numeric
+# user ID (to keep workspace file ownership consistent with the host), not
+# as a user that exists in this image's /etc/passwd. With no matching
+# passwd entry, $HOME falls back to "/" - and npm/pip/aws-cli all try to
+# write caches and config under $HOME, which only real root can write to
+# at the filesystem root. Pointing HOME at /tmp (writable by any user,
+# always) fixes this for every tool at once instead of chasing it
+# tool-by-tool (npm cache today, pip cache or aws config next).
+ENV HOME=/tmp
+
 RUN apt-get update && apt-get install -y --no-install-recommends \
         make \
         zip \
