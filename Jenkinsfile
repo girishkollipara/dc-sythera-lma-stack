@@ -172,6 +172,7 @@ pipeline {
                           --region ${REGION} \
                           --stack-name LMASA-${env.DEPLOY_ENV} \
                           --template-file lma-main.yaml \
+                          --s3-bucket ${CFN_BUCKET_BASENAME}-${env.DEPLOY_ENV}-${REGION} \
                           --parameter-overrides file://deploy/params/lma-${env.DEPLOY_ENV}.json \
                           --role-arn arn:aws:iam::528757797189:role/LMASA-${env.DEPLOY_ENV}-cfn-service-role \
                           --capabilities CAPABILITY_NAMED_IAM CAPABILITY_AUTO_EXPAND \
