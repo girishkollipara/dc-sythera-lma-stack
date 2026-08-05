@@ -130,17 +130,25 @@ pipeline {
         stage('Publish') {
             when { expression { env.DEPLOY_ENV != null } }
             steps {
-                // Jenkins' Docker Pipeline plugin does not reliably carry a
-                // self-referencing PATH from the top-level environment{}
-                // block into the container (confirmed - it showed up as the
-                // plain default PATH, no .venv/bin). Activating the venv
-                // directly in this one shell step sidesteps that entirely -
-                // `.` runs in the current shell, so publish.sh right after
-                // it on the same line inherits the activated PATH.
-                sh """
-                    . .venv/bin/activate
-                    ./publish.sh ${CFN_BUCKET_BASENAME}-${env.DEPLOY_ENV} ${CFN_PREFIX} ${REGION}
-                """
+                // Needs AWS credentials too - it uploads to S3 and may call
+                // other AWS APIs while packaging (missed this originally;
+                // only Deploy/Verify/Export had credentials wired in).
+                withCredentials([[
+                    $class: 'AmazonWebServicesCredentialsBinding',
+                    credentialsId: "aws-lma-${env.DEPLOY_ENV}",
+                ]]) {
+                    // Jenkins' Docker Pipeline plugin does not reliably carry
+                    // a self-referencing PATH from the top-level environment{}
+                    // block into the container (confirmed - it showed up as
+                    // the plain default PATH, no .venv/bin). Activating the
+                    // venv directly in this one shell step sidesteps that
+                    // entirely - `.` runs in the current shell, so
+                    // publish.sh right after it inherits the activated PATH.
+                    sh """
+                        . .venv/bin/activate
+                        ./publish.sh ${CFN_BUCKET_BASENAME}-${env.DEPLOY_ENV} ${CFN_PREFIX} ${REGION}
+                    """
+                }
             }
         }
 
