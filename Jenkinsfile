@@ -90,6 +90,15 @@ pipeline {
                         echo "One or more required tools are missing on this Jenkins agent - see CLAUDE.md for the full prerequisite list."
                         exit 1
                     fi
+
+                    echo ""
+                    echo "-- Docker socket access (diagnostic, non-fatal) --"
+                    echo "Running as: $(id)"
+                    ls -la /var/run/docker.sock 2>&1 || echo "socket not found at that path"
+                    docker info >/tmp/docker_info.log 2>&1 && echo "docker info: OK" || {
+                        echo "docker info: FAILED"
+                        cat /tmp/docker_info.log
+                    }
                 '''
             }
         }
