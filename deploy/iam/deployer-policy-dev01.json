@@ -1,0 +1,46 @@
+{
+  "Version": "2012-10-17",
+  "Statement": [
+    {
+      "Sid": "CloudFormationStackControl",
+      "Effect": "Allow",
+      "Action": "cloudformation:*",
+      "Resource": [
+        "arn:aws:cloudformation:us-east-1:528757797189:stack/LMASA-dev01*/*",
+        "arn:aws:cloudformation:us-east-1:528757797189:stackset/LMASA-dev01*:*"
+      ]
+    },
+    {
+      "Sid": "PassOnlyTheServiceRole",
+      "Effect": "Allow",
+      "Action": "iam:PassRole",
+      "Resource": "arn:aws:iam::528757797189:role/LMASA-dev01-cfn-service-role"
+    },
+    {
+      "Sid": "ArtifactBucket",
+      "Effect": "Allow",
+      "Action": [
+        "s3:PutObject",
+        "s3:GetObject",
+        "s3:ListBucket",
+        "s3:CreateBucket",
+        "s3:HeadBucket",
+        "s3:GetBucketLocation"
+      ],
+      "Resource": [
+        "arn:aws:s3:::lma-artifacts-dev01-us-east-1",
+        "arn:aws:s3:::lma-artifacts-dev01-us-east-1/*"
+      ]
+    },
+    {
+      "Sid": "SsmExportUnderOwnEnvironment",
+      "Effect": "Allow",
+      "Action": [
+        "ssm:PutParameter",
+        "ssm:GetParameter",
+        "ssm:GetParameters"
+      ],
+      "Resource": "arn:aws:ssm:us-east-1:528757797189:parameter/lma/dev01/*"
+    }
+  ]
+}

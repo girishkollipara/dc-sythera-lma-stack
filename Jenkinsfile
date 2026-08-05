@@ -165,6 +165,7 @@ pipeline {
                           --stack-name LMASA-${env.DEPLOY_ENV} \
                           --template-file lma-main.yaml \
                           --parameter-overrides file://deploy/params/lma-${env.DEPLOY_ENV}.json \
+                          --role-arn arn:aws:iam::528757797189:role/LMASA-${env.DEPLOY_ENV}-cfn-service-role \
                           --capabilities CAPABILITY_NAMED_IAM CAPABILITY_AUTO_EXPAND \
                           --no-fail-on-empty-changeset
                     """
