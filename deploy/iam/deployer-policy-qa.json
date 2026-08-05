@@ -44,6 +44,15 @@
         "ssm:GetParameters"
       ],
       "Resource": "arn:aws:ssm:us-east-1:528757797189:parameter/lma/qa/*"
+    },
+    {
+      "Sid": "AccountWideActionsThatHaveNoResourceToScopeTo",
+      "Effect": "Allow",
+      "Action": [
+        "cloudformation:ValidateTemplate",
+        "s3:ListAllMyBuckets"
+      ],
+      "Resource": "*"
     }
   ]
 }

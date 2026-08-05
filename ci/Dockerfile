@@ -14,6 +14,17 @@
 
 FROM node:20-bookworm
 
+# Debian bookworm's own "python3" apt package is pinned at 3.11.2, which
+# predates a Python security feature (PEP 706, safe tarfile-extraction
+# filters) that AWS SAM CLI now requires when extracting build output - it
+# refuses to run with a version-check error otherwise ("Your Python version
+# does not support tarfile extraction filters... update to 3.9.17+"). Debian
+# is well known for keeping that version *string* the same even after
+# security backports, so a plain `apt upgrade` isn't reliable here. Copying
+# a real, current Python straight from the official Python image sidesteps
+# Debian's packaging entirely.
+COPY --from=python:3.12-slim /usr/local /usr/local
+
 # Jenkins' Docker Pipeline plugin runs this container as its own numeric
 # user ID (to keep workspace file ownership consistent with the host), not
 # as a user that exists in this image's /etc/passwd. With no matching
@@ -28,9 +39,6 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         make \
         zip \
         unzip \
-        python3 \
-        python3-pip \
-        python3-venv \
         curl \
         gnupg \
     && rm -rf /var/lib/apt/lists/*
