@@ -43,7 +43,15 @@ pipeline {
         dockerfile {
             filename 'ci/Dockerfile'
             dir '.'
-            args '-v /var/run/docker.sock:/var/run/docker.sock'
+            // --group-add 988: the docker.sock on this host is owned by
+            // root:988 (confirmed via the Check Environment diagnostic -
+            // `ls -la /var/run/docker.sock`), and the container otherwise
+            // runs as a jenkins-mapped uid/gid that isn't a member of that
+            // group. Without this, every `docker` command inside the
+            // container fails with "permission denied" even though the
+            // socket is mounted correctly. If docker.sock's group ever
+            // changes on this host, this number needs to change with it.
+            args '-v /var/run/docker.sock:/var/run/docker.sock --group-add 988'
         }
     }
 
