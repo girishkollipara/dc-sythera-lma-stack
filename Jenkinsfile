@@ -119,6 +119,17 @@ pipeline {
         stage('Publish') {
             when { expression { env.DEPLOY_ENV != null } }
             steps {
+                // Temporary diagnostic - the .venv/bin PATH fix isn't taking
+                // effect as expected; this pins down exactly why before
+                // guessing again.
+                sh '''
+                    echo "PATH is: $PATH"
+                    echo "WORKSPACE is: $WORKSPACE"
+                    echo "Contents of $WORKSPACE/.venv/bin:"
+                    ls -la "$WORKSPACE/.venv/bin" 2>&1 || echo "(that directory does not exist)"
+                    echo "which lma:"
+                    which lma 2>&1 || echo "(not found)"
+                '''
                 sh "./publish.sh ${CFN_BUCKET_BASENAME}-${env.DEPLOY_ENV} ${CFN_PREFIX} ${REGION}"
             }
         }
