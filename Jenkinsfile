@@ -168,11 +168,17 @@ pipeline {
                     credentialsId: "aws-lma-${env.DEPLOY_ENV}",
                 ]]) {
                     sh """
+                        # Deploy from the template publish.sh already rendered and
+                        # uploaded to S3 (its nested-stack TemplateURLs have the
+                        # real bucket/region/prefix/version filled in) - NOT the
+                        # local lma-main.yaml, which still has literal
+                        # placeholder tokens like <REGION_TOKEN> in it that only
+                        # get substituted during publish, never in the checked-out
+                        # workspace copy.
                         aws cloudformation deploy \
                           --region ${REGION} \
                           --stack-name LMASA-${env.DEPLOY_ENV} \
-                          --template-file lma-main.yaml \
-                          --s3-bucket ${CFN_BUCKET_BASENAME}-${env.DEPLOY_ENV}-${REGION} \
+                          --template-url https://s3.${REGION}.amazonaws.com/${CFN_BUCKET_BASENAME}-${env.DEPLOY_ENV}-${REGION}/${CFN_PREFIX}/lma-main.yaml \
                           --parameter-overrides file://deploy/params/lma-${env.DEPLOY_ENV}.json \
                           --role-arn arn:aws:iam::528757797189:role/LMASA-${env.DEPLOY_ENV}-cfn-service-role \
                           --capabilities CAPABILITY_NAMED_IAM CAPABILITY_AUTO_EXPAND \
