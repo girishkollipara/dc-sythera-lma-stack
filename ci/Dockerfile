@@ -31,8 +31,22 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         python3 \
         python3-pip \
         python3-venv \
-        docker.io \
         curl \
+        gnupg \
+    && rm -rf /var/lib/apt/lists/*
+
+# Docker CLI only (no daemon - we talk to the host's daemon over the mounted
+# socket). Debian's own "docker.io" package lags far behind and speaks an
+# old API version that a current Docker Engine refuses to talk to
+# ("client version 1.41 is too old"), so this pulls the CLI from Docker's
+# own official repository instead, which stays current.
+RUN install -m 0755 -d /etc/apt/keyrings \
+    && curl -fsSL https://download.docker.com/linux/debian/gpg -o /etc/apt/keyrings/docker.asc \
+    && chmod a+r /etc/apt/keyrings/docker.asc \
+    && echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/debian $(. /etc/os-release && echo $VERSION_CODENAME) stable" \
+        > /etc/apt/sources.list.d/docker.list \
+    && apt-get update \
+    && apt-get install -y --no-install-recommends docker-ce-cli \
     && rm -rf /var/lib/apt/lists/*
 
 # AWS CLI v2 (Debian's apt package is v1 / not reliably current, so this
