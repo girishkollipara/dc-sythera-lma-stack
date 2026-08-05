@@ -11,19 +11,20 @@
 #
 # Matches the prerequisites listed in CLAUDE.md: bash, node v18/20/22, npm,
 # docker (running), zip, python3, pip3, virtualenv, aws cli, sam cli.
-
-FROM node:20-bookworm
-
-# Debian bookworm's own "python3" apt package is pinned at 3.11.2, which
-# predates a Python security feature (PEP 706, safe tarfile-extraction
-# filters) that AWS SAM CLI now requires when extracting build output - it
-# refuses to run with a version-check error otherwise ("Your Python version
-# does not support tarfile extraction filters... update to 3.9.17+"). Debian
-# is well known for keeping that version *string* the same even after
-# security backports, so a plain `apt upgrade` isn't reliable here. Copying
-# a real, current Python straight from the official Python image sidesteps
-# Debian's packaging entirely.
-COPY --from=python:3.12-slim /usr/local /usr/local
+#
+# Built on the Python image, not the Node one, and Node is added via its own
+# official package repo rather than copied in from elsewhere. An earlier
+# version of this file tried to copy a compiled Python straight from
+# python:3.12-slim into node:20-bookworm - that broke, because the two
+# images turned out to be built against different glibc versions despite
+# both being "bookworm" (GLIBC_2.38 not found). Debian's own "python3" apt
+# package was the original reason for needing this at all: it's pinned at
+# 3.11.2, which predates a Python security feature (PEP 706, safe
+# tarfile-extraction filters) that AWS SAM CLI now requires - it refuses to
+# run with a version-check error otherwise. Starting from a real, current
+# Python image and adding everything else on top avoids both problems at
+# once.
+FROM python:3.12-slim-bookworm
 
 # Jenkins' Docker Pipeline plugin runs this container as its own numeric
 # user ID (to keep workspace file ownership consistent with the host), not
@@ -32,7 +33,7 @@ COPY --from=python:3.12-slim /usr/local /usr/local
 # write caches and config under $HOME, which only real root can write to
 # at the filesystem root. Pointing HOME at /tmp (writable by any user,
 # always) fixes this for every tool at once instead of chasing it
-# tool-by-tool (npm cache today, pip cache or aws config next).
+# tool-by-tool.
 ENV HOME=/tmp
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
@@ -41,6 +42,13 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         unzip \
         curl \
         gnupg \
+        ca-certificates \
+    && rm -rf /var/lib/apt/lists/*
+
+# Node.js 20 (matches this repo's pinned version) via NodeSource's official
+# repo - not a cross-image binary copy, so no glibc-compatibility risk.
+RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
+    && apt-get install -y --no-install-recommends nodejs \
     && rm -rf /var/lib/apt/lists/*
 
 # Docker CLI only (no daemon - we talk to the host's daemon over the mounted
@@ -67,7 +75,8 @@ RUN curl -fsSL "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o /tm
 # virtualenv + AWS SAM CLI. --break-system-packages: this image is a
 # disposable, single-purpose build environment, not a general-purpose
 # machine, so Debian's PEP 668 protection doesn't apply here the way it
-# would on a real workstation.
+# would on a real workstation (and this base's own Python isn't
+# Debian-patched to enforce it anyway - kept for safety regardless).
 RUN pip3 install --break-system-packages --no-cache-dir virtualenv aws-sam-cli
 
 # Sanity check baked into the image build itself - if any tool is missing,
