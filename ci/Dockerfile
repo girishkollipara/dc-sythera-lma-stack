@@ -43,6 +43,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
         curl \
         gnupg \
         ca-certificates \
+        git \
     && rm -rf /var/lib/apt/lists/*
 
 # Node.js 20 (matches this repo's pinned version) via NodeSource's official

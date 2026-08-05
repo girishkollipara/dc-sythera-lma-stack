@@ -144,8 +144,16 @@ pipeline {
                     // venv directly in this one shell step sidesteps that
                     // entirely - `.` runs in the current shell, so
                     // publish.sh right after it inherits the activated PATH.
+                    //
+                    // AWS_DEFAULT_REGION is set the same explicit way, for
+                    // the same reason: some AWS calls inside the publish
+                    // process don't receive an explicit --region and fall
+                    // back to this env var ("No region information found"),
+                    // and top-level environment{} values aren't reliably
+                    // visible in here either.
                     sh """
                         . .venv/bin/activate
+                        export AWS_DEFAULT_REGION=${REGION}
                         ./publish.sh ${CFN_BUCKET_BASENAME}-${env.DEPLOY_ENV} ${CFN_PREFIX} ${REGION}
                     """
                 }
