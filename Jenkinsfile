@@ -23,6 +23,14 @@
 // CloudFormation dynamic references (e.g.
 // {{resolve:secretsmanager:lma/<env>/tavily-api-key}}) written directly into
 // the parameter file - Jenkins never sees the plaintext value.
+//
+// The whole pipeline runs inside the image built from ci/Dockerfile (see
+// that file) rather than directly on the Jenkins server - the server only
+// needs Docker itself; every build tool (node, make, zip, python, aws cli,
+// sam cli) lives in that image instead of being hand-installed on the host.
+// Requires the "Docker Pipeline" Jenkins plugin. The docker.sock mount lets
+// steps inside the container drive the host's Docker daemon (needed for the
+// SAM/container build steps) without needing Docker-in-Docker.
 
 def ENV_MAP = [
     'qa'   : 'qa',
@@ -31,7 +39,13 @@ def ENV_MAP = [
 ]
 
 pipeline {
-    agent any
+    agent {
+        dockerfile {
+            filename 'ci/Dockerfile'
+            dir '.'
+            args '-v /var/run/docker.sock:/var/run/docker.sock'
+        }
+    }
 
     options {
         timeout(time: 60, unit: 'MINUTES')
