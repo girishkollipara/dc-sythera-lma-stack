@@ -151,10 +151,21 @@ pipeline {
                     // back to this env var ("No region information found"),
                     // and top-level environment{} values aren't reliably
                     // visible in here either.
+                    // Calling `lma publish` directly instead of going through
+                    // publish.sh - the wrapper script only forwards its 3 fixed
+                    // positional args (bucket-basename/prefix/region), it doesn't
+                    // pass through anything else, and this needs --force too:
+                    // its checksum-based "skip if unchanged" caching produced a
+                    // real bug on this brand-new bucket - it skipped
+                    // re-uploading lma-websocket-transcriber-stack's template.yaml
+                    // (comparing against a stale local checksum from a build
+                    // against a different bucket) even though this bucket had
+                    // never received it, leaving the deploy with a dangling
+                    // nested-stack reference to a file that was never uploaded.
                     sh """
                         . .venv/bin/activate
                         export AWS_DEFAULT_REGION=${REGION}
-                        ./publish.sh ${CFN_BUCKET_BASENAME}-${env.DEPLOY_ENV} ${CFN_PREFIX} ${REGION}
+                        lma publish --bucket-basename ${CFN_BUCKET_BASENAME}-${env.DEPLOY_ENV} --prefix ${CFN_PREFIX} --region ${REGION} --force
                     """
                 }
             }
