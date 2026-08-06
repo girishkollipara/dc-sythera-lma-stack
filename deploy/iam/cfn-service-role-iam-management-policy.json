@@ -30,6 +30,23 @@
         "arn:aws:iam::528757797189:role/LMASA-qa*",
         "arn:aws:iam::528757797189:instance-profile/LMASA-qa*"
       ]
+    },
+    {
+      "Sid": "ManageOnlyThisStacksStandaloneManagedPolicies",
+      "Effect": "Allow",
+      "Action": [
+        "iam:CreatePolicy",
+        "iam:DeletePolicy",
+        "iam:GetPolicy",
+        "iam:GetPolicyVersion",
+        "iam:ListPolicyVersions",
+        "iam:CreatePolicyVersion",
+        "iam:DeletePolicyVersion",
+        "iam:SetDefaultPolicyVersion",
+        "iam:TagPolicy",
+        "iam:UntagPolicy"
+      ],
+      "Resource": "arn:aws:iam::528757797189:policy/LMASA-qa*"
     }
   ]
 }
