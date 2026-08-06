@@ -44,7 +44,8 @@
         "iam:DeletePolicyVersion",
         "iam:SetDefaultPolicyVersion",
         "iam:TagPolicy",
-        "iam:UntagPolicy"
+        "iam:UntagPolicy",
+        "iam:ListEntitiesForPolicy"
       ],
       "Resource": "arn:aws:iam::528757797189:policy/LMASA-qa*"
     }
