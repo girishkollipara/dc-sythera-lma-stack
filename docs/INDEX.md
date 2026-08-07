@@ -73,6 +73,7 @@ title: "LMA Documentation"
 ### Administration
 
 - [CloudFormation Parameters Reference](cloudformation-parameters.md) — Complete reference of all stack parameters by category
+- [SSM Parameter Reference](ssm-parameter-reference.md) — Every SSM parameter the Jenkins pipeline publishes post-deploy, for external consumers (e.g. Synthera's Terraform)
 - [Stack Updates & Upgrades](stack-updates-and-upgrades.md) — Updating existing stacks, template URLs, version migration notes
 - [Well-Architected Framework Assessment](well-architected.md) — Assessment of LMA against the six pillars of the AWS Well-Architected Framework
 - [Troubleshooting](troubleshooting.md) — Monitoring, CloudWatch logs, common issues, cost assessment

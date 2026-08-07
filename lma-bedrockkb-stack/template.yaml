@@ -465,6 +465,10 @@ Outputs:
     Value: !Ref KnowledgeBaseS3Vectors
     Description: Knowledge Base ID
 
+  KnowledgeBaseArn:
+    Value: !GetAtt KnowledgeBaseS3Vectors.KnowledgeBaseArn
+    Description: Knowledge Base ARN
+
   S3VectorBucketName:
     Value: !Ref S3VectorBucket
     Description: S3 Vector bucket name

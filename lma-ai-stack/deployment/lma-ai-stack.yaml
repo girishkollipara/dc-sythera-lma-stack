@@ -639,6 +639,9 @@ Outputs:
       The ARN of the DynamoDB table created to store events and the contact
       details used in this solution
     Value: !GetAtt EventSourcingTable.Arn
+  EventSourcingTableStreamArn:
+    Description: ARN of the EventSourcingTable DynamoDB table stream
+    Value: !GetAtt EventSourcingTable.StreamArn
   CallEventProcessorFunctionRoleName:
     Description: The Name of the IAM role used by CallEventProcessorFunction
     Value: !Sub "${CallEventProcessorFunction}Role"

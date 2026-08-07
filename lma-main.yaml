@@ -2697,6 +2697,13 @@ Outputs:
       - !Ref RecordingsBucket
       - ""
 
+  RecordingsS3BucketArn:
+    Description: ARN of the S3 bucket which contains all the call recordings
+    Value: !If
+      - ShouldCreateRecordingBucket
+      - !GetAtt RecordingsBucket.Arn
+      - ""
+
   SNSCategoryTopicName:
     Description: The name of the SNS Topic for matched category and alert notifications
     Value: !GetAtt AISTACK.Outputs.SNSTopic
@@ -2745,6 +2752,36 @@ Outputs:
       The ARN of Kinesis Data Stream to write the call data to.
     Value: !GetAtt CallDataStream.Arn
 
+  EventSourcingTableName:
+    Description: Name of the DynamoDB table used to store transcriptions and events
+    Value: !GetAtt AISTACK.Outputs.EventSourcingTableName
+
+  EventSourcingTableStreamArn:
+    Description: ARN of the EventSourcingTable DynamoDB table stream
+    Value: !GetAtt AISTACK.Outputs.EventSourcingTableStreamArn
+
+  VirtualParticipantTableName:
+    Description: Name of the VirtualParticipant DynamoDB table
+    Value: !GetAtt AISTACK.Outputs.VirtualParticipantTableName
+
+  VirtualParticipantTableStreamArn:
+    Description: ARN of the VirtualParticipant DynamoDB table stream
+    Value: !GetAtt AISTACK.Outputs.VirtualParticipantTableStreamArn
+
+  DynamoDbKmsKeyArn:
+    Description: ARN of the customer-managed KMS key used to encrypt LMA's DynamoDB tables
+    Value: !GetAtt CustomerManagedEncryptionKey.Arn
+
+  TranscriptKnowledgeBaseId:
+    Condition: ShouldUseTranscriptKnowledgeBase
+    Description: ID of the Bedrock Knowledge Base created to index meeting transcripts
+    Value: !GetAtt TRANSCRIPTBEDROCKKB.Outputs.KnowledgeBaseID
+
+  TranscriptKnowledgeBaseArn:
+    Condition: ShouldUseTranscriptKnowledgeBase
+    Description: ARN of the Bedrock Knowledge Base created to index meeting transcripts
+    Value: !GetAtt TRANSCRIPTBEDROCKKB.Outputs.KnowledgeBaseArn
+
   LMASettingsParameterName:
     Description: Name of the Parameter store setting that holds the LMA Settings
     Value: !Ref LMASettingsParameter
@@ -2752,6 +2789,14 @@ Outputs:
   CognitoUserPoolTokenIssuerUrl:
     Description: Cognito User Pool Token Issuer URL
     Value: !Sub https://cognito-idp.${AWS::Region}.amazonaws.com/${COGNITOSTACK.Outputs.UserPoolId}
+
+  CognitoUserPoolId:
+    Description: Cognito User Pool ID
+    Value: !GetAtt COGNITOSTACK.Outputs.UserPoolId
+
+  CognitoUserPoolArn:
+    Description: Cognito User Pool ARN
+    Value: !GetAtt COGNITOSTACK.Outputs.UserPoolArn
 
   CognitoUserPoolClientId:
     Description: Cognito User Pool Client Id
