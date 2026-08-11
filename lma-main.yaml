@@ -2802,6 +2802,18 @@ Outputs:
     Description: Cognito User Pool Client Id
     Value: !GetAtt COGNITOSTACK.Outputs.CognitoClientId
 
+  CognitoIdentityPoolId:
+    Description: Cognito Identity Pool ID
+    Value: !GetAtt COGNITOSTACK.Outputs.AppIdentityPoolId
+
+  CognitoUserPoolDomain:
+    Description: Cognito User Pool Domain
+    Value: !GetAtt COGNITOSTACK.Outputs.CognitoUserPoolDomain
+
+  AppSyncGraphQLUrl:
+    Description: AppSync GraphQL endpoint URL
+    Value: !GetAtt AISTACK.Outputs.AppSyncGraphQLUrl
+
   LocalUITestingEnv:
     Description: Copy to create .env file for local UI testing
     Value: !GetAtt AISTACK.Outputs.LocalUITestingEnv

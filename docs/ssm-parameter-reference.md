@@ -56,6 +56,9 @@ this file.
 | `/lma/qa/outputs/ChromeExtensionDownloadUrl` | LMA Chrome browser extension download link |
 | `/lma/qa/outputs/CognitoUserPoolClientId` | Cognito User Pool Client ID |
 | `/lma/qa/outputs/CognitoUserPoolTokenIssuerUrl` | Cognito User Pool token issuer URL |
+| `/lma/qa/outputs/CognitoIdentityPoolId` | Cognito Identity Pool ID |
+| `/lma/qa/outputs/CognitoUserPoolDomain` | Cognito User Pool Domain (the hosted-UI/OAuth domain prefix) |
+| `/lma/qa/outputs/AppSyncGraphQLUrl` | AppSync GraphQL API endpoint URL |
 | `/lma/qa/outputs/CustomChatButtonConfig` | Custom Strands agent chat button config (overrides, preserved across updates) |
 | `/lma/qa/outputs/CustomNovaSonicConfig` | Custom Nova Sonic voice assistant config (overrides, preserved across updates) |
 | `/lma/qa/outputs/DefaultChatButtonConfig` | Default Strands agent chat button config (read-only reference) |
