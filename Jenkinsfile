@@ -24,6 +24,12 @@
 // {{resolve:secretsmanager:lma/<env>/tavily-api-key}}) written directly into
 // the parameter file - Jenkins never sees the plaintext value.
 //
+// To trigger a build: in Jenkins, open this branch's job and click "Build
+// with Parameters" - pick ACTION=DEPLOY (default) for the normal
+// build/publish/deploy flow, or ACTION=DESTROY to instead delete that
+// branch's environment stack (pauses for a typed confirmation first - see
+// the Destroy stage below).
+//
 // The whole pipeline runs inside the image built from ci/Dockerfile (see
 // that file) rather than directly on the Jenkins server - the server only
 // needs Docker itself; every build tool (node, make, zip, python, aws cli,
@@ -58,6 +64,18 @@ pipeline {
     options {
         timeout(time: 60, unit: 'MINUTES')
         disableConcurrentBuilds()
+    }
+
+    // Only shows up in Jenkins as "Build with Parameters" once this block
+    // has run at least once on a branch (first run uses the default).
+    // DESTROY is deliberately not the default - every run has to pick it
+    // on purpose.
+    parameters {
+        choice(
+            name: 'ACTION',
+            choices: ['DEPLOY', 'DESTROY'],
+            description: 'DEPLOY runs the normal build/publish/deploy pipeline (default). DESTROY skips build/publish and instead deletes this branch\'s environment stack - asks for manual confirmation first.'
+        )
     }
 
     environment {
@@ -112,6 +130,7 @@ pipeline {
         }
 
         stage('Setup CLI') {
+            when { expression { params.ACTION == 'DEPLOY' } }
             steps {
                 // setup-cli alone assumes .venv already exists - setup-python
                 // is what actually creates it (make setup-cli's own error,
@@ -122,13 +141,14 @@ pipeline {
         }
 
         stage('Build') {
+            when { expression { params.ACTION == 'DEPLOY' } }
             steps {
                 sh 'make build'
             }
         }
 
         stage('Publish') {
-            when { expression { env.DEPLOY_ENV != null } }
+            when { allOf { expression { env.DEPLOY_ENV != null }; expression { params.ACTION == 'DEPLOY' } } }
             steps {
                 // Needs AWS credentials too - it uploads to S3 and may call
                 // other AWS APIs while packaging (missed this originally;
@@ -172,7 +192,7 @@ pipeline {
         }
 
         stage('Deploy') {
-            when { expression { env.DEPLOY_ENV != null } }
+            when { allOf { expression { env.DEPLOY_ENV != null }; expression { params.ACTION == 'DEPLOY' } } }
             steps {
                 withCredentials([[
                     $class: 'AmazonWebServicesCredentialsBinding',
@@ -205,7 +225,7 @@ pipeline {
         }
 
         stage('Verify') {
-            when { expression { env.DEPLOY_ENV != null } }
+            when { allOf { expression { env.DEPLOY_ENV != null }; expression { params.ACTION == 'DEPLOY' } } }
             steps {
                 withCredentials([[
                     $class: 'AmazonWebServicesCredentialsBinding',
@@ -227,13 +247,43 @@ pipeline {
         }
 
         stage('Export Outputs to SSM') {
-            when { expression { env.DEPLOY_ENV != null } }
+            when { allOf { expression { env.DEPLOY_ENV != null }; expression { params.ACTION == 'DEPLOY' } } }
             steps {
                 withCredentials([[
                     $class: 'AmazonWebServicesCredentialsBinding',
                     credentialsId: "aws-lma-${env.DEPLOY_ENV}",
                 ]]) {
                     sh "./scripts/export_stack_resources_to_ssm.sh LMASA-${env.DEPLOY_ENV} ${env.DEPLOY_ENV} ${REGION} ${CFN_BUCKET_BASENAME}-${env.DEPLOY_ENV}-${REGION}"
+                }
+            }
+        }
+
+        stage('Destroy') {
+            when { allOf { expression { env.DEPLOY_ENV != null }; expression { params.ACTION == 'DESTROY' } } }
+            steps {
+                // Typed confirmation, not just a Proceed/Abort click - a
+                // misclick on a button is easy, misclicking AND typing the
+                // exact stack name is not. This pauses the pipeline in
+                // Jenkins' UI until someone with approval rights fills it in.
+                script {
+                    def confirmation = input(
+                        message: "This permanently deletes LMASA-${env.DEPLOY_ENV} and everything in it (data, recordings, user pool - no undo). Type the environment name to confirm.",
+                        parameters: [string(name: 'CONFIRM_ENV_NAME', defaultValue: '', trim: true)]
+                    )
+                    if (confirmation != env.DEPLOY_ENV) {
+                        error "Typed '${confirmation}' does not match environment '${env.DEPLOY_ENV}' - aborting destroy."
+                    }
+                }
+                withCredentials([[
+                    $class: 'AmazonWebServicesCredentialsBinding',
+                    credentialsId: "aws-lma-${env.DEPLOY_ENV}",
+                ]]) {
+                    sh """
+                        aws cloudformation delete-stack --region ${REGION} --stack-name LMASA-${env.DEPLOY_ENV}
+                        echo "Delete initiated - waiting for it to finish (this can take 15-30+ minutes for a full stack)..."
+                        aws cloudformation wait stack-delete-complete --region ${REGION} --stack-name LMASA-${env.DEPLOY_ENV}
+                        echo "LMASA-${env.DEPLOY_ENV} deleted."
+                    """
                 }
             }
         }
