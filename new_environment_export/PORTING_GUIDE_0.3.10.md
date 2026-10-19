@@ -168,6 +168,49 @@ confirm with the team first; it is a security downgrade.
 Test: `cd lma-virtual-participant-stack/backend && npm install && npm run build && npm test`.
 Add a unit test for the bot-name check.
 
+> **Status on `feature/lma-0.3.10-sync`:** the name retry is already in place — the 0.3.10 merge
+> conflicts in `teams.ts` / `zoom.ts` were resolved by keeping 0.3.10's code and calling
+> `typeReliably` (Teams types the sanitized name). Auto-leave and the 5 settings are still to do.
+
+### 6.2a Decision point — how the bot joins Microsoft Teams
+
+0.3.10 can join Teams in two ways. Everything in 6.2 for Teams applies to the **browser** method only.
+
+| | Browser method — `teams.ts` (**default**) | Teams SDK method — `teams-sdk.ts` |
+|---|---|---|
+| How | Headless Chromium opens the Teams web page, clicks and types like a person | Joins through Microsoft's **Azure Communication Services (ACS)** calling SDK — no Teams web page |
+| Pop-ups, slow page, name field | Must be handled (where the live bot gets stuck) | Not involved — the name is passed through the API |
+| Needs | Nothing extra | An Azure Communication Services resource + its connection string |
+| Live bot (0.3.2) | ✅ uses this | ❌ did not exist in 0.3.2 |
+
+**How the bot chooses** (`resolveJoinMethod()` in `details.ts`): if `ACS_CONNECTION_STRING` is set
+→ SDK, otherwise → browser. Turn it on with the deploy parameter **`AcsConnectionString`** in
+`lma-main.yaml` (blank by default; the template passes it to the bot as `ACS_CONNECTION_STRING`).
+The code also honours `MEETING_TEAMS_METHOD` = `sdk` / `dom` as an override, but nothing in the
+template or UI sets it today.
+
+**What changes if Teams moves to the SDK**
+
+- The "stuck on the audio/video pop-up" problem disappears for Teams.
+- Name typing (`typeReliably`) is no longer used for Teams. **Zoom still uses the browser**, so the
+  Zoom name retry still matters.
+- **Auto-leave** (bots-only / silence, 6.2) must be implemented in `teams-sdk.ts` instead of
+  `teams.ts`, using the SDK's roster events.
+
+**Before switching, check with the team**
+
+1. Can the company create an **Azure Communication Services** resource? It is an Azure subscription
+   item, billed per minute of calling.
+2. **Teams tenant policy:** the SDK bot joins as an *external / anonymous* participant. The Teams
+   admin must allow that, and the bot may wait in the **lobby** until someone admits it.
+
+**Recommended order**
+
+1. Finish the port with the **browser method** (default) — it is what runs today.
+2. On a **dev stack**, deploy with `AcsConnectionString` set and join several real Teams meetings.
+3. If the SDK is more reliable, make it the Teams default for your environments and port
+   auto-leave to `teams-sdk.ts`. Record the decision in this guide.
+
 ### 6.3 Bot scheduler + Step Function (bot's display name)
 
 - **Why:** `history/VP_DISPLAY_NAME_FIX.md`, `history/VP_CHANGES_APPLIED.md`
@@ -314,3 +357,4 @@ project-access resolvers.
 2. Was lowering CloudFront TLS to `TLSv1` intentional (6.1)?
 3. `ProjectMembership` table and `SyntheraProjectChatbot` Lambda: inside the template or outside (6.5, 6.9)?
 4. Is there TypeScript source for the `name-fix-v7` bot changes (ask niketh)? Otherwise port from `container_patch/*.patch`.
+5. Teams join method: stay on the browser method, or move to the Teams SDK (needs Azure Communication Services and a Teams tenant that allows external participants)? See 6.2a.
