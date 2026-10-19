@@ -57,6 +57,25 @@ STACK_DEFINITIONS: list[StackDefinition] = [
         supports_change_detection=False,  # Always publish (fast)
     ),
     StackDefinition(
+        name="lma-desktop-capture-app-stack",
+        package_type=StackPackageType.ZIP_APP_SRC_WITH_TOKEN_REPLACE,
+        template_file="template.yaml",
+        # The downloadable app sources live under the stack's own source/
+        # subdir (source/macos/ and source/windows/); zip that tree (not the
+        # stack root, so the CloudFormation template itself is excluded from
+        # the download). CodeBuild packages each platform subdir into its own
+        # per-platform download zip.
+        source_dir="source",
+        supports_change_detection=False,  # Always publish (fast, small)
+    ),
+    StackDefinition(
+        name="lma-asr-microvm-stack",
+        package_type=StackPackageType.ASR_MICROVM,
+        template_file="template.yaml",
+        source_dir="source",
+        supports_change_detection=False,  # Always publish (fast, small)
+    ),
+    StackDefinition(
         name="lma-vpc-stack",
         package_type=StackPackageType.CFN_PACKAGE,
         template_file="template.yaml",
@@ -480,7 +499,14 @@ class Publisher:
 
         # Track S3 locations for main template substitution
         vp_src_s3_location = ""
+        vp_microvm_src_s3_location = ""
+        vp_launcher_s3_key = ""
+        artifact_bucket = ""
         browser_ext_src_s3_location = ""
+        desktop_capture_app_src_s3_location = ""
+        asr_microvm_src_s3_location = ""
+        asr_launcher_s3_key = ""
+        asr_image_source_s3_key = ""
 
         # Publish each stack
         stack_results: list[StackPublishResult] = []
@@ -537,8 +563,20 @@ class Publisher:
                 # Capture source locations for main template
                 if stack_def.name == "lma-virtual-participant-stack" and result.get("vp_src_s3_location"):
                     vp_src_s3_location = result["vp_src_s3_location"]
+                if stack_def.name == "lma-virtual-participant-stack" and result.get("vp_microvm_src_s3_location"):
+                    vp_microvm_src_s3_location = result["vp_microvm_src_s3_location"]
+                if stack_def.name == "lma-virtual-participant-stack" and result.get("vp_launcher_s3_key"):
+                    vp_launcher_s3_key = result["vp_launcher_s3_key"]
+                    artifact_bucket = result.get("artifact_bucket", "")
                 if stack_def.name == "lma-browser-extension-stack" and result.get("browser_ext_src_s3_location"):
                     browser_ext_src_s3_location = result["browser_ext_src_s3_location"]
+                if stack_def.name == "lma-desktop-capture-app-stack" and result.get("desktop_capture_app_src_s3_location"):
+                    desktop_capture_app_src_s3_location = result["desktop_capture_app_src_s3_location"]
+                if stack_def.name == "lma-asr-microvm-stack" and result.get("asr_microvm_src_s3_location"):
+                    asr_microvm_src_s3_location = result["asr_microvm_src_s3_location"]
+                    asr_launcher_s3_key = result.get("asr_launcher_s3_key", "")
+                    asr_image_source_s3_key = result.get("asr_image_source_s3_key", "")
+                    artifact_bucket = artifact_bucket or result.get("artifact_bucket", "")
 
                 duration = time.time() - stack_start
                 stack_results.append(StackPublishResult(
@@ -580,7 +618,14 @@ class Publisher:
             region=region,
             version=version,
             vp_src_s3_location=vp_src_s3_location,
+            vp_microvm_src_s3_location=vp_microvm_src_s3_location,
+            vp_launcher_s3_key=vp_launcher_s3_key,
+            artifact_bucket=artifact_bucket,
             browser_ext_src_s3_location=browser_ext_src_s3_location,
+            desktop_capture_app_src_s3_location=desktop_capture_app_src_s3_location,
+            asr_microvm_src_s3_location=asr_microvm_src_s3_location,
+            asr_launcher_s3_key=asr_launcher_s3_key,
+            asr_image_source_s3_key=asr_image_source_s3_key,
             tmpdir=tmpdir,
         )
 
@@ -663,10 +708,12 @@ class Publisher:
         handlers = {
             StackPackageType.ZIP_AND_UPLOAD: self._publish_zip_and_upload,
             StackPackageType.ZIP_WITH_TOKEN_REPLACE: self._publish_zip_with_token_replace,
+            StackPackageType.ZIP_APP_SRC_WITH_TOKEN_REPLACE: self._publish_zip_app_src_with_token_replace,
             StackPackageType.CFN_PACKAGE: self._publish_cfn_package,
             StackPackageType.DELEGATE_SCRIPT: self._publish_delegate_script,
             StackPackageType.BUILD_SCRIPT: self._publish_build_script,
             StackPackageType.HASH_AND_PACKAGE: self._publish_hash_and_package,
+            StackPackageType.ASR_MICROVM: self._publish_asr_microvm,
         }
         handler = handlers.get(stack_def.package_type)
         if not handler:
@@ -705,6 +752,52 @@ class Publisher:
         logger.info("Uploading %s to s3://%s", zip_filename, vp_src_s3_location)
         self._s3.upload_file(str(zip_path), bucket, s3_zip_key)
 
+        # Second artifact: the MicroVM build context.
+        #
+        # CreateMicrovmImage requires the Dockerfile at the ROOT of the zip, but
+        # the zip above is rooted at the stack directory (so the Dockerfile lands
+        # at backend/Dockerfile) and codeArtifact takes only a URI — there is no
+        # way to point at a subdirectory. So package backend/ separately, rooted
+        # at backend/, for VPLaunchType=MICROVM.
+        microvm_zip_filename = f"microvm-{content_hash}.zip"
+        microvm_zip_path = tmpdir / microvm_zip_filename
+        backend_dir = stack_dir / "backend"
+        vp_microvm_src_s3_location = ""
+        if backend_dir.is_dir():
+            with zipfile.ZipFile(microvm_zip_path, "w", zipfile.ZIP_DEFLATED) as zf:
+                for root, dirs, files in os.walk(backend_dir):
+                    dirs[:] = [d for d in dirs if d not in skip_dirs]
+                    for fname in files:
+                        fpath = Path(root) / fname
+                        zf.write(fpath, fpath.relative_to(backend_dir))
+            s3_microvm_key = f"{prefix_and_version}/{stack_def.name}/{microvm_zip_filename}"
+            vp_microvm_src_s3_location = f"{bucket}/{s3_microvm_key}"
+            logger.info(
+                "Uploading %s to s3://%s", microvm_zip_filename, vp_microvm_src_s3_location
+            )
+            self._s3.upload_file(str(microvm_zip_path), bucket, s3_microvm_key)
+
+        # Third artifact: the MicroVM launcher Lambda deployment package.
+        #
+        # It cannot be inline `Code: ZipFile` — that is a single file capped at
+        # 4 KB, and the handler imports microvm_client.py (which exists because
+        # the Lambda runtime's bundled botocore has no lambda-microvms service
+        # model). The VP stack is plain CloudFormation with no SAM transform, so
+        # CodeUri is not available either; hence an explicit S3 zip.
+        launcher_dir = stack_dir / "lambda_functions" / "microvm_launcher"
+        vp_launcher_s3_key = ""
+        if launcher_dir.is_dir():
+            launcher_zip = tmpdir / f"microvm-launcher-{content_hash}.zip"
+            with zipfile.ZipFile(launcher_zip, "w", zipfile.ZIP_DEFLATED) as zf:
+                for fpath in sorted(launcher_dir.rglob("*")):
+                    if fpath.is_file() and "__pycache__" not in fpath.parts:
+                        zf.write(fpath, fpath.relative_to(launcher_dir))
+            vp_launcher_s3_key = (
+                f"{prefix_and_version}/{stack_def.name}/{launcher_zip.name}"
+            )
+            logger.info("Uploading %s to s3://%s/%s", launcher_zip.name, bucket, vp_launcher_s3_key)
+            self._s3.upload_file(str(launcher_zip), bucket, vp_launcher_s3_key)
+
         # Upload template
         template_path = stack_dir / stack_def.template_file
         s3_template_key = f"{prefix_and_version}/{stack_def.name}/template.yaml"
@@ -716,8 +809,84 @@ class Publisher:
 
         return {
             "vp_src_s3_location": vp_src_s3_location,
+            "vp_microvm_src_s3_location": vp_microvm_src_s3_location,
+            "vp_launcher_s3_key": vp_launcher_s3_key,
+            "artifact_bucket": bucket,
             "s3_template_url": https_url,
             "message": f"Zipped and uploaded ({zip_filename})",
+        }
+
+    def _publish_asr_microvm(
+        self, *, stack_def, project_dir, bucket, prefix_and_version, region, tmpdir, **_kw
+    ) -> dict:
+        """Zip the ASR MicroVM image source and its Lambdas (lma-asr-microvm-stack).
+
+        The image source zip is rooted at ``source/`` because CreateMicrovmImage
+        requires the Dockerfile at the ROOT of the artifact and codeArtifact takes
+        only a URI, so a subdirectory cannot be pointed at. The stack's custom
+        resource rewrites this zip per deployment with the selected model, so what
+        is published here is the model-agnostic build context.
+        """
+        stack_dir = project_dir / stack_def.name
+        content_hash = _calculate_dir_hash(stack_dir)
+        # .venv matters here: the ASR runtime's test virtualenv lives inside
+        # source/, and zipping it would bloat the image build context by ~100 MB.
+        skip_dirs = {
+            "node_modules",
+            "build",
+            "dist",
+            ".git",
+            "__pycache__",
+            ".pytest_cache",
+            ".ruff_cache",
+            ".venv",
+        }
+
+        def zip_tree(root: Path, zip_path: Path) -> None:
+            with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zf:
+                for dirpath, dirs, files in os.walk(root):
+                    dirs[:] = [d for d in dirs if d not in skip_dirs]
+                    for fname in files:
+                        fpath = Path(dirpath) / fname
+                        zf.write(fpath, fpath.relative_to(root))
+
+        source_dir = stack_dir / stack_def.source_dir
+        if not source_dir.is_dir():
+            raise LMAPublishError(f"ASR MicroVM source directory not found: {source_dir}")
+        source_zip = tmpdir / f"asr-microvm-src-{content_hash}.zip"
+        zip_tree(source_dir, source_zip)
+        source_key = f"{prefix_and_version}/{stack_def.name}/{source_zip.name}"
+        logger.info("Uploading %s to s3://%s/%s", source_zip.name, bucket, source_key)
+        self._s3.upload_file(str(source_zip), bucket, source_key)
+
+        lambda_keys: dict[str, str] = {}
+        for function_name, result_key in (
+            ("asr_launcher", "asr_launcher_s3_key"),
+            ("asr_image_source", "asr_image_source_s3_key"),
+        ):
+            function_dir = stack_dir / "lambda_functions" / function_name
+            if not function_dir.is_dir():
+                raise LMAPublishError(f"ASR Lambda directory not found: {function_dir}")
+            function_zip = tmpdir / f"{function_name.replace('_', '-')}-{content_hash}.zip"
+            zip_tree(function_dir, function_zip)
+            key = f"{prefix_and_version}/{stack_def.name}/{function_zip.name}"
+            logger.info("Uploading %s to s3://%s/%s", function_zip.name, bucket, key)
+            self._s3.upload_file(str(function_zip), bucket, key)
+            lambda_keys[result_key] = key
+
+        template_path = stack_dir / stack_def.template_file
+        s3_template_key = f"{prefix_and_version}/{stack_def.name}/template.yaml"
+        self._s3.upload_file(str(template_path), bucket, s3_template_key)
+
+        https_url = f"https://s3.{region}.amazonaws.com/{bucket}/{s3_template_key}"
+        self._validate_template(https_url)
+
+        return {
+            "asr_microvm_src_s3_location": f"{bucket}/{source_key}",
+            "artifact_bucket": bucket,
+            "s3_template_url": https_url,
+            "message": f"Zipped and uploaded ({source_zip.name})",
+            **lambda_keys,
         }
 
     def _publish_zip_with_token_replace(
@@ -773,6 +942,81 @@ class Publisher:
             "browser_ext_src_s3_location": src_s3_location,
             "s3_template_url": https_url,
             "message": f"Zipped with token replacement and uploaded ({zip_filename})",
+        }
+
+    def _publish_zip_app_src_with_token_replace(
+        self, *, stack_def, project_dir, bucket, prefix_and_version, region, version, tmpdir, **_kw
+    ) -> dict:
+        """Zip an app source subtree (source_dir, relative to the stack dir) with
+        <VERSION_TOKEN> replacement, and upload both the zip and the stack's
+        template. Used by lma-desktop-capture-app-stack, whose downloadable app
+        lives under source/macos/ (kept separate from the stack's template.yaml
+        so the template isn't shipped in the download). CodeBuild later bakes the
+        deployment config into the zip.
+        """
+        stack_dir = project_dir / stack_def.name
+        src_dir = (stack_dir / stack_def.source_dir).resolve()
+        if not src_dir.is_dir():
+            raise LMAPublishError(f"App source dir not found: {src_dir}")
+
+        content_hash = _calculate_dir_hash(src_dir)
+        zip_filename = f"src-{content_hash}.zip"
+
+        # Copy source to a temp dir for token replacement (skip build artifacts
+        # and any local/dev secrets so they never ship in the public download).
+        temp_src_dir = tmpdir / f"{stack_def.name}-src"
+        skip_dirs = {".build", "build", ".git", "__pycache__", "node_modules"}
+        skip_files = {".env.local", "lma-config.json", ".DS_Store"}
+        shutil.copytree(
+            src_dir, temp_src_dir,
+            ignore=shutil.ignore_patterns(*skip_dirs, *skip_files),
+        )
+
+        # Replace <VERSION_TOKEN> anywhere it appears in text files (e.g. the
+        # install scripts / README reference the versioned zip name).
+        for root, dirs, files in os.walk(temp_src_dir):
+            dirs[:] = [d for d in dirs if d not in skip_dirs]
+            for fname in files:
+                fpath = Path(root) / fname
+                try:
+                    content = fpath.read_text()
+                except (UnicodeDecodeError, OSError):
+                    continue  # binary/unreadable — leave as-is
+                if "<VERSION_TOKEN>" in content:
+                    fpath.write_text(content.replace("<VERSION_TOKEN>", version))
+
+        # Zip the token-replaced source tree.
+        zip_path = tmpdir / zip_filename
+        with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zf:
+            for root, dirs, files in os.walk(temp_src_dir):
+                dirs[:] = [d for d in dirs if d not in skip_dirs]
+                for fname in files:
+                    fpath = Path(root) / fname
+                    arcname = fpath.relative_to(temp_src_dir)
+                    zf.write(fpath, arcname)
+
+        # Upload the source zip.
+        s3_zip_key = f"{prefix_and_version}/{stack_def.name}/{zip_filename}"
+        src_s3_location = f"{bucket}/{s3_zip_key}"
+        logger.info("Uploading %s to s3://%s", zip_filename, src_s3_location)
+        self._s3.upload_file(str(zip_path), bucket, s3_zip_key)
+
+        # Upload the stack template (with VERSION token replaced).
+        template_src = stack_dir / stack_def.template_file
+        template_out = tmpdir / f"{stack_def.name}-template.yaml"
+        template_out.write_text(template_src.read_text().replace("<VERSION_TOKEN>", version))
+        s3_template_key = f"{prefix_and_version}/{stack_def.name}/template.yaml"
+        self._s3.upload_file(str(template_out), bucket, s3_template_key)
+
+        https_url = f"https://s3.{region}.amazonaws.com/{bucket}/{s3_template_key}"
+        self._validate_template(https_url)
+
+        shutil.rmtree(temp_src_dir, ignore_errors=True)
+
+        return {
+            "desktop_capture_app_src_s3_location": src_s3_location,
+            "s3_template_url": https_url,
+            "message": f"Zipped app source with token replacement and uploaded ({zip_filename})",
         }
 
     def _publish_cfn_package(self, *, stack_def, project_dir, bucket, prefix_and_version, region, tmpdir, **_kw) -> dict:
@@ -896,7 +1140,14 @@ class Publisher:
         region: str,
         version: str,
         vp_src_s3_location: str,
+        vp_microvm_src_s3_location: str,
+        vp_launcher_s3_key: str,
+        artifact_bucket: str,
         browser_ext_src_s3_location: str = "",
+        desktop_capture_app_src_s3_location: str = "",
+        asr_microvm_src_s3_location: str = "",
+        asr_launcher_s3_key: str = "",
+        asr_image_source_s3_key: str = "",
         tmpdir: Path = None,
     ) -> dict[str, Any]:
         """Replace tokens in lma-main.yaml, upload, and validate."""
@@ -913,7 +1164,14 @@ class Publisher:
             "<VERSION_TOKEN>": version,
             "<REGION_TOKEN>": region,
             "<BROWSER_EXTENSION_SRC_S3_LOCATION_TOKEN>": browser_ext_src_s3_location,
+            "<DESKTOP_CAPTURE_APP_SRC_S3_LOCATION_TOKEN>": desktop_capture_app_src_s3_location,
             "<VIRTUAL_PARTICIPANT_SRC_S3_LOCATION_TOKEN>": vp_src_s3_location,
+            "<VIRTUAL_PARTICIPANT_MICROVM_SRC_S3_LOCATION_TOKEN>": vp_microvm_src_s3_location,
+            "<VIRTUAL_PARTICIPANT_LAUNCHER_S3_KEY_TOKEN>": vp_launcher_s3_key,
+            "<ASR_MICROVM_SRC_S3_LOCATION_TOKEN>": asr_microvm_src_s3_location,
+            "<ASR_MICROVM_LAUNCHER_S3_KEY_TOKEN>": asr_launcher_s3_key,
+            "<ASR_MICROVM_IMAGE_SOURCE_S3_KEY_TOKEN>": asr_image_source_s3_key,
+            "<ARTIFACT_BUCKET_NAME_TOKEN>": artifact_bucket,
             "<BUILD_DATE_TIME_TOKEN>": build_date_time,
         }
         for token, value in replacements.items():

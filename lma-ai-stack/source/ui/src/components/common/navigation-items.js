@@ -3,6 +3,9 @@
  * This file is licensed under the MIT License.
  * See the LICENSE file in the project root for full license information.
  */
+import React from 'react';
+import { Badge } from '@cloudscape-design/components';
+
 import {
   CALLS_PATH,
   MEETINGS_QUERY_PATH,
@@ -10,8 +13,10 @@ import {
   UPLOAD_AUDIO_PATH,
   VIRTUAL_PARTICIPANT_PATH,
   BROWSER_EXTENSION_PATH,
+  DESKTOP_CAPTURE_APP_PATH,
   MCP_SERVERS_PATH,
   NOVA_SONIC_CONFIG_PATH,
+  ASR_CONFIG_PATH,
   TRANSCRIPT_SUMMARY_PATH,
   USER_MANAGEMENT_PATH,
   DEFAULT_PATH,
@@ -56,6 +61,11 @@ export const generateNavigationItems = (settings, isAdmin) => {
           text: 'Chrome Extension',
           href: `#${BROWSER_EXTENSION_PATH}`,
         },
+        {
+          type: 'link',
+          text: 'Desktop Capture App',
+          href: `#${DESKTOP_CAPTURE_APP_PATH}`,
+        },
       ],
     },
   ];
@@ -76,6 +86,18 @@ export const generateNavigationItems = (settings, isAdmin) => {
           text: 'Nova Sonic Config',
           href: `#${NOVA_SONIC_CONFIG_PATH}`,
         },
+        // Only offered when the on-demand engine is deployed; the page has nothing
+        // to configure otherwise. JSX in this .js file relies on jsxInJsPlugin.
+        ...(`${settings?.AsrEngineAvailable}` === 'true'
+          ? [
+              {
+                type: 'link',
+                text: 'Transcription Engine',
+                href: `#${ASR_CONFIG_PATH}`,
+                info: <Badge color="severity-medium">Experimental</Badge>,
+              },
+            ]
+          : []),
         {
           type: 'link',
           text: 'Transcript Summary',

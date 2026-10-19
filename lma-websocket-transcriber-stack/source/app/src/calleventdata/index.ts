@@ -5,3 +5,6 @@
  */
 export * from './eventtypes';
 export * from './transcribe';
+export * from './asr-audio';
+export * from './asr-config';
+export * from './asr-microvm';

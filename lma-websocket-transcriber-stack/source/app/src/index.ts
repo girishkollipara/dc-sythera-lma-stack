@@ -24,6 +24,12 @@ import {
     CallMetaData,
     SocketCallData,
     writeCallRecordingEvent,
+    resolveAsrEngine,
+    startMicrovmAsr,
+    pushAsrAudio,
+    stopMicrovmAsr,
+    shouldFallbackToTranscribe,
+    getAsrRuntimeConfig,
 } from './calleventdata';
 
 import {
@@ -31,15 +37,35 @@ import {
     posixifyFilename,
     normalizeErrorForLogging,
     getClientIP,
+    resolveShouldRecordCall,
+    describeRequest,
+    stringifyCallMetaData,
+    redactTokenLike,
+    PINO_REDACT_OPTIONS,
 } from './utils';
 
-import { jwtVerifier } from './utils/jwt-verifier';
+import { jwtVerifier, getAuthenticatedCaller } from './utils/jwt-verifier';
+
+import {
+    VideoSession,
+    startVideoSession,
+    endVideoSession,
+    videoSocketDropped,
+    writeVideoChunk,
+    notifyAudioRecordingDone,
+    awaitPendingMuxes,
+} from './videorecording';
 
 const AWS_REGION = process.env['AWS_REGION'] || 'us-east-1';
 const RECORDINGS_BUCKET_NAME =
-  process.env['RECORDINGS_BUCKET_NAME'] || undefined;
+    process.env['RECORDINGS_BUCKET_NAME'] || undefined;
+// RECORDINGS_KEY_PREFIX is what the CFN task definition sets (AudioFilePrefix
+// parameter); RECORDING_FILE_PREFIX kept for backward compatibility with any
+// standalone deployments that set the old (previously ignored) name.
 const RECORDING_FILE_PREFIX =
-  process.env['RECORDING_FILE_PREFIX'] || 'lma-audio-recordings/';
+    process.env['RECORDINGS_KEY_PREFIX'] ||
+    process.env['RECORDING_FILE_PREFIX'] ||
+    'lma-audio-recordings/';
 const CPU_HEALTH_THRESHOLD = parseInt(
     process.env['CPU_HEALTH_THRESHOLD'] || '50',
     10
@@ -52,16 +78,49 @@ const SHOULD_RECORD_CALL = (process.env['SHOULD_RECORD_CALL'] || '') === 'true';
 const s3Client = new S3Client({ region: AWS_REGION });
 
 const socketMap = new Map<WebSocket, SocketCallData>();
+// Sockets dedicated to a video stream (announced by START_VIDEO). Binary
+// frames on these sockets are fragmented-MP4 chunks, not audio PCM.
+const videoSocketMap = new Map<WebSocket, VideoSession>();
+
+/**
+ * The live audio session for a callId, if any. Used to authorize START_VIDEO:
+ * a video stream may only join a call that is currently streaming audio, and
+ * only for the user who started it.
+ *
+ * Linear scan over socketMap — one entry per concurrent call on this task, so
+ * a handful to low hundreds, and this runs once per video stream (not per
+ * frame).
+ */
+const findAudioSessionByCallId = (
+    callId: string
+): SocketCallData | undefined => {
+    for (const data of socketMap.values()) {
+        if (!data.ended && data.callMetadata?.callId === callId) {
+            return data;
+        }
+    }
+    return undefined;
+};
 
 // create fastify server (with logging enabled for non-PROD environments)
 const server = fastify({
     logger: {
         level: WS_LOG_LEVEL,
-        prettyPrint: {
-            ignore: 'pid,hostname',
-            translateTime: 'SYS:HH:MM:ss.l',
-            colorize: false,
-            levelFirst: true,
+        // Backstop for object-style log records only: pino's redact rewrites
+        // properties of the logged object and never inspects the rendered
+        // message. Every log line in this package is an interpolated string, so
+        // each one is redacted at its call site via describeRequest() /
+        // stringifyCallMetaData(); this config covers anything logged as an
+        // object, now or later.
+        redact: PINO_REDACT_OPTIONS,
+        transport: {
+            target: 'pino-pretty',
+            options: {
+                ignore: 'pid,hostname',
+                translateTime: 'SYS:HH:MM:ss.l',
+                colorize: false,
+                levelFirst: true,
+            },
         },
     },
     disableRequestLogging: true,
@@ -69,35 +128,52 @@ const server = fastify({
 // register the @fastify/websocket plugin with the fastify server
 server.register(websocket);
 
-// Setup preHandler hook to authenticate
-server.addHook('preHandler', async (request, reply) => {
-    if (!request.url.includes('health')) {
+// Authenticate at onRequest, which runs BEFORE body parsing: authentication needs
+// only the headers, and rejecting early means an unauthenticated request never
+// gets a body buffered for it on a task that is also transcribing live meetings.
+server.addHook('onRequest', async (request, reply) => {
+    // A CORS preflight carries no credentials by design, so authenticating it
+    // would 401 every cross-origin call before the real request is ever made.
+    if (!request.url.includes('health') && request.method !== 'OPTIONS') {
         const clientIP = getClientIP(request.headers);
         server.log.debug(
-            `[AUTH]: [${clientIP}] - Received preHandler hook for authentication. URI: <${
-                request.url
-            }>, Headers: ${JSON.stringify(request.headers)}`
+            `[AUTH]: [${clientIP}] - Received onRequest hook for authentication. ${describeRequest(
+                request
+            )}`
         );
 
         await jwtVerifier(request, reply);
     }
 });
 
-// Setup Route for websocket connection
-server.get(
-    '/api/v1/ws',
-    { websocket: true, logLevel: 'debug' },
-    (connection, request) => {
-        const clientIP = getClientIP(request.headers);
-        server.log.debug(
-            `[NEW CONNECTION]: [${clientIP}] - Received new connection request @ /api/v1/ws. URI: <${
-                request.url
-            }>, Headers: ${JSON.stringify(request.headers)}`
-        );
+// Setup Route for websocket connection.
+//
+// The `websocket: true` route MUST be registered only after the
+// `@fastify/websocket` plugin has finished loading — otherwise the plugin's
+// onRoute hook (which installs the HTTP-upgrade interception) isn't wired yet,
+// so upgrade requests fall through to the normal HTTP handler and the handler
+// is invoked with (request, reply) instead of (socket, request). That yields
+// `ws.on is not a function` -> HTTP 500 on every WS connect. Under Fastify 3 /
+// @fastify/websocket 5 the unawaited `server.register(websocket)` above
+// happened to order correctly; under Fastify 5 / @fastify/websocket 11 it does
+// not. `server.after()` guarantees the plugin is loaded before we add the route
+// (no top-level await needed in this module).
+server.after(() => {
+    server.get(
+        '/api/v1/ws',
+        { websocket: true, logLevel: 'debug' },
+        (socket, request) => {
+            const clientIP = getClientIP(request.headers);
+            server.log.debug(
+                `[NEW CONNECTION]: [${clientIP}] - Received new connection request @ /api/v1/ws. ${describeRequest(
+                    request
+                )}`
+            );
 
-        registerHandlers(clientIP, connection.socket, request); // setup the handler functions for websocket events
-    }
-);
+            registerHandlers(clientIP, socket, request); // setup the handler functions for websocket events
+        }
+    );
+});
 
 type HealthCheckRemoteInfo = {
     addr: string;
@@ -118,10 +194,8 @@ server.get('/health/check', { logLevel: 'warn' }, (request, response) => {
     const item = healthCheckStats.get(remoteIp);
     if (!item) {
         server.log.debug(
-            `[HEALTH CHECK]: [${remoteIp}] - Received First health check from load balancer. URI: <${
-                request.url
-            }>, Headers: ${JSON.stringify(
-                request.headers
+            `[HEALTH CHECK]: [${remoteIp}] - Received First health check from load balancer. ${describeRequest(
+                request
             )} ==> Health Check status - CPU Usage%: ${cpuUsage}, IsHealthy: ${isHealthy}, Status: ${status}`
         );
         healthCheckStats.set(remoteIp, {
@@ -138,8 +212,8 @@ server.get('/health/check', { logLevel: 'warn' }, (request, response) => {
             server.log.debug(
                 `[HEALTH CHECK]: [${remoteIp}] - Received Health check # ${
                     item.count
-                } from load balancer. URI: <${request.url}>, Headers: ${JSON.stringify(
-                    request.headers
+                } from load balancer. ${describeRequest(
+                    request
                 )} ==> Health Check status - CPU Usage%: ${cpuUsage}, IsHealthy: ${isHealthy}, Status: ${status}`
             );
         }
@@ -174,12 +248,22 @@ const registerHandlers = (
                 );
             }
         } catch (error) {
+            // Close THIS socket; do not exit. This task multiplexes many
+            // concurrent calls, so terminating the process because one client
+            // sent a malformed frame (or one recording hit an I/O error) would
+            // drop every other meeting in progress too.
             server.log.error(
-                `[ON MESSAGE]: [${clientIP}] - Error processing message: ${normalizeErrorForLogging(
+                `[ON MESSAGE]: [${clientIP}] - Error processing message; closing this connection: ${normalizeErrorForLogging(
                     error
                 )}`
             );
-            process.exit(1);
+            try {
+                ws.close(1011, 'internal error processing message');
+            } catch (closeErr) {
+                server.log.error(
+                    `[ON MESSAGE]: [${clientIP}] - Error closing connection: ${normalizeErrorForLogging(closeErr)}`
+                );
+            }
         }
     });
 
@@ -214,6 +298,13 @@ const onBinaryMessage = async (
     ws: WebSocket,
     data: Uint8Array
 ): Promise<void> => {
+    // Video sockets carry fragmented-MP4 chunks, never audio PCM.
+    const videoSession = videoSocketMap.get(ws);
+    if (videoSession !== undefined) {
+        writeVideoChunk(videoSession, data, server);
+        return;
+    }
+
     const socketData = socketMap.get(ws);
 
     if (
@@ -225,11 +316,53 @@ const onBinaryMessage = async (
         socketData.audioInputStream.write(data);
         socketData.writeRecordingStream.write(data);
         socketData.recordingFileSize += data.length;
+        pushAsrAudio(socketData, data);
     } else {
         server.log.error(
             `[ON BINARY MESSAGE]: [${clientIP}] - Error: received audio data before metadata. Check logs for errors in START event.`
         );
     }
+};
+
+/**
+ * Start transcription for a call with the engine it asked for.
+ *
+ * The MicroVM ASR engine has to acquire a MicroVM before it can transcribe
+ * anything, so a failure there (quota, region, image still building) falls back
+ * to Amazon Transcribe rather than losing the meeting's transcript. Audio that
+ * arrives during the acquisition is buffered by both engines.
+ */
+const startTranscription = async (
+    socketData: SocketCallData,
+    server_: typeof server
+): Promise<void> => {
+    // Runtime config decides the deployment default, so the engine can be switched
+    // from the Transcription Engine page without redeploying the task.
+    const runtime = await getAsrRuntimeConfig(server_);
+    if (resolveAsrEngine(socketData.callMetadata, server_, runtime) === 'microvm') {
+        if (await startMicrovmAsr(socketData, server_)) {
+            // startTranscribe is the ONLY consumer of audioInputStream, and it is not
+            // running on this path — so every frame onBinaryMessage writes would sit
+            // in the stream's buffer for the whole meeting. At the 16 kHz stereo this
+            // engine negotiates that is 64 kB/s, about 230 MB an hour, in a 1 GiB
+            // task shared by every other meeting on it. Draining discards each frame
+            // as it arrives; writes stay unconditional so the recording is untouched,
+            // and this happens only AFTER a successful start so the audio buffered
+            // during MicroVM acquisition is still there for the fallback below.
+            socketData.audioInputStream?.resume();
+            return;
+        }
+        if (!shouldFallbackToTranscribe()) {
+            server_.log.error(
+                `[TRANSCRIBING]: [${socketData.callMetadata.callId}] - MicroVM ASR could not start and fallback is disabled; this meeting will not be transcribed.`
+            );
+            return;
+        }
+        server_.log.warn(
+            `[TRANSCRIBING]: [${socketData.callMetadata.callId}] - MicroVM ASR could not start; falling back to Amazon Transcribe.`
+        );
+    }
+    void startTranscribe(socketData, server_);
 };
 
 const onTextMessage = async (
@@ -238,190 +371,254 @@ const onTextMessage = async (
     data: string,
     request: FastifyRequest
 ): Promise<void> => {
-  type queryobj = {
-      authorization: string;
-      id_token: string;
-      refresh_token: string;
-  };
+    type queryobj = {
+        authorization: string;
+        id_token: string;
+        refresh_token: string;
+    };
 
-  type headersobj = {
-      authorization: string;
-      id_token: string;
-      refresh_token: string;
-  };
+    type headersobj = {
+        authorization: string;
+        id_token: string;
+        refresh_token: string;
+    };
 
-  const query = request.query as queryobj;
-  const headers = request.headers as headersobj;
-  const auth = query.authorization || headers.authorization;
-  const idToken = query.id_token || headers.id_token;
-  const refreshToken = query.refresh_token || headers.refresh_token;
+    const query = request.query as queryobj;
+    const headers = request.headers as headersobj;
+    const auth = query.authorization || headers.authorization;
+    const idToken = query.id_token || headers.id_token;
+    const refreshToken = query.refresh_token || headers.refresh_token;
 
-  const match = auth?.match(/^Bearer (.+)$/);
-  const callMetaData: CallMetaData = JSON.parse(data);
-  if (!match) {
-      server.log.error(
-          `[AUTH]: [${clientIP}] - No Bearer token found in header or query string. URI: <${
-              request.url
-          }>, Headers: ${JSON.stringify(request.headers)}`
-      );
+    const match = auth?.match(/^Bearer (.+)$/);
+    let callMetaData: CallMetaData;
+    try {
+        callMetaData = JSON.parse(data) as CallMetaData;
+    } catch (parseErr) {
+        // A truncated/garbled control frame is the client's problem, not grounds
+        // for tearing down every other call on this task. The serialized error can
+        // quote a fragment of the frame it failed on, so it goes through
+        // redactTokenLike() for the same reason the verifier errors do.
+        server.log.error(
+            `[ON TEXT MESSAGE]: [${clientIP}] - Ignoring unparseable control frame: ${redactTokenLike(
+                normalizeErrorForLogging(parseErr)
+            )}`
+        );
+        return;
+    }
+    if (!match) {
+        server.log.error(
+            `[AUTH]: [${clientIP}] - No Bearer token found in header or query string. ${describeRequest(
+                request
+            )}`
+        );
 
-      return;
-  }
+        return;
+    }
 
-  const accessToken = match[1];
+    const accessToken = match[1];
 
-  try {
-      server.log.debug(
-          `[ON TEXT MESSAGE]: [${clientIP}][${callMetaData.callId}] - Call Metadata received from client: ${data}`
-      );
-  } catch (error) {
-      server.log.error(
-          `[ON TEXT MESSAGE]: [${clientIP}][${
-              callMetaData.callId
-          }] - Error parsing call metadata: ${data} ${normalizeErrorForLogging(
-              error
-          )}`
-      );
-      callMetaData.callId = randomUUID();
-  }
+    // The parsed frame is logged rather than the raw `data` string: a client may
+    // put token fields in the control frame as well as in the query string, and
+    // stringifyCallMetaData drops those while keeping the rest of the metadata.
+    server.log.debug(
+        `[ON TEXT MESSAGE]: [${clientIP}][${
+            callMetaData.callId
+        }] - Call Metadata received from client: ${stringifyCallMetaData(callMetaData)}`
+    );
 
-  callMetaData.accessToken = accessToken;
-  callMetaData.idToken = idToken;
-  callMetaData.refreshToken = refreshToken;
+    callMetaData.accessToken = accessToken;
+    callMetaData.idToken = idToken;
+    callMetaData.refreshToken = refreshToken;
 
-  if (callMetaData.callEvent === 'START') {
-      // generate random metadata if none is provided
-      callMetaData.callId = callMetaData.callId || randomUUID();
-      callMetaData.fromNumber = callMetaData.fromNumber || 'Customer Phone';
-      callMetaData.toNumber = callMetaData.toNumber || 'System Phone';
-      callMetaData.activeSpeaker =
-      callMetaData.activeSpeaker ?? callMetaData?.fromNumber ?? 'unknown';
+    if (callMetaData.callEvent === 'START') {
+        // generate random metadata if none is provided
+        callMetaData.callId = callMetaData.callId || randomUUID();
+        callMetaData.fromNumber = callMetaData.fromNumber || 'Customer Phone';
+        callMetaData.toNumber = callMetaData.toNumber || 'System Phone';
+        callMetaData.activeSpeaker =
+            callMetaData.activeSpeaker ?? callMetaData?.fromNumber ?? 'unknown';
 
-      // if (typeof callMetaData.shouldRecordCall === 'undefined' || callMetaData.shouldRecordCall === null) {
-      //     server.log.debug(`[${callMetaData.callEvent}]: [${callMetaData.callId}] - Client did not provide ShouldRecordCall in CallMetaData. Defaulting to  CFN parameter EnableAudioRecording =  ${SHOULD_RECORD_CALL}`);
+        callMetaData.shouldRecordCall = resolveShouldRecordCall(
+            callMetaData.shouldRecordCall,
+            SHOULD_RECORD_CALL
+        );
 
-      //     callMetaData.shouldRecordCall = SHOULD_RECORD_CALL;
-      // } else {
-      //     server.log.debug(`[${callMetaData.callEvent}]: [${callMetaData.callId}] - Using client provided ShouldRecordCall parameter in CallMetaData =  ${callMetaData.shouldRecordCall}`);
-      // }
+        callMetaData.agentId = callMetaData.agentId || randomUUID();
 
-      callMetaData.agentId = callMetaData.agentId || randomUUID();
+        await writeCallStartEvent(callMetaData, server);
+        const tempRecordingFilename = getTempRecordingFileName(callMetaData);
+        // Sanitize filename to prevent path traversal attacks
+        const sanitizedFilename = path.basename(tempRecordingFilename).replace(/[^a-zA-Z0-9._-]/g, '_');
+        if (!sanitizedFilename || sanitizedFilename === '.' || sanitizedFilename === '..') {
+            throw new Error('Invalid recording filename provided');
+        }
+        const writeRecordingStream = fs.createWriteStream(
+            path.resolve(LOCAL_TEMP_DIR, sanitizedFilename)
+        );
+        const recordingFileSize = 0;
 
-      await writeCallStartEvent(callMetaData, server);
-      const tempRecordingFilename = getTempRecordingFileName(callMetaData);
-      // Sanitize filename to prevent path traversal attacks
-      const sanitizedFilename = path.basename(tempRecordingFilename).replace(/[^a-zA-Z0-9._-]/g, '_');
-      if (!sanitizedFilename || sanitizedFilename === '.' || sanitizedFilename === '..') {
-          throw new Error('Invalid recording filename provided');
-      }
-      const writeRecordingStream = fs.createWriteStream(
-          path.resolve(LOCAL_TEMP_DIR, sanitizedFilename)
-      );
-      const recordingFileSize = 0;
+        const highWaterMarkSize = (callMetaData.samplingRate / 10) * 2 * 2;
+        const audioInputStream = new BlockStream({ size: highWaterMarkSize });
+        const socketCallMap: SocketCallData = {
+            callMetadata: {
+                callId: callMetaData.callId,
+                callEvent: callMetaData.callEvent,
+                fromNumber: callMetaData.fromNumber,
+                toNumber: callMetaData.toNumber,
+                activeSpeaker: callMetaData.activeSpeaker,
+                agentId: callMetaData.agentId,
+                accessToken: callMetaData.accessToken,
+                idToken: callMetaData.idToken,
+                refreshToken: callMetaData.refreshToken,
+                shouldRecordCall: callMetaData.shouldRecordCall,
+                samplingRate: callMetaData.samplingRate,
+                channels: callMetaData.channels,
+                asrEngine: callMetaData.asrEngine,
+                maxSpeakers: callMetaData.maxSpeakers,
+                // Per-channel diarization opt-in, honoured by both engines. This
+                // object is a WHITELIST copy, so a field omitted here is silently
+                // dropped and the feature would appear to do nothing.
+                diarizeSystemChannel: callMetaData.diarizeSystemChannel,
+                diarizeMicChannel: callMetaData.diarizeMicChannel
+            },
+            audioInputStream: audioInputStream,
+            writeRecordingStream: writeRecordingStream,
+            recordingFileSize: recordingFileSize,
+            startStreamTime: new Date(),
+            speakerEvents: [],
+            ended: false,
+            // From the VERIFIED token, not the message body — this is what
+            // later authorizes START_VIDEO for the same callId.
+            ownerSub: getAuthenticatedCaller(request)?.sub,
+        };
+        socketMap.set(ws, socketCallMap);
+        await startTranscription(socketCallMap, server);
+    } else if (callMetaData.callEvent === 'SPEAKER_CHANGE') {
+        const socketData = socketMap.get(ws);
+        server.log.debug(
+            `[${callMetaData.callEvent}]: [${callMetaData.callId}] - Received speaker change. Active speaker = ${callMetaData.activeSpeaker}`
+        );
 
-      const highWaterMarkSize = (callMetaData.samplingRate / 10) * 2 * 2;
-      const audioInputStream = new BlockStream({ size: highWaterMarkSize });
-      const socketCallMap: SocketCallData = {
-          callMetadata: {
-              callId: callMetaData.callId,
-              callEvent: callMetaData.callEvent,
-              fromNumber: callMetaData.fromNumber,
-              toNumber: callMetaData.toNumber,
-              activeSpeaker: callMetaData.activeSpeaker,
-              agentId: callMetaData.agentId,
-              accessToken: callMetaData.accessToken,
-              idToken: callMetaData.idToken,
-              refreshToken: callMetaData.refreshToken,
-              shouldRecordCall: callMetaData.shouldRecordCall,
-              samplingRate: callMetaData.samplingRate,
-              channels: callMetaData.channels
-          },
-          audioInputStream: audioInputStream,
-          writeRecordingStream: writeRecordingStream,
-          recordingFileSize: recordingFileSize,
-          startStreamTime: new Date(),
-          speakerEvents: [],
-          ended: false,
-      };
-      socketMap.set(ws, socketCallMap);
-      startTranscribe(socketCallMap, server);
-  } else if (callMetaData.callEvent === 'SPEAKER_CHANGE') {
-      const socketData = socketMap.get(ws);
-      server.log.debug(
-          `[${callMetaData.callEvent}]: [${callMetaData.callId}] - Received speaker change. Active speaker = ${callMetaData.activeSpeaker}`
-      );
+        if (socketData && socketData.callMetadata) {
+            // We already know speaker name for the microphone channel (ch_1) - represented in callMetaData.agentId.
+            // We should only use SPEAKER_CHANGE to track who is speaking on the incoming meeting channel (ch_0)
+            // If the speaker is the same as the agentId, then we should ignore the event.
+            const mic_channel_speaker = callMetaData.agentId;
+            const activeSpeaker = callMetaData.activeSpeaker;
+            if (activeSpeaker !== mic_channel_speaker) {
+                server.log.debug(
+                    `[${callMetaData.callEvent}]: [${callMetaData.callId}] - active speaker '${activeSpeaker}' assigned to meeting channel (ch_0) as name does not match mic channel (ch_1) speaker '${mic_channel_speaker}'`
+                );
+                // set active speaker in the socketData structure being used by startTranscribe results loop.
+                socketData.callMetadata.activeSpeaker = callMetaData.activeSpeaker;
+            } else {
+                server.log.debug(
+                    `[${callMetaData.callEvent}]: [${callMetaData.callId}] - active speaker '${activeSpeaker}' not assigned to meeting channel (ch_0) as name matches mic channel (ch_1) speaker '${mic_channel_speaker}'`
+                );
+            }
+        } else {
+            // this is not a valid call metadata
+            server.log.error(
+                `[${callMetaData.callEvent}]: [${
+                    callMetaData.callId
+                }] - Invalid call metadata: ${stringifyCallMetaData(callMetaData)}`
+            );
+        }
+    } else if (callMetaData.callEvent === 'START_VIDEO') {
+        // Second socket dedicated to a fragmented-MP4 video stream for an
+        // audio call with the same callId. Servers without video support
+        // ignore this event (unknown callEvent) and drop the binary frames.
+        if (!callMetaData.callId) {
+            server.log.error(
+                `[START_VIDEO]: [${clientIP}] - START_VIDEO missing callId; ignoring.`
+            );
+            return;
+        }
+        // AUTHORIZATION. A video stream is admitted for this callId only when
+        // there is a live audio session for the same callId AND that session's
+        // owner is the same verified Cognito subject as this caller. The callId
+        // in the frame is client-supplied and is not used as evidence of
+        // anything on its own; ownership comes from the verified token.
+        const caller = getAuthenticatedCaller(request);
+        const audioSession = findAudioSessionByCallId(callMetaData.callId);
+        if (!audioSession) {
+            server.log.error(
+                `[START_VIDEO]: [${clientIP}][${callMetaData.callId}] - No active audio call for this callId; refusing video stream.`
+            );
+            ws.close(1008, 'no active call for callId');
+            return;
+        }
+        if (
+            !caller?.sub ||
+            !audioSession.ownerSub ||
+            audioSession.ownerSub !== caller.sub
+        ) {
+            server.log.error(
+                `[START_VIDEO]: [${clientIP}][${callMetaData.callId}] - Caller does not own this call; refusing video stream.`
+            );
+            ws.close(1008, 'not authorized for callId');
+            return;
+        }
+        const session = startVideoSession(callMetaData, server);
+        videoSocketMap.set(ws, session);
+    } else if (callMetaData.callEvent === 'END_VIDEO') {
+        const session = videoSocketMap.get(ws);
+        if (!session) {
+            server.log.error(
+                `[END_VIDEO]: [${clientIP}][${callMetaData.callId}] - END_VIDEO without START_VIDEO on this socket; ignoring.`
+            );
+            return;
+        }
+        videoSocketMap.delete(ws);
+        await endVideoSession(session.callId, server);
+    } else if (callMetaData.callEvent === 'END') {
+        const socketData = socketMap.get(ws);
+        if (!socketData || !socketData.callMetadata) {
+            server.log.error(
+                `[${callMetaData.callEvent}]: [${
+                    callMetaData.callId
+                }] - Received END without starting a call:  ${stringifyCallMetaData(
+                    callMetaData
+                )}`
+            );
+            return;
+        }
+        server.log.debug(
+            `[${callMetaData.callEvent}]: [${
+                callMetaData.callId
+            }] - Received call end event from client, writing it to KDS:  ${stringifyCallMetaData(
+                callMetaData
+            )}`
+        );
 
-      if (socketData && socketData.callMetadata) {
-      // We already know speaker name for the microphone channel (ch_1) - represented in callMetaData.agentId.
-      // We should only use SPEAKER_CHANGE to track who is speaking on the incoming meeting channel (ch_0)
-      // If the speaker is the same as the agentId, then we should ignore the event.
-          const mic_channel_speaker = callMetaData.agentId;
-          const activeSpeaker = callMetaData.activeSpeaker;
-          if (activeSpeaker !== mic_channel_speaker) {
-              server.log.debug(
-                  `[${callMetaData.callEvent}]: [${callMetaData.callId}] - active speaker '${activeSpeaker}' assigned to meeting channel (ch_0) as name does not match mic channel (ch_1) speaker '${mic_channel_speaker}'`
-              );
-              // set active speaker in the socketData structure being used by startTranscribe results loop.
-              socketData.callMetadata.activeSpeaker = callMetaData.activeSpeaker;
-          } else {
-              server.log.debug(
-                  `[${callMetaData.callEvent}]: [${callMetaData.callId}] - active speaker '${activeSpeaker}' not assigned to meeting channel (ch_0) as name matches mic channel (ch_1) speaker '${mic_channel_speaker}'`
-              );
-          }
-      } else {
-      // this is not a valid call metadata
-          server.log.error(
-              `[${callMetaData.callEvent}]: [${
-                  callMetaData.callId
-              }] - Invalid call metadata: ${JSON.stringify(callMetaData)}`
-          );
-      }
-  } else if (callMetaData.callEvent === 'END') {
-      const socketData = socketMap.get(ws);
-      if (!socketData || !socketData.callMetadata) {
-          server.log.error(
-              `[${callMetaData.callEvent}]: [${
-                  callMetaData.callId
-              }] - Received END without starting a call:  ${JSON.stringify(
-                  callMetaData
-              )}`
-          );
-          return;
-      }
-      server.log.debug(
-          `[${callMetaData.callEvent}]: [${
-              callMetaData.callId
-          }] - Received call end event from client, writing it to KDS:  ${JSON.stringify(
-              callMetaData
-          )}`
-      );
-
-      if (
-          typeof callMetaData.shouldRecordCall === 'undefined' ||
-      callMetaData.shouldRecordCall === null
-      ) {
-          server.log.debug(
-              `[${callMetaData.callEvent}]: [${callMetaData.callId}] - Client did not provide ShouldRecordCall in CallMetaData. Defaulting to  CFN parameter EnableAudioRecording =  ${SHOULD_RECORD_CALL}`
-          );
-
-          callMetaData.shouldRecordCall = SHOULD_RECORD_CALL;
-      } else {
-          server.log.debug(
-              `[${callMetaData.callEvent}]: [${callMetaData.callId}] - Using client provided ShouldRecordCall parameter in CallMetaData =  ${callMetaData.shouldRecordCall}`
-          );
-      }
-      await endCall(ws, socketData, callMetaData);
-  }
+        callMetaData.shouldRecordCall = resolveShouldRecordCall(
+            callMetaData.shouldRecordCall,
+            socketData.callMetadata.shouldRecordCall ?? SHOULD_RECORD_CALL
+        );
+        await endCall(ws, socketData, callMetaData);
+    }
 };
 
 const onWsClose = async (ws: WebSocket, code: number): Promise<void> => {
     ws.close(code);
+    const videoSession = videoSocketMap.get(ws);
+    if (videoSession) {
+        // Video socket closed without END_VIDEO (crash / network drop). The
+        // session survives a grace period for a client reconnect (fresh
+        // START_VIDEO), then finalizes with whatever was received.
+        server.log.debug(
+            `[ON WSCLOSE]: [${videoSession.callId}] - Video socket closed without END_VIDEO.`
+        );
+        videoSocketMap.delete(ws);
+        videoSocketDropped(videoSession.callId, server);
+        return;
+    }
     const socketData = socketMap.get(ws);
     if (socketData) {
         server.log.debug(
             `[ON WSCLOSE]: [${
                 socketData.callMetadata.callId
-            }] - Writing call end event due to websocket close event ${JSON.stringify(
+            }] - Writing call end event due to websocket close event ${stringifyCallMetaData(
                 socketData.callMetadata
             )}`
         );
@@ -450,7 +647,7 @@ const endCall = async (
                     server.log.debug(
                         `[${callMetaData.callEvent}]: [${
                             callMetaData.callId
-                        }] - Audio Recording enabled. Writing to S3.: ${JSON.stringify(
+                        }] - Audio Recording enabled. Writing to S3.: ${stringifyCallMetaData(
                             callMetaData
                         )}`
                     );
@@ -479,7 +676,11 @@ const endCall = async (
                     for await (const chunk of readStream) {
                         writeStream.write(chunk);
                     }
-                    writeStream.end();
+                    // Await the flush: the file is read back for the S3 upload
+                    // and (when video was recorded) by the ffmpeg mux.
+                    await new Promise<void>((resolve) =>
+                        writeStream.end(() => resolve())
+                    );
 
                     await writeToS3(callMetaData, sanitizedTempFilename);
                     await writeToS3(callMetaData, sanitizedWavFilename);
@@ -487,39 +688,77 @@ const endCall = async (
                         callMetaData,
                         path.resolve(LOCAL_TEMP_DIR, sanitizedTempFilename)
                     );
-                    await deleteTempFile(
-                        callMetaData,
-                        path.resolve(LOCAL_TEMP_DIR, sanitizedWavFilename)
+
+                    // If a video stream was recorded for this call, hand the
+                    // WAV over so it can be muxed into the video MP4 (the
+                    // video session deletes it when done). Otherwise delete.
+                    const wavPath = path.resolve(LOCAL_TEMP_DIR, sanitizedWavFilename);
+                    const wavAdopted = notifyAudioRecordingDone(
+                        callMetaData.callId,
+                        wavPath,
+                        server
                     );
+                    if (!wavAdopted) {
+                        await deleteTempFile(callMetaData, wavPath);
+                    }
 
                     const recordingUrl = `https://${RECORDINGS_BUCKET_NAME}.s3.${AWS_REGION}.amazonaws.com/${RECORDING_FILE_PREFIX}${wavRecordingFilename}`;
+                    server.log.info(
+                        `[${callMetaData.callEvent}]: [${callMetaData.callId}] - Recording uploaded: ${RECORDING_FILE_PREFIX}${wavRecordingFilename} (${socketData.recordingFileSize} bytes)`
+                    );
 
                     await writeCallRecordingEvent(callMetaData, recordingUrl, server);
                 } else {
+                    // No audio WAV to mux; let any video session finalize
+                    // video-only.
+                    notifyAudioRecordingDone(callMetaData.callId, undefined, server);
+                    server.log.info(
+                        `[${callMetaData.callEvent}]: [${callMetaData.callId}] - Recording NOT uploaded: shouldRecordCall=${callMetaData.shouldRecordCall} (deployment default ${SHOULD_RECORD_CALL}).`
+                    );
                     server.log.debug(
                         `[${callMetaData.callEvent}]: [${
                             callMetaData.callId
-                        }] - Audio Recording disabled. Add s3 url event is not written to KDS. : ${JSON.stringify(
+                        }] - Audio Recording disabled. Add s3 url event is not written to KDS. : ${stringifyCallMetaData(
                             callMetaData
                         )}`
                     );
                 }
+            } else {
+                // No audio recording was produced (e.g. no audio bytes ever
+                // arrived); let any video session finalize video-only.
+                notifyAudioRecordingDone(callMetaData.callId, undefined, server);
+                server.log.info(
+                    `[${callMetaData.callEvent}]: [${callMetaData.callId}] - Recording NOT uploaded: no audio was written (${socketData.recordingFileSize ?? 0} bytes).`
+                );
             }
 
             if (socketData.audioInputStream) {
                 server.log.debug(
                     `[${callMetaData.callEvent}]: [${
                         callMetaData.callId
-                    }] - Closing audio input stream:  ${JSON.stringify(callMetaData)}`
+                    }] - Closing audio input stream:  ${stringifyCallMetaData(callMetaData)}`
                 );
                 socketData.audioInputStream.end();
                 socketData.audioInputStream.destroy();
             }
+
+            // Flushes the tail utterance on each channel, then terminates the
+            // MicroVM. No-op for meetings transcribed by Amazon Transcribe.
+            try {
+                await stopMicrovmAsr(socketData, server);
+            } catch (error) {
+                server.log.error(
+                    `[${callMetaData.callEvent}]: [${
+                        callMetaData.callId
+                    }] - Error stopping the MicroVM ASR engine: ${normalizeErrorForLogging(error)}`
+                );
+            }
+
             if (socketData) {
                 server.log.debug(
                     `[${callMetaData.callEvent}]: [${
                         callMetaData.callId
-                    }] - Deleting websocket from map: ${JSON.stringify(callMetaData)}`
+                    }] - Deleting websocket from map: ${stringifyCallMetaData(callMetaData)}`
                 );
                 socketMap.delete(ws);
             }
@@ -531,7 +770,7 @@ const endCall = async (
             server.log.error(
                 `[${callMetaData.callEvent}]: [${
                     callMetaData.callId
-                }] - Duplicate End call event. Already received the end call event: ${JSON.stringify(
+                }] - Duplicate End call event. Already received the end call event: ${stringifyCallMetaData(
                     callMetaData
                 )}`
             );
@@ -634,3 +873,59 @@ server.listen(
         server.log.info(`[[WS SERVER STARTUP]]: Routes: \n${server.printRoutes()}`);
     }
 );
+
+/**
+ * Graceful shutdown. ECS sends SIGTERM on every deploy, scale-in, and
+ * health-check replacement, then SIGKILLs after StopTimeout. End-of-call video
+ * muxes run detached from the request path, so without this they are killed
+ * mid-ffmpeg and the user's recording vanishes with no event and no error.
+ *
+ * We stop accepting new work, give in-flight muxes a bounded window to finish,
+ * then exit. Keep SHUTDOWN_MUX_GRACE_MS below the container's StopTimeout.
+ */
+const SHUTDOWN_MUX_GRACE_MS = parseInt(
+    process.env['SHUTDOWN_MUX_GRACE_MS'] || '90000',
+    10
+);
+let shuttingDown = false;
+const shutdown = async (signal: string): Promise<void> => {
+    if (shuttingDown) {
+        return;
+    }
+    shuttingDown = true;
+    server.log.info(`[SHUTDOWN]: Received ${signal}; finishing in-flight work.`);
+
+    // Release ASR MicroVMs explicitly. Their maximumDurationInSeconds is only a
+    // backstop, so without this a deploy or scale-in would leave one running
+    // (and billing) per in-flight meeting until that ceiling expired.
+    for (const socketData of socketMap.values()) {
+        if (socketData.asr) {
+            try {
+                await stopMicrovmAsr(socketData, server);
+            } catch (err) {
+                server.log.error(
+                    `[SHUTDOWN]: Error releasing the ASR MicroVM for ${socketData.callMetadata.callId}: ${normalizeErrorForLogging(err)}`
+                );
+            }
+        }
+    }
+
+    try {
+        await awaitPendingMuxes(server, SHUTDOWN_MUX_GRACE_MS);
+    } catch (err) {
+        server.log.error(
+            `[SHUTDOWN]: Error waiting for in-flight video muxes: ${normalizeErrorForLogging(err)}`
+        );
+    }
+    try {
+        await server.close();
+    } catch (err) {
+        server.log.error(
+            `[SHUTDOWN]: Error closing server: ${normalizeErrorForLogging(err)}`
+        );
+    }
+    server.log.info('[SHUTDOWN]: Complete.');
+    process.exit(0);
+};
+process.on('SIGTERM', () => void shutdown('SIGTERM'));
+process.on('SIGINT', () => void shutdown('SIGINT'));

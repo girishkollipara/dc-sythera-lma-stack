@@ -10,14 +10,16 @@ import {
 } from '@aws-sdk/client-transcribe-streaming';
 import stream from 'stream';
 import { WriteStream } from 'fs';
+import type { AsrSessionSet } from './asr-microvm';
 
 export type Uuid = string;             // UUID as defined by RFC#4122
 
-export type EventType = 
+export type EventType =
     | 'START' // required
-    | 'ADD_TRANSCRIPT_SEGMENT' // required 
+    | 'ADD_TRANSCRIPT_SEGMENT' // required
     | 'UPDATE_AGENT' // optional
     | 'ADD_S3_RECORDING_URL'  // optional
+    | 'ADD_S3_VIDEO_RECORDING_URL' // optional
     | 'ADD_CALL_CATEGORY' // optional
     | 'END'; // required
 
@@ -47,6 +49,15 @@ export type CallEndEvent = CallEventBase<'END'> & {
 
 export type CallRecordingEvent = CallEventBase<'ADD_S3_RECORDING_URL'> & {
     RecordingUrl: string,
+    AccessToken?: string,
+    IdToken?: string,
+    RefreshToken?: string,
+};
+
+// Same shape the Virtual Participant emits, so the existing
+// call_event_processor -> updateVideoRecordingUrl pipeline consumes it as-is.
+export type CallVideoRecordingEvent = CallEventBase<'ADD_S3_VIDEO_RECORDING_URL'> & {
+    VideoRecordingUrl: string,
     AccessToken?: string,
     IdToken?: string,
     RefreshToken?: string,
@@ -82,6 +93,29 @@ export interface ChannelSpeakerData {
     startTimes: number[];
 }
 
+/**
+ * Per-channel Amazon Transcribe speaker partitioning (diarization).
+ *
+ * Amazon Transcribe's `ShowSpeakerLabel` is a STREAM-level flag and we send one
+ * 2-channel stream, so these two booleans do not map 1:1 onto the API: the flag
+ * is enabled when EITHER channel opts in, and the resulting labels are applied
+ * only to the channel(s) that asked for them.
+ *
+ * Named by channel ROLE, not by ch_0/ch_1, so clients never need to know the
+ * interleave order — the server owns that mapping (see CHANNEL_* below).
+ */
+export type DiarizationSettings = {
+    /** Diarize the system / meeting audio channel (ch_0). */
+    diarizeSystemChannel?: boolean,
+    /** Diarize the microphone channel (ch_1). */
+    diarizeMicChannel?: boolean,
+};
+
+/** Transcribe's channel id for the system / meeting audio (shared tab, screen). */
+export const CHANNEL_SYSTEM = 'ch_0';
+/** Transcribe's channel id for the local microphone. */
+export const CHANNEL_MIC = 'ch_1';
+
 export type CallMetaData = {
     callId: Uuid,
     fromNumber?: string,
@@ -91,20 +125,80 @@ export type CallMetaData = {
     samplingRate: number,
     callEvent: string,
     activeSpeaker: string,
+    /**
+     * Transcription engine for this meeting: 'transcribe' (Amazon Transcribe
+     * streaming) or 'microvm' (on-demand ASR + diarization MicroVM). Absent
+     * means the deployment default; asking for diarization also selects
+     * 'microvm', since that is where speaker labels come from.
+     */
+    asrEngine?: string,
+    /**
+     * How many people share this client's audio, when the user knows. Only they
+     * can know it — the Upload Audio page asks the same question. Absent or 0
+     * means discover as many speakers as appear.
+     */
+    maxSpeakers?: number,
+    // START_VIDEO only: ms between audio-stream start and video-stream start,
+    // applied as an offset when muxing so video aligns with audio/transcript.
+    videoTimeOffsetMs?: number,
+    // START_VIDEO only: true when this is a socket RECONNECT for a video
+    // stream whose client-side encoder session never restarted — the bytes
+    // continue the same fMP4 stream, so the server appends to the same file
+    // instead of rotating to a new segment.
+    videoResume?: boolean,
     channels: {
         [channelId: string]: ChannelSpeakerData;
+    };
+    /**
+     * Server-managed (never sent by a client): running count of final results and
+     * how many carried speaker labels, so a call where diarization was requested
+     * but Transcribe returned nothing can be warned about exactly once.
+     */
+    diarizationDiagnostics?: {
+        finals: number;
+        labelled: number;
+        warned: boolean;
+        /**
+         * Highest window count already logged for the in-progress result, per
+         * channel, so the info-level diagnostic fires once per window boundary
+         * rather than once per partial. Reset when the result changes, so it
+         * cannot grow with the length of the meeting.
+         */
+        windowMarks?: {
+            [channelId: string]: {
+                resultId: string;
+                settledEmitted: number;
+                logged: number;
+                /** Window anchor, pinned on first sight so it cannot drift. */
+                origin?: number;
+            };
+        };
     };
     accessToken?: string,
     idToken?: string,
     refreshToken?: string,
-};
+} & DiarizationSettings;
 
 export type SocketCallData = {
     callMetadata: CallMetaData,
     audioInputStream?: stream.PassThrough,
     writeRecordingStream?: WriteStream,
     recordingFileSize?: number
+    /**
+     * MicroVM ASR engine state for this call: the MicroVM lease, the stereo
+     * de-interleaver, and one WebSocket session per audio channel. Undefined
+     * when the meeting is transcribed by Amazon Transcribe.
+     */
+    asr?: AsrSessionSet,
     startStreamTime: Date,
     speakerEvents: [],
-    ended: boolean
-}
+    ended: boolean,
+    /**
+     * Cognito `sub` of the user whose verified token opened this call's audio
+     * socket. Used to authorize later actions on the same callId (notably
+     * START_VIDEO on a SECOND socket) so one user cannot attach media to, or
+     * pull audio out of, another user's call. Undefined only for connections
+     * that predate the check (defensive; the handler treats that as a denial).
+     */
+    ownerSub?: string
+};

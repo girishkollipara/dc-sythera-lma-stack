@@ -6,9 +6,35 @@ import { defaultProvider } from '@aws-sdk/credential-provider-node';
 import { spawn, ChildProcess } from 'child_process';
 import { createWriteStream } from 'fs';
 import { details } from './details.js';
-import { sendAddTranscriptSegment, sendStartMeeting, sendEndMeeting, kinesisStreamManager } from './kinesis-stream.js';
+import {
+    sendAddTranscriptSegment,
+    sendAsrTranscriptSegment,
+    sendStartMeeting,
+    sendEndMeeting,
+    kinesisStreamManager,
+} from './kinesis-stream.js';
+import {
+    AsrSegment,
+    MicrovmAsrSession,
+    acquireLease,
+    fetchAsrRuntimeSwitches,
+    releaseLease,
+    resolveVpAsrEngine,
+    speakerNameFor,
+} from './asr-microvm-client.js';
 import { voiceAssistant } from './voice-assistant.js';
+import { RosterTimeline } from './roster-timeline.js';
 import { agentSpeakingDetector } from './agent-speaking-detector.js';
+
+const ASR_STOP_RELEASE_TIMEOUT_MS = 10_000;
+
+export function rosterLagSeconds(platform: string = details.invite.meetingPlatform): number {
+    const configured = Number.parseFloat(process.env.ASR_ROSTER_LAG_SECONDS ?? '');
+    if (Number.isFinite(configured) && configured >= 0) {
+        return configured;
+    }
+    return platform.toUpperCase() === 'ZOOM' ? 2.0 : 0.75;
+}
 
 // Global current speaker (matching Python)
 let currentSpeaker = "none";
@@ -16,14 +42,114 @@ let currentSpeaker = "none";
 // Local testing mode - skip AWS services
 const isLocalTest = process.env.LOCAL_TEST === 'true';
 
+/**
+ * Maximum bytes per Transcribe `AudioChunk`.
+ *
+ * ffmpeg's stdout is consumed with `for await`, so the buffer size is whatever
+ * Node's opportunistic read happens to return — not a fixed frame. When the read
+ * loop stalls briefly (CPU pressure from Chromium + avatar + video recording) a
+ * burst of audio accumulates and the next read can exceed Transcribe's per-frame
+ * limit. The request is then rejected with "Your stream is too big. Reduce the
+ * frame size and try your request again." and, before this fix, transcription
+ * aborted for the rest of the meeting (GitHub #536).
+ *
+ * 16 KB = 512 ms at 16 kHz mono PCM16 (16000 * 2 bytes/s). Comfortably under the
+ * service limit while keeping frames large enough not to add per-frame overhead.
+ */
+export const MAX_AUDIO_CHUNK_BYTES = 16 * 1024;
+
+/**
+ * Split a PCM buffer into frames no larger than `maxBytes`.
+ *
+ * Slices rather than drops: every byte is forwarded, in order, so no audio is
+ * lost. Buffers already within the limit are passed through as-is (no copy), so
+ * the common case costs nothing.
+ */
+export function frameAudioChunk(
+    chunk: Buffer,
+    maxBytes: number = MAX_AUDIO_CHUNK_BYTES,
+): Buffer[] {
+    if (chunk.length <= maxBytes) return [chunk];
+    const frames: Buffer[] = [];
+    for (let offset = 0; offset < chunk.length; offset += maxBytes) {
+        frames.push(chunk.subarray(offset, Math.min(offset + maxBytes, chunk.length)));
+    }
+    return frames;
+}
+
+/**
+ * True when a Transcribe error is a transient framing/throughput complaint
+ * rather than a permanent misconfiguration.
+ *
+ * "Your stream is too big" arrives as a BadRequestException, which the
+ * non-retryable predicate would otherwise treat as a fatal configuration error —
+ * aborting the meeting's transcription and logging a message about
+ * TRANSCRIBE_LANGUAGE_CODE that has nothing to do with the actual failure.
+ * Reconnecting is both correct and safe: the retry path already preserves the
+ * transcript timeline via transcribeTimeOffsetSeconds (GitHub #292).
+ */
+export function isTransientFramingError(error: { message?: string }): boolean {
+    const message = error?.message || '';
+    return /stream is too big|reduce the frame size/i.test(message);
+}
+
+// True when a Transcribe streaming error indicates the SessionId we tried to
+// resume is no longer valid (expired / closed / unknown), so the next attempt
+// must start a fresh session rather than reuse the stale id. Kept in sync with
+// the equivalent check in the WebSocket transcriber (transcribe.ts).
+const isStaleSessionError = (error: any): boolean => {
+    const message = (error?.message ?? '').toLowerCase();
+    // Require the word "session" on every message-based match: otherwise
+    // unrelated errors that merely contain "has expired" (e.g. the STS
+    // "security token ... has expired" credential error) would be misread as a
+    // stale SessionId and needlessly discard a still-valid session.
+    return (
+        (message.includes('session') &&
+            (message.includes('expired') ||
+                message.includes('not found') ||
+                message.includes('invalid'))) ||
+        error?.name === 'SessionExpiredException'
+    );
+};
+
 export class TranscriptionService {
     private process: ChildProcess | null = null;           // FFmpeg: combined_audio.monitor → Transcribe
-    private novaAudioProcess: ChildProcess | null = null;  // FFmpeg: meeting_audio.monitor → Nova/recording
-    private meetingToCombinedPipe: ChildProcess | null = null; // pacat: meeting audio → combined_audio sink
+    private novaAudioProcess: ChildProcess | null = null;  // FFmpeg: meeting_audio.monitor → Nova (NOT the recording)
+    // pacat: meeting audio → combined_audio. This is the SOLE route for meeting
+    // audio into the sink Transcribe reads, and it must stay an ACTIVE stream:
+    // a module-loopback alone let the null sink idle/suspend and combined_audio
+    // went digitally silent (peak amplitude 0 over 50s) while meeting_audio still
+    // had audio (GitHub #569).
+    private meetingToCombinedPipe: ChildProcess | null = null;
     private startTime: number | null = null;
+    // Cumulative timeline offset (seconds) applied to Transcribe timestamps.
+    // Amazon Transcribe resets Item.StartTime/EndTime to 0 on every new
+    // StartStreamTranscription request (reusing SessionId does NOT resume the
+    // timeline). On each reconnect we advance this by the highest EndTime seen
+    // so transcript segments continue the meeting timeline instead of jumping
+    // back to 0 and overlapping earlier segments (GitHub #292). Kept consistent
+    // with the WebSocket transcriber (transcribe.ts).
+    private transcribeTimeOffsetSeconds = 0;
+    // Set by handleTranscriptEvents when Transcribe closes the result stream
+    // server-side while the meeting is still live (idle / duration limit /
+    // transient close). It unblocks writeAudio's spin loop so the session's
+    // Promise.all resolves and the retry loop reconnects instead of hanging with
+    // a dead transcription pipe (GitHub #292). Mirrors the WebSocket
+    // transcriber's clean-close reconnect (transcribe.ts).
+    private reconnectRequested = false;
     private readonly channels = 1;
     private readonly sampleRate = 16000; // in hertz
     private transcribeClient: TranscribeStreamingClient;
+    // Live only while this meeting is transcribed by the on-demand MicroVM engine: one
+    // session per audio source, like Stream Audio's two channels.
+    private meetingSession: MicrovmAsrSession | null = null;
+    private agentSession: MicrovmAsrSession | null = null;
+    private agentAudioProcess: ChildProcess | null = null;  // FFmpeg: agent_output.monitor → assistant session
+    private engineRuns = 0;
+    private engineTimeBase = 0;
+    private sessionsFinishing: Promise<void> = Promise.resolve();
+    private microvmRun: Promise<boolean> | null = null;
+    private readonly rosterTimeline = new RosterTimeline([details.lmaIdentity, details.scribeIdentity]);
     private isTranscribing = false;
     private mockTranscriptionInterval: NodeJS.Timeout | null = null;
     
@@ -60,7 +186,15 @@ export class TranscriptionService {
         console.log('Wake phrases configured:', this.wakePhrases);
     }
 
-    private async *audioStream() {
+    /**
+     * @param recordingStream tee of the audio that goes to Transcribe, which is
+     *   what the meeting's S3 audio recording must contain. It used to be fed from
+     *   the meeting-ONLY ffmpeg in writeAudio, so the voice assistant's spoken
+     *   replies were structurally absent from every recording — while the video
+     *   recording, which captures combined_audio.monitor, had them. Teeing here
+     *   makes the audio recording match both the transcript and the video.
+     */
+    private async *audioStream(recordingStream?: NodeJS.WritableStream) {
 
         // Capture from combined_audio.monitor to get both meeting and agent audio for transcription
         this.process = spawn('ffmpeg', [
@@ -100,12 +234,25 @@ export class TranscriptionService {
 
         try {
             for await (const chunk of this.process.stdout!) {
-                if (!details.start) {
-                    yield {
-                        AudioEvent: { AudioChunk: Buffer.alloc(chunk.length) },
-                    };
-                } else {
-                    yield { AudioEvent: { AudioChunk: chunk } };
+                // Record exactly what Transcribe hears, before framing: the frames
+                // below are subarrays of this chunk, so writing them instead would
+                // duplicate nothing but cost an extra write per frame. Gated on
+                // details.start for the same reason the silence branch below is —
+                // nothing before the meeting starts belongs in the recording.
+                if (details.start && recordingStream) {
+                    recordingStream.write(chunk);
+                }
+                // Cap the frame size (see MAX_AUDIO_CHUNK_BYTES). ffmpeg can hand
+                // over a buffer larger than Transcribe accepts, which used to
+                // abort transcription for the rest of the meeting (GitHub #536).
+                for (const frame of frameAudioChunk(chunk)) {
+                    if (!details.start) {
+                        // Before the meeting starts, send silence of the same
+                        // length so the stream stays open without capturing audio.
+                        yield { AudioEvent: { AudioChunk: Buffer.alloc(frame.length) } };
+                    } else {
+                        yield { AudioEvent: { AudioChunk: frame } };
+                    }
                 }
                 if (!this.startTime) {
                     this.startTime = Date.now();
@@ -169,14 +316,51 @@ export class TranscriptionService {
         // In local test mode, skip Kinesis/AppSync but still run transcription if agent is enabled
         // (Transcription provides audio stream for ElevenLabs agent)
 
+        // maxRetries bounds CONSECUTIVE failed (re)connects, not the total over
+        // the life of the meeting. A session that ran long enough resets the
+        // counter (see healthySessionMs), so a long meeting is not aborted
+        // merely because it accumulated a handful of transient reconnects spread
+        // across an hour. Kept consistent with the WebSocket transcriber
+        // (transcribe.ts, GitHub #292).
         const maxRetries = 5;
         const retryDelay = 5000; // 5 seconds
+        const healthySessionMs = 10_000;
         let sessionId: string | undefined;
+        let consecutiveFailures = 0;
 
-        for (let attempt = 0; attempt < maxRetries; attempt++) {
+        // The recording write stream spans the WHOLE meeting, not one Transcribe
+        // session. Open it ONCE in append mode and reuse it across reconnects —
+        // recreating it per session (truncate mode) would discard everything
+        // recorded before each reconnect. writeAudio no longer closes it; it is
+        // closed once when the meeting ends (below).
+        const recordingStream = createWriteStream(details.tmpRecordingFilename, { flags: 'a' });
+
+        // The deployment's runtime switch, read per meeting; ASR_ENGINE overrides it
+        // per VP. A MicroVM that cannot be acquired falls through to Amazon Transcribe.
+        const switches = await fetchAsrRuntimeSwitches();
+        if (resolveVpAsrEngine(switches) === 'microvm') {
+            const ran = await this.runMicrovmTranscription(recordingStream, switches.diarizeVirtualParticipant);
+            if (ran) {
+                this.finishMeeting(recordingStream);
+                return;
+            }
+            console.warn('[ASR] MicroVM ASR unavailable; Amazon Transcribe takes over for the rest of this meeting');
+        }
+
+        // Loop over Transcribe sessions for the life of the meeting. Each
+        // iteration is one StartStreamTranscription session; we reconnect when a
+        // session ends unexpectedly (clean server-side close or transient error)
+        // while the meeting is still live.
+        for (;;) {
+            if (!this.isTranscribing || !details.start) {
+                console.log('Meeting ended - stopping transcription session loop');
+                break;
+            }
+            this.reconnectRequested = false;
+            const sessionStartMs = Date.now();
             try {
                 const transcriptionParams: any = {
-                    AudioStream: this.audioStream(),
+                    AudioStream: this.audioStream(recordingStream),
                     MediaSampleRateHertz: this.sampleRate,
                     MediaEncoding: 'pcm',
                     ShowSpeakerLabel: true,
@@ -238,28 +422,15 @@ export class TranscriptionService {
                     sessionId = response.SessionId;
                     console.log(`New transcription session ID: ${sessionId}`);
                     
-                    // Update status to ACTIVE when transcription starts
-                    const vpId = process.env.VIRTUAL_PARTICIPANT_ID;
-                    if (vpId) {
-                        try {
-                            const { VirtualParticipantStatusManager } = await import('./status-manager.js');
-                            const statusManager = new VirtualParticipantStatusManager(vpId);
-                            await statusManager.setActive();
-                            console.log(`VP ${vpId} status: ACTIVE (transcription started)`);
-                        } catch (error) {
-                            console.log(`Failed to update VP status to ACTIVE: ${error}`);
-                        }
-                    }
+                    await this.markActive();
                 }
 
-                const recordingStream = createWriteStream(details.tmpRecordingFilename);
-                
                 // In local test mode, wrap with error handlers to prevent crashes
                 // In production, let errors propagate to crash the task
                 if (isLocalTest) {
                     try {
                         await Promise.all([
-                            this.writeAudio(response, recordingStream).catch(err => {
+                            this.writeAudio(response).catch(err => {
                                 console.error('Audio write error (non-fatal in local test):', err.message);
                                 return Promise.resolve();
                             }),
@@ -274,9 +445,39 @@ export class TranscriptionService {
                 } else {
                     // Production mode - let errors crash the task
                     await Promise.all([
-                        this.writeAudio(response, recordingStream),
+                        this.writeAudio(response),
                         this.handleTranscriptEvents(response)
                     ]);
+                }
+
+                // The session's result stream ended WITHOUT throwing. If the
+                // meeting is still live this is an unexpected server-side close
+                // (Amazon Transcribe closes streams on its own schedule — idle
+                // behaviour, session duration limits, transient close). Reconnect
+                // instead of returning, which previously left the client
+                // streaming audio into a dead transcription pipe (GitHub #292).
+                if (this.isTranscribing && details.start) {
+                    this.teardownSessionProcesses();
+                    // A session that ran long enough is healthy — reset the
+                    // consecutive-failure counter so ordinary periodic reconnects
+                    // never accumulate toward maxRetries. An immediate clean close
+                    // (<healthySessionMs) DOES count, so a session that opens and
+                    // instantly closes over and over cannot reconnect forever.
+                    if (Date.now() - sessionStartMs >= healthySessionMs) {
+                        consecutiveFailures = 0;
+                    } else {
+                        consecutiveFailures += 1;
+                        if (consecutiveFailures >= maxRetries) {
+                            console.error(`Max consecutive reconnects (${maxRetries}) reached on clean close. Transcription stopped.`);
+                            break;
+                        }
+                    }
+                    console.log(
+                        `Transcribe result stream closed while meeting is live; reconnecting. ` +
+                        `timeOffset: ${this.transcribeTimeOffsetSeconds.toFixed(2)}s`,
+                    );
+                    await new Promise(resolve => setTimeout(resolve, 1000));
+                    continue;
                 }
 
                 console.log('Transcription completed successfully');
@@ -284,61 +485,422 @@ export class TranscriptionService {
 
             } catch (error: any) {
                 // nosemgrep: javascript.lang.security.audit.unsafe-formatstring.unsafe-formatstring -- ECMAScript template literals do not interpret util.format specifiers
-                console.error(`Transcription error (attempt ${attempt + 1}/${maxRetries}):`, error.message);
+                console.error(`Transcription error (consecutive failure ${consecutiveFailures + 1}/${maxRetries}):`, error.message);
 
+                // A framing/throughput complaint is transient, so it must be
+                // checked FIRST: "Your stream is too big" is a
+                // BadRequestException with httpStatusCode 400 and would otherwise
+                // match every clause below, aborting the meeting's transcription
+                // and blaming the language configuration (GitHub #536).
                 const isNonRetryable =
-                    error.name === 'BadRequestException' ||
-                    error.name === 'ValidationException' ||
-                    error.name === 'InvalidParameterException' ||
-                    error.$metadata?.httpStatusCode === 400 ||
-                    error.message?.includes('validation error') ||
-                    error.message?.includes('non-retryable streaming request');
+                    !isTransientFramingError(error) &&
+                    (error.name === 'BadRequestException' ||
+                        error.name === 'ValidationException' ||
+                        error.name === 'InvalidParameterException' ||
+                        error.$metadata?.httpStatusCode === 400 ||
+                        error.message?.includes('validation error') ||
+                        error.message?.includes('non-retryable streaming request'));
 
-                // If the session has expired, clear the session ID so next retry starts fresh
-                if (error.message?.includes('has expired')) {
-                    console.log('Transcribe session expired - will start a new session on retry');
+                // If the resumed SessionId is no longer valid (expired / closed /
+                // not found / invalid), clear it so the next retry starts a FRESH
+                // session; the cumulative time offset keeps the timeline continuous.
+                // Kept consistent with isStaleSessionError() in the WebSocket
+                // transcriber (transcribe.ts).
+                if (isStaleSessionError(error)) {
+                    console.log(`Transcribe SessionId '${sessionId}' is stale/expired - will start a new session on retry`);
                     sessionId = undefined;
                 }
                 
-                // Kill any lingering FFmpeg processes from the failed attempt to prevent
-                // ERR_STREAM_PREMATURE_CLOSE from bubbling up as an uncaught exception
-                if (this.process) {
-                    try { this.process.kill(); } catch (_) { /* ignore */ }
-                    this.process = null;
-                }
-                if (this.novaAudioProcess) {
-                    try { this.novaAudioProcess.kill(); } catch (_) { /* ignore */ }
-                    this.novaAudioProcess = null;
-                }
-                if (this.meetingToCombinedPipe) {
-                    try {
-                        if (this.meetingToCombinedPipe.stdin && !this.meetingToCombinedPipe.stdin.destroyed) {
-                            this.meetingToCombinedPipe.stdin.end();
-                        }
-                        this.meetingToCombinedPipe.kill();
-                    } catch (_) { /* ignore */ }
-                    this.meetingToCombinedPipe = null;
-                }
+                // Promise.all rejects the instant handleTranscriptEvents throws,
+                // WITHOUT waiting for the concurrent writeAudio — so its spin
+                // loop is now orphaned. Signal it to exit (it polls every 100ms)
+                // so it can't linger as an idle timer. Safe against the loop-top
+                // reset: every retry path below waits ≥1s before the next
+                // iteration clears the flag, far longer than the poll interval.
+                this.reconnectRequested = true;
+
+                // Kill the session's FFmpeg/pacat processes to prevent
+                // ERR_STREAM_PREMATURE_CLOSE from bubbling up as an uncaught
+                // exception; they are respawned on the next (re)connect.
+                this.teardownSessionProcesses();
 
                 if (isNonRetryable) {
+                    // Only mention the language settings when the error is
+                    // plausibly about them. Pointing at TRANSCRIBE_LANGUAGE_* for
+                    // every 400 sent a real investigation down the wrong path
+                    // (GitHub #536): the failing request was an oversized audio
+                    // frame and the language configuration was correct.
+                    const looksLanguageRelated = /language|vocabulary|LanguageCode|LanguageOptions/i.test(
+                        error.message || '',
+                    );
                     console.error(
-                        'Non-retryable Transcribe configuration error — aborting without further retries. ' +
-                        'Check TRANSCRIBE_LANGUAGE_CODE / TRANSCRIBE_LANGUAGE_OPTIONS / TRANSCRIBE_PREFERRED_LANGUAGE.',
+                        `Non-retryable Transcribe error — aborting without further retries: ${error.message}` +
+                            (looksLanguageRelated
+                                ? ' Check TRANSCRIBE_LANGUAGE_CODE / TRANSCRIBE_LANGUAGE_OPTIONS / TRANSCRIBE_PREFERRED_LANGUAGE.'
+                                : ''),
                     );
                     break;
                 }
 
-                if (attempt < maxRetries - 1) {
-                    console.log(`Retrying in ${retryDelay / 1000} seconds...`);
-                    await new Promise(resolve => setTimeout(resolve, retryDelay));
-                } else {
-                    console.error('Max retries reached. Transcription stopped.');
+                // Stop retrying once the meeting has ended — no point restarting
+                // a session for a call that is over.
+                if (!this.isTranscribing || !details.start) {
+                    console.log('Meeting ended - not retrying transcription session.');
                     break;
                 }
+
+                // Count only CONSECUTIVE failures: a session that ran long enough
+                // before failing is treated as healthy and resets the counter,
+                // so a long meeting is not aborted by transient reconnects spread
+                // across it (GitHub #292).
+                if (Date.now() - sessionStartMs >= healthySessionMs) {
+                    consecutiveFailures = 0;
+                }
+                consecutiveFailures += 1;
+
+                if (consecutiveFailures >= maxRetries) {
+                    console.error(`Max consecutive retries (${maxRetries}) reached. Transcription stopped.`);
+                    break;
+                }
+
+                console.log(`Retrying in ${retryDelay / 1000} seconds (consecutive failure ${consecutiveFailures}/${maxRetries})...`);
+                await new Promise(resolve => setTimeout(resolve, retryDelay));
             }
+        }
+
+        this.finishMeeting(recordingStream);
+    }
+
+    /** Report ACTIVE once transcription is actually producing, whichever engine runs it. */
+    private async markActive(): Promise<void> {
+        const vpId = process.env.VIRTUAL_PARTICIPANT_ID;
+        if (!vpId) {
+            return;
+        }
+        try {
+            const { VirtualParticipantStatusManager } = await import('./status-manager.js');
+            const statusManager = new VirtualParticipantStatusManager(vpId);
+            await statusManager.setActive();
+            console.log(`VP ${vpId} status: ACTIVE (transcription started)`);
+        } catch (error) {
+            console.log(`Failed to update VP status to ACTIVE: ${error}`);
+        }
+    }
+
+    /** Meeting is over: close the recording stream exactly once and mark the service stopped. */
+    private finishMeeting(recordingStream: NodeJS.WritableStream): void {
+        try {
+            recordingStream.end();
+        } catch (error: any) {
+            console.error('Failed to close recording stream:', error?.message ?? error);
         }
         this.isTranscribing = false;
         console.log('Transcription service stopped');
+    }
+
+    /**
+     * Transcribe on the MicroVM engine. Returns false if no MicroVM could be acquired
+     * or the engine never became ready, so the caller falls back to Amazon Transcribe;
+     * otherwise returns when the meeting ends or the session exhausts its retries.
+     */
+    private async runMicrovmTranscription(
+        recordingStream: NodeJS.WritableStream,
+        diarize: boolean,
+    ): Promise<boolean> {
+        const run = this.runMicrovmTranscriptionOnce(recordingStream, diarize);
+        this.microvmRun = run;
+        try {
+            return await run;
+        } finally {
+            if (this.microvmRun === run) {
+                this.microvmRun = null;
+            }
+        }
+    }
+
+    private async runMicrovmTranscriptionOnce(
+        recordingStream: NodeJS.WritableStream,
+        diarize: boolean,
+    ): Promise<boolean> {
+        const callId = kinesisStreamManager.currentCallId;
+        const lease = await acquireLease(callId);
+        if (!lease) {
+            return false;
+        }
+        if (!this.isTranscribing) {
+            if (lease.microvmId) {
+                await releaseLease(lease.microvmId).catch(() => undefined);
+            }
+            return true;
+        }
+        const run = this.engineRuns;
+        this.engineRuns += 1;
+        const common = {
+            callId,
+            lease,
+            run,
+            timeBaseSeconds: Math.max(this.engineTimeBase, this.transcribeTimeOffsetSeconds),
+            // A paused meeting is not over: the sessions stay up and are fed silence.
+            isMeetingLive: () => this.isTranscribing,
+        };
+        const meetingSession = new MicrovmAsrSession({
+            ...common,
+            channel: 'CALLER',
+            diarize,
+            onSegment: (segment) => this.handleMeetingAsrSegment(segment),
+        });
+        const agentSession = voiceAssistant.isEnabled() && details.meetingMode !== 'translator'
+            ? new MicrovmAsrSession({
+                  ...common,
+                  channel: 'AGENT',
+                  diarize: false,
+                  onSegment: (segment) => this.handleAgentAsrSegment(segment),
+              })
+            : null;
+        this.meetingSession = meetingSession;
+        this.agentSession = agentSession;
+        const agentReady = agentSession ? agentSession.start() : Promise.resolve(true);
+        const meetingReady = await meetingSession.start();
+        if (!meetingReady && !this.isTranscribing) {
+            await this.finishMicrovmSessions();
+            await this.releaseMicrovm(meetingSession);
+            return true;
+        }
+        if (!meetingReady) {
+            console.error('[ASR] MicroVM ASR session never became ready');
+            // Finish first, or the sessions keep reconnecting against a released MicroVM.
+            await this.finishMicrovmSessions();
+            await this.releaseMicrovm(meetingSession);
+            return false;
+        }
+        void agentReady.then((ready) => {
+            if (!ready && this.agentSession === agentSession) {
+                console.warn("[ASR AGENT] session not ready at start; the assistant's replies appear once it connects");
+            }
+        });
+        const agent = this.agentSession;
+        console.log(
+            `[ASR] MicroVM ASR active for ${callId} (speaker labels: ${meetingSession.speakerLabelsActive}, assistant channel: ${agent ? 'AGENT' : 'none'})`,
+        );
+        await this.markActive();
+
+        // Both feeds start together so the two engine clocks share one meeting timeline.
+        this.startMeetingAudioFanout((chunk) => meetingSession.pushPcm(chunk));
+        if (agent) {
+            this.startAgentAudioCapture((chunk) => agent.pushPcm(chunk));
+        }
+        let fellBack = false;
+        let agentGaveUpLogged = false;
+        try {
+            // The combined stream is consumed only for the recording tee and liveness;
+            // the engine hears the two separate sources above.
+            for await (const frame of this.audioStream(recordingStream)) {
+                void frame;
+                if (!this.isTranscribing) {
+                    break;
+                }
+                if (meetingSession.hasGivenUp) {
+                    console.error('[ASR] MicroVM ASR session gave up; Amazon Transcribe takes over for the rest of this meeting');
+                    fellBack = true;
+                    break;
+                }
+                if (agent?.hasGivenUp && !agentGaveUpLogged) {
+                    console.error("[ASR AGENT] session gave up; the assistant's replies are no longer transcribed");
+                    agentGaveUpLogged = true;
+                }
+            }
+        } catch (error: any) {
+            console.error(`[ASR] audio stream error: ${error?.message || error}`);
+        } finally {
+            this.teardownSessionProcesses();
+            this.engineTimeBase = Math.max(
+                this.engineTimeBase,
+                meetingSession.audioSeconds,
+                agent?.audioSeconds ?? 0,
+            );
+            await this.finishMicrovmSessions();
+            await this.releaseMicrovm(meetingSession);
+        }
+        if (fellBack) {
+            this.transcribeTimeOffsetSeconds = Math.max(this.transcribeTimeOffsetSeconds, this.engineTimeBase);
+            return false;
+        }
+        return true;
+    }
+
+    private async finishMicrovmSessions(): Promise<void> {
+        const sessions = [this.meetingSession, this.agentSession].filter(
+            (session): session is MicrovmAsrSession => session !== null,
+        );
+        this.meetingSession = null;
+        this.agentSession = null;
+        const finishing = Promise.all(
+            sessions.map(async (session) => {
+                try {
+                    await session.finish();
+                } catch (error: any) {
+                    console.error(`[ASR] error finishing MicroVM session: ${error?.message || error}`);
+                }
+            }),
+        );
+        this.sessionsFinishing = Promise.all([this.sessionsFinishing, finishing]).then(() => undefined);
+        await this.sessionsFinishing;
+    }
+
+    private async releaseMicrovm(session: MicrovmAsrSession): Promise<void> {
+        if (!session.microvmId) {
+            return; // ASR_DIRECT_ENDPOINT: nothing was launched
+        }
+        try {
+            await releaseLease(session.microvmId);
+            console.log(`[ASR] released ASR MicroVM ${session.microvmId}`);
+        } catch (error: any) {
+            console.error(`[ASR] error releasing MicroVM ${session.microvmId}: ${error?.message || error}`);
+        }
+    }
+
+    /** A meeting row: the roster name at the row's START, plus the voice id when per-voice labels are on. */
+    private handleMeetingAsrSegment(segment: AsrSegment): void {
+        const roster = this.rosterTimeline.speakerFor(segment.startSec, segment.endSec, rosterLagSeconds());
+        const speaker = speakerNameFor(roster, segment.speaker);
+        sendAsrTranscriptSegment({
+            channel: 'CALLER',
+            segmentId: segment.segmentId,
+            startTime: segment.startSec,
+            endTime: segment.endSec,
+            transcript: segment.text,
+            isPartial: segment.isPartial,
+            speaker,
+        }).catch((error) => {
+            console.error('Failed to send transcript to Kinesis:', error);
+        });
+
+        // Wake-phrase detection works on the text alone; the engine sends no word
+        // timings on this path, so the caption log (which needs them) is skipped.
+        this.processTranscriptResult({
+            IsPartial: segment.isPartial,
+            Alternatives: [{ Transcript: segment.text, Items: [] }],
+        });
+    }
+
+    /** The assistant's own voice from its own session: labelled as the VP, never diarized, never a wake phrase. */
+    private handleAgentAsrSegment(segment: AsrSegment): void {
+        sendAsrTranscriptSegment({
+            channel: 'AGENT',
+            segmentId: segment.segmentId,
+            startTime: segment.startSec,
+            endTime: segment.endSec,
+            transcript: segment.text,
+            isPartial: segment.isPartial,
+            speaker: (details.lmaIdentity || details.scribeIdentity || 'LMA').trim(),
+        }).catch((error) => {
+            console.error('Failed to send transcript to Kinesis:', error);
+        });
+    }
+
+    private spawnPcmCapture(source: string, label: string): ChildProcess {
+        const capture = spawn('ffmpeg', [
+            '-f', 'pulse',
+            '-i', source,
+            '-ac', '1',
+            '-ar', '16000',
+            '-acodec', 'pcm_s16le',
+            '-f', 's16le',
+            '-loglevel', 'warning',
+            '-',
+        ]);
+        capture.stderr?.on('data', (data: any) => {
+            const msg = data.toString();
+            if (!msg.includes('size=') && !msg.includes('time=')) {
+                console.log('FFmpeg (%s): %s', label, msg.trim());
+            }
+        });
+        return capture;
+    }
+
+    /** The assistant's own voice (agent_output.monitor) for its transcript session; silence while paused. */
+    private startAgentAudioCapture(onPcm: (chunk: Buffer) => void): void {
+        this.agentAudioProcess = this.spawnPcmCapture('agent_output.monitor', 'assistant audio');
+        this.agentAudioProcess.on('error', (error: any) => {
+            console.error(`FFmpeg (assistant audio) process error: ${error.message}`);
+        });
+        this.agentAudioProcess.stdout?.on('data', (chunk: Buffer) => {
+            if (!this.isTranscribing) {
+                return;
+            }
+            onPcm(details.start ? chunk : Buffer.alloc(chunk.length));
+        });
+    }
+
+    /** Meeting audio to combined_audio, the voice assistant and, on the engine path, the meeting session. */
+    private startMeetingAudioFanout(onMeetingPcm?: (chunk: Buffer) => void): void {
+        // The only writer of meeting audio on combined_audio (entrypoint.sh has no
+        // loopback for it); an active pacat stream also keeps the null sink from
+        // suspending (#542, #569).
+        this.meetingToCombinedPipe = spawn('pacat', [
+            '--playback',
+            '--device=combined_audio',
+            '--format=s16le',
+            '--rate=16000',
+            '--channels=1',
+            '--raw',
+            '--latency-msec=80',
+        ]);
+
+        this.meetingToCombinedPipe.on('error', (error: any) => {
+            console.error(`pacat (meeting→combined) error: ${error.message}`);
+        });
+
+        this.meetingToCombinedPipe.stderr?.on('data', (data: any) => {
+            const msg = data.toString().trim();
+            if (msg) console.log(`pacat (meeting→combined): ${msg}`);
+        });
+
+        this.novaAudioProcess = this.spawnPcmCapture('meeting_audio.monitor', 'meeting audio');
+
+        // Add error handlers for the process
+        this.novaAudioProcess.on('error', (error: any) => {
+            const msg = `FFmpeg (Nova audio) process error: ${error.message}`;
+            if (isLocalTest) {
+                console.error(msg + ' (non-fatal in local test)');
+            } else {
+                console.error(msg + ' (fatal in production)');
+                throw error;
+            }
+        });
+
+        // Process audio chunks from meeting_audio.monitor
+        this.novaAudioProcess.stdout?.on('data', async (chunk: Buffer) => {
+            if (!this.isTranscribing) {
+                return;
+            }
+            if (!details.start) {
+                // Paused: nothing is forwarded, but the engine clock keeps meeting time.
+                onMeetingPcm?.(Buffer.alloc(chunk.length));
+                return;
+            }
+            try {
+                // Not written to the recording: this stream is meeting-only (Nova
+                // must not hear itself); audioStream() tees the recording from
+                // combined_audio.monitor. Sole route into combined_audio (#542).
+                if (this.meetingToCombinedPipe?.stdin && !this.meetingToCombinedPipe.stdin.destroyed) {
+                    this.meetingToCombinedPipe.stdin.write(chunk);
+                }
+
+                if (voiceAssistant.isEnabled() && voiceAssistant.isActive() && voiceAssistant.isActivated()) {
+                    voiceAssistant.sendAudioChunk(chunk);
+                }
+                onMeetingPcm?.(chunk);
+            } catch (error: any) {
+                const msg = `Audio chunk processing error: ${error.message}`;
+                if (isLocalTest) {
+                    console.log(msg + ' (non-fatal in local test)');
+                } else {
+                    console.error(msg);
+                    throw error;
+                }
+            }
+        });
     }
 
     private processTranscriptResult(result: any): void {
@@ -386,7 +948,10 @@ export class TranscriptionService {
             const wordType = item.Type;
             
             if (wordType === 'pronunciation') {
-                const timestamp = this.startTime! + (item.StartTime! * 1000);
+                // Add the cumulative reconnect offset (see transcribeTimeOffsetSeconds)
+                // so captions stay on the meeting timeline after a session restart.
+                const timestamp =
+                    this.startTime! + ((item.StartTime! + this.transcribeTimeOffsetSeconds) * 1000);
                 const speaker = this.getCurrentSpeaker();
                 
                 const formattedTime = this.formatTimestamp(timestamp);
@@ -428,26 +993,52 @@ export class TranscriptionService {
         return currentSpeaker;
     }
 
+    // Kill the FFmpeg/pacat trio spawned for a single Transcribe session so the
+    // next (re)connect starts them fresh. Used by the retry loop between
+    // sessions (reconnect on clean close or error) AND by stopTranscription.
+    // Deliberately does NOT touch isTranscribing, the recording stream, or the
+    // Kinesis/voice-assistant lifecycle — those span the whole meeting.
+    private teardownSessionProcesses(): void {
+        if (this.process) {
+            try { this.process.kill(); } catch (_) { /* ignore */ }
+            this.process = null;
+        }
+        if (this.novaAudioProcess) {
+            try { this.novaAudioProcess.kill(); } catch (_) { /* ignore */ }
+            this.novaAudioProcess = null;
+        }
+        if (this.agentAudioProcess) {
+            try { this.agentAudioProcess.kill(); } catch (_) { /* ignore */ }
+            this.agentAudioProcess = null;
+        }
+        if (this.meetingToCombinedPipe) {
+            try {
+                if (this.meetingToCombinedPipe.stdin && !this.meetingToCombinedPipe.stdin.destroyed) {
+                    this.meetingToCombinedPipe.stdin.end();
+                }
+                this.meetingToCombinedPipe.kill();
+            } catch (_) { /* ignore */ }
+            this.meetingToCombinedPipe = null;
+        }
+    }
+
     async stopTranscription(): Promise<void> {
         console.log('Stopping transcription service');
         this.isTranscribing = false;
 
-        if (this.process) {
-            this.process.kill();
-            this.process = null;
+        this.teardownSessionProcesses();
+
+        // Flush the engine's tail utterance now; the run loop's own teardown releases
+        // the MicroVM once the capture process above has ended its audio stream.
+        await this.finishMicrovmSessions();
+        const run = this.microvmRun;
+        if (run) {
+            await Promise.race([
+                run.catch(() => false),
+                new Promise<void>((resolve) => setTimeout(resolve, ASR_STOP_RELEASE_TIMEOUT_MS).unref()),
+            ]);
         }
-        if (this.novaAudioProcess) {
-            this.novaAudioProcess.kill();
-            this.novaAudioProcess = null;
-        }
-        if (this.meetingToCombinedPipe) {
-            if (this.meetingToCombinedPipe.stdin && !this.meetingToCombinedPipe.stdin.destroyed) {
-                this.meetingToCombinedPipe.stdin.end();
-            }
-            this.meetingToCombinedPipe.kill();
-            this.meetingToCombinedPipe = null;
-        }
-        
+
         // Stop voice assistant if running
         if (voiceAssistant.isEnabled()) {
             try {
@@ -476,6 +1067,7 @@ export class TranscriptionService {
         
         const timestamp = Date.now();
         details.speakers.push({ name: speaker, timestamp });
+        this.rosterTimeline.record(this.meetingSession?.audioSeconds ?? this.engineTimeBase, speaker);
         
         const formattedTime = this.formatTimestamp(timestamp);
         console.log(`[${formattedTime}] Speaker changed to: ${speaker}`);
@@ -533,93 +1125,25 @@ export class TranscriptionService {
     }
 
     // Captures meeting-only audio (meeting_audio.monitor) via a separate FFmpeg process.
-    // Feeds audio to: (1) recording file, (2) combined_audio sink for Transcribe, (3) voice assistant.
+    // Feeds audio to: (1) combined_audio sink for Transcribe, (2) voice assistant.
+    // NOT the recording — see audioStream(), which tees it from combined_audio.
     // Uses separate process variables to avoid overwriting the transcription FFmpeg in audioStream().
     // Channel separation (meeting vs combined) prevents Nova from hearing its own voice.
-    private async writeAudio(transcribeResponse: any, recordingStream: any): Promise<void> {
+    private async writeAudio(transcribeResponse: any): Promise<void> {
         try {
-            // Pipe meeting audio into combined_audio sink for Transcribe
-            this.meetingToCombinedPipe = spawn('pacat', [
-                '--playback',
-                '--device=combined_audio',
-                '--format=s16le',
-                '--rate=16000',
-                '--channels=1',
-                '--raw',
-                '--latency-msec=20'
-            ]);
-            
-            this.meetingToCombinedPipe.on('error', (error: any) => {
-                console.error(`pacat (meeting→combined) error: ${error.message}`);
-            });
-            
-            this.meetingToCombinedPipe.stderr?.on('data', (data: any) => {
-                const msg = data.toString().trim();
-                if (msg) console.log(`pacat (meeting→combined): ${msg}`);
-            });
-            
-            // Capture meeting-only audio for Nova and recording
-            this.novaAudioProcess = spawn('ffmpeg', [
-                '-f', 'pulse',
-                '-i', 'meeting_audio.monitor',  // Meeting audio only (no agent feedback)
-                '-ac', '1',
-                '-ar', '16000',
-                '-acodec', 'pcm_s16le',
-                '-f', 's16le',
-                '-loglevel', 'warning',
-                '-'
-            ]);
+            this.startMeetingAudioFanout();
 
-            // Add error handlers for the process
-            this.novaAudioProcess.on('error', (error: any) => {
-                const msg = `FFmpeg (Nova audio) process error: ${error.message}`;
-                if (isLocalTest) {
-                    console.error(msg + ' (non-fatal in local test)');
-                } else {
-                    console.error(msg + ' (fatal in production)');
-                    throw error;
-                }
-            });
-
-            this.novaAudioProcess.stderr?.on('data', (data: any) => {
-                const msg = data.toString();
-                if (!msg.includes('size=') && !msg.includes('time=')) {
-                    console.log('FFmpeg:', msg.trim());
-                }
-            });
-
-            // Process audio chunks from meeting_audio.monitor
-            this.novaAudioProcess.stdout?.on('data', async (chunk: Buffer) => {
-                if (details.start && this.isTranscribing) {
-                    try {
-                        recordingStream.write(chunk);
-
-                        // Forward meeting audio to combined_audio sink for Transcribe
-                        if (this.meetingToCombinedPipe && this.meetingToCombinedPipe.stdin && !this.meetingToCombinedPipe.stdin.destroyed) {
-                            this.meetingToCombinedPipe.stdin.write(chunk);
-                        }
-
-                        if (voiceAssistant.isEnabled() && voiceAssistant.isActive() && voiceAssistant.isActivated()) {
-                            voiceAssistant.sendAudioChunk(chunk);
-                        }
-                    } catch (error: any) {
-                        const msg = `Audio chunk processing error: ${error.message}`;
-                        if (isLocalTest) {
-                            console.log(msg + ' (non-fatal in local test)');
-                        } else {
-                            console.error(msg);
-                            throw error;
-                        }
-                    }
-                }
-            });
-
-            // Keep processing while meeting is active
-            while (details.start && this.isTranscribing) {
+            // Keep processing while the meeting is active AND this session is
+            // still current. reconnectRequested is set when Transcribe closes
+            // the result stream server-side mid-meeting; exiting here lets the
+            // session's Promise.all resolve so the retry loop can reconnect
+            // (GitHub #292). The recording stream is NOT closed here — it spans
+            // the whole meeting and is owned by startTranscription's loop.
+            while (details.start && this.isTranscribing && !this.reconnectRequested) {
                 await new Promise(resolve => setTimeout(resolve, 100)); // 100ms chunks
             }
 
-            // End stream when done
+            // End the Transcribe input stream for this session when done.
             try {
                 await transcribeResponse.input_stream?.end_stream?.();
             } catch (error: any) {
@@ -631,19 +1155,7 @@ export class TranscriptionService {
                     throw error;
                 }
             }
-            
-            try {
-                recordingStream.close();
-            } catch (error: any) {
-                const msg = `Recording stream close error: ${error.message}`;
-                if (isLocalTest) {
-                    console.log(msg + ' (non-fatal in local test)');
-                } else {
-                    console.error(msg);
-                    throw error;
-                }
-            }
-            
+
         } catch (error: any) {
             const msg = `Write audio error: ${error.message || error}`;
             if (isLocalTest) {
@@ -657,6 +1169,18 @@ export class TranscriptionService {
 
     // Handle transcript events
     private async handleTranscriptEvents(transcribeResponse: any): Promise<void> {
+        // The reconnect offset must stay CONSTANT for the whole session and only
+        // advance once, when this session ends (mirrors the WebSocket
+        // transcriber). Transcribe's Item.StartTime/EndTime are already
+        // monotonic WITHIN a session and only reset to 0 on a NEW request — so
+        // advancing the field per-result (the previous behaviour) compounded the
+        // offset on every event and pushed segment timestamps far past
+        // wall-clock even with zero reconnects (GitHub #292).
+        const sessionOffsetSeconds = this.transcribeTimeOffsetSeconds;
+        // Highest absolute (offset-adjusted) segment EndTime seen this session;
+        // seeds the next reconnect's offset. Starts at the session offset so a
+        // session that produces nothing still carries the timeline forward.
+        let observedMaxEndTime = sessionOffsetSeconds;
         try {
             // Process transcript results
             for await (const event of transcribeResponse.TranscriptResultStream ?? []) {
@@ -684,14 +1208,25 @@ export class TranscriptionService {
                             }
                         }
                         try {
-                            kinesisStreamManager.syncTranscriptSegmentState(currentSpeaker, result);
+                            kinesisStreamManager.syncTranscriptSegmentState(
+                                currentSpeaker,
+                                result,
+                                sessionOffsetSeconds,
+                            );
                         } catch (error) {
                             console.error('Failed to sync transcript segment state during suppression:', error);
                         }
                     } else {
                         // Send all results to Kinesis
                         try {
-                            await sendAddTranscriptSegment(currentSpeaker, result);
+                            const segMaxEndTime = await sendAddTranscriptSegment(
+                                currentSpeaker,
+                                result,
+                                sessionOffsetSeconds,
+                            );
+                            if (segMaxEndTime > observedMaxEndTime) {
+                                observedMaxEndTime = segMaxEndTime;
+                            }
                         } catch (error) {
                             console.error('Failed to send transcript to Kinesis:', error);
                         }
@@ -700,6 +1235,18 @@ export class TranscriptionService {
                         this.processTranscriptResult(result);
                     }
                 }
+            }
+
+            // The TranscriptResultStream ended without throwing. If the meeting
+            // is still live, Amazon Transcribe closed the session server-side
+            // (idle / duration limit / transient close). Signal writeAudio to
+            // stop its spin loop so this session's Promise.all resolves and the
+            // retry loop reconnects instead of hanging with a dead pipe
+            // (GitHub #292). Mirrors the WebSocket transcriber's clean-close
+            // reconnect.
+            if (this.isTranscribing && details.start) {
+                console.log('Transcribe result stream closed server-side while meeting is live - requesting reconnect');
+                this.reconnectRequested = true;
             }
         } catch (error: any) {
             // Classify errors as retryable (transient) vs fatal.
@@ -728,6 +1275,13 @@ export class TranscriptionService {
                 // Non-retryable errors - throw to trigger retry/exit
                 console.error('Handle transcript events error (fatal in production):', error.message || error);
                 throw error;
+            }
+        } finally {
+            // Advance the cumulative offset exactly ONCE, as this session ends,
+            // so the next session's timestamps continue the meeting timeline
+            // instead of restarting at 0. Runs on both clean close and (re)throw.
+            if (observedMaxEndTime > this.transcribeTimeOffsetSeconds) {
+                this.transcribeTimeOffsetSeconds = observedMaxEndTime;
             }
         }
     }

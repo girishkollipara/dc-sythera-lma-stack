@@ -1,0 +1,508 @@
+# Copyright (c) 2025 Amazon.com
+# This file is licensed under the MIT License.
+# See the LICENSE file in the project root for full license information.
+"""Build the per-stack ASR MicroVM image source zip.
+
+CreateMicrovmImage takes a code artifact and a base image and has no build-arg
+passthrough, so the only way to make the model a CloudFormation parameter is to
+put the selection *inside* the code artifact. This custom resource resolves the
+stack's model parameters against the catalog shipped in the published source
+zip, rewrites ``model.env``, and republishes the zip under a key derived from the
+selection. Because the key changes with the selection, changing the model
+parameter changes CodeArtifact.Uri and CloudFormation rebuilds the image.
+
+Selection is by BUNDLE, not by individual model. A bundle names the ASR model, the
+speaker embedder and the turn-detection model *together with the operating point
+measured for that combination*, because the threshold is not a property of the
+embedder alone: utterance length moves it as much as the model does. Picking the
+three models separately let a deployment assemble a combination nobody had ever
+measured, and the CloudFormation default threshold (0.2) then silently disagreed
+with the catalog's own measured value for the default embedder (0.4).
+
+Returns:
+    SourceUri            s3:// URI for AWS::Lambda::MicrovmImage CodeArtifact
+    SourceLocation       bucket/key form
+    BundleId             resolved bundle id
+    BundleName           the bundle's display name
+    ModelId              resolved model id
+    SpeakerModelId       resolved speaker model id
+    SegmentationModelId  resolved speaker-turn detection model id
+    DiarizationAvailable "true" when a speaker model or a diarization model is baked into the image
+    TurnDetectionAvailable "true" when a segmentation model is baked into the image
+    SpeakerThreshold     the bundle's calibrated threshold, or "" when uncalibrated
+    MinSegmentMs         shortest utterance worth embedding, for this bundle
+    BaselineMemoryMiB    memory the bundle was sized for
+    NumThreads           inference threads implied by that memory
+    Redistributable      "true" when every weight in the bundle may be redistributed
+    ModelLicense         licence of the resolved model, for the stack outputs
+    LicenceSummary       one-line licence summary for the whole bundle
+
+Every model is a curated catalog entry: there is no parameter for supplying a URL,
+so a new model is added by editing catalog.json (with its checksum pinned and its
+operating point measured) rather than by a deploy-time override.
+"""
+
+from __future__ import annotations
+
+import hashlib
+import io
+import json
+import logging
+import os
+import zipfile
+
+import boto3
+import cfn_response
+
+logger = logging.getLogger()
+logger.setLevel(getattr(logging, os.environ.get("LOG_LEVEL", "INFO"), logging.INFO))
+
+s3 = boto3.client("s3")
+cloudformation = boto3.client("cloudformation")
+
+CATALOG_MEMBER = "catalog.json"
+MODEL_ENV_MEMBER = "model.env"
+FILE_KEYS = ("encoder", "decoder", "joiner", "tokens")
+MODEL_KIND_FILE_KEYS = {
+    "transducer": FILE_KEYS,
+    "qwen3_asr": ("conv_frontend", "encoder", "decoder", "tokenizer"),
+    "cohere_transcribe": ("encoder", "encoder_data", "decoder", "tokens"),
+}
+OFFLINE_ONLY_KINDS = ("qwen3_asr", "cohere_transcribe")
+
+
+class ResolutionError(Exception):
+    """The model parameters could not be resolved to a complete selection."""
+
+
+def _prop(properties: dict, name: str, default: str = "") -> str:
+    value = properties.get(name, default)
+    return "" if value is None else str(value).strip()
+
+
+def _find(entries: list, entry_id: str) -> dict:
+    for entry in entries:
+        if entry.get("id") == entry_id:
+            return entry
+    available = ", ".join(sorted(str(entry.get("id")) for entry in entries))
+    raise ResolutionError(f"{entry_id!r} is not in the catalog. Available: {available}")
+
+
+# What the al2023-1 base MicroVM image actually accepts. Anything else is rejected by
+# CreateMicrovmImage, and the rejection arrives from the AsrMicrovmImage resource
+# minutes into a stack update rather than from here - so this list exists to fail the
+# custom resource in seconds instead. 16384 was set on a bundle and looked plausible
+# because the old AsrBaselineMemoryMiB parameter offered it; the service does not.
+_SUPPORTED_MEMORY_MIB = (512, 1024, 2048, 4096, 8192)
+
+# Inference threads per memory size. Kept here rather than as a CloudFormation Mapping because the memory
+# now comes from the bundle, and a Mapping cannot be keyed on a resolved value.
+_THREADS_BY_MEMORY_MIB = {512: 1, 1024: 1, 2048: 1, 4096: 2, 8192: 4}
+
+
+def _threads_for(memory_mib: int) -> int:
+    return _THREADS_BY_MEMORY_MIB.get(memory_mib, max(1, memory_mib // 2048))
+
+
+def resolve(properties: dict, catalog: dict) -> dict:
+    bundle_id = _prop(properties, "BundleId") or catalog.get("defaultBundleId", "")
+    bundles = catalog.get("bundles", [])
+    if not bundles:
+        raise ResolutionError("catalog.json defines no bundles")
+    bundle = dict(_find(bundles, bundle_id))
+
+    model_id = bundle.get("modelId", "")
+    speaker_id = bundle.get("speakerModelId", "none")
+
+    memory_mib = int(bundle.get("baselineMemoryMiB", 8192))
+    if memory_mib not in _SUPPORTED_MEMORY_MIB:
+        raise ResolutionError(
+            f"bundle {bundle_id!r} asks for {memory_mib} MiB, which the base MicroVM "
+            f"image does not support. Supported sizes are "
+            f"{list(_SUPPORTED_MEMORY_MIB)}; fix baselineMemoryMiB in catalog.json."
+        )
+    # The template needs the memory as a CloudFormation-typed number for
+    # MinimumMemoryInMiB, so it carries its own copy. Cross-check them: a silent
+    # disagreement would size the MicroVM for one bundle and thread the inference
+    # for another.
+    declared = _prop(properties, "BaselineMemoryMiB")
+    if declared and int(declared) != memory_mib:
+        raise ResolutionError(
+            f"bundle {bundle_id!r} is sized for {memory_mib} MiB but the stack passed "
+            f"{declared} MiB. Update the BundleMemory mapping in template.yaml to match "
+            "catalog.json."
+        )
+
+    model = dict(_find(catalog.get("models", []), model_id))
+    files = dict(model.get("files") or {})
+
+    engine = model.get("engine", "streaming")
+    if engine not in ("streaming", "accurate"):
+        raise ResolutionError(
+            f"model {model.get('id')!r} uses the {engine!r} engine; this stack supports "
+            "'streaming' (frame-synchronous) and 'accurate' (offline, VAD-segmented)"
+        )
+    if not model.get("url"):
+        raise ResolutionError(f"model {model.get('id')!r} has no download URL")
+    if not model.get("sha256"):
+        raise ResolutionError(
+            f"model {model.get('id')!r} has no pinned SHA256. Pin it in catalog.json; "
+            "unverified weights are never baked into an image."
+        )
+    kind = model.get("modelKind", "transducer")
+    if kind not in MODEL_KIND_FILE_KEYS:
+        raise ResolutionError(
+            f"model {model.get('id')!r} has modelKind {kind!r}; expected one of "
+            f"{sorted(MODEL_KIND_FILE_KEYS)}"
+        )
+    if kind in OFFLINE_ONLY_KINDS and engine != "accurate":
+        raise ResolutionError(
+            f"model {model.get('id')!r} is a {kind} model, which cannot stream"
+        )
+    missing = [key for key in MODEL_KIND_FILE_KEYS[kind] if not files.get(key)]
+    if missing:
+        raise ResolutionError(f"model {model.get('id')!r} is missing file names: {missing}")
+    if not model.get("sherpaOnnx") or not model.get("onnxruntime"):
+        raise ResolutionError(
+            f"model {model.get('id')!r} must pin sherpaOnnx and onnxruntime versions"
+        )
+
+    # An offline model cannot stream: audio has to be cut into utterances by a VAD and
+    # each closed utterance decoded. Without one the engine would have no way to
+    # decide when an utterance ended, so refuse rather than build an image that
+    # cannot transcribe.
+    vad_id = bundle.get("vadModelId", "none")
+    if engine == "accurate":
+        if vad_id in ("none", ""):
+            raise ResolutionError(
+                f"bundle {bundle_id!r} uses the offline 'accurate' engine, which needs a "
+                "vadModelId to segment audio into utterances"
+            )
+        vad = dict(_find(catalog.get("vadModels", []), vad_id))
+        if not vad.get("sha256"):
+            raise ResolutionError(f"VAD model {vad.get('id')!r} has no pinned SHA256")
+    else:
+        if vad_id not in ("none", ""):
+            raise ResolutionError(
+                f"bundle {bundle_id!r} names a VAD model but its ASR model is streaming; "
+                "the streaming engine endpoints internally and never loads one"
+            )
+        vad = {"id": "none", "url": "", "sha256": "", "license": "n/a"}
+
+    preview_id = bundle.get("previewModelId", "none")
+    preview: dict | None = None
+    if preview_id not in ("none", ""):
+        if engine != "accurate":
+            raise ResolutionError(
+                f"bundle {bundle_id!r} names a preview model, which only an offline "
+                "'accurate' ASR model takes"
+            )
+        preview = dict(_find(catalog.get("models", []), preview_id))
+        if (
+            preview.get("engine", "streaming") != "streaming"
+            or preview.get("modelKind", "transducer") != "transducer"
+        ):
+            raise ResolutionError(
+                f"preview model {preview.get('id')!r} must be a streaming transducer"
+            )
+        for key in ("url", "sha256", "sherpaOnnx", "onnxruntime"):
+            if not preview.get(key):
+                raise ResolutionError(f"preview model {preview.get('id')!r} has no {key}")
+            if key in ("sherpaOnnx", "onnxruntime") and preview[key] != model.get(key):
+                raise ResolutionError(
+                    f"preview model {preview.get('id')!r} pins {key} {preview[key]}, but the "
+                    f"image runs {model.get(key)} for {model.get('id')!r}"
+                )
+        preview_files = preview.get("files") or {}
+        absent = [key for key in FILE_KEYS if not preview_files.get(key)]
+        if absent:
+            raise ResolutionError(
+                f"preview model {preview.get('id')!r} is missing file names: {absent}"
+            )
+    diarizer_id = bundle.get("diarizerModelId", "none")
+    diarizer: dict | None = None
+    if diarizer_id not in ("none", ""):
+        if engine != "accurate":
+            raise ResolutionError(
+                f"bundle {bundle_id!r} names a diarization model, which labels the words of "
+                "an offline 'accurate' ASR model"
+            )
+        if speaker_id not in ("none", ""):
+            raise ResolutionError(
+                f"bundle {bundle_id!r} names both a diarization model and a speaker model; "
+                "it takes one or the other"
+            )
+        diarizer = dict(_find(catalog.get("diarizerModels", []), diarizer_id))
+        if diarizer.get("kind") != "sortformer":
+            raise ResolutionError(
+                f"diarization model {diarizer_id!r} has kind {diarizer.get('kind')!r}; "
+                "this stack supports 'sortformer'"
+            )
+        diarizer_files = diarizer.get("files") or {}
+        for part in ("model", "data"):
+            entry = diarizer_files.get(part) or {}
+            missing = [key for key in ("path", "url", "sha256") if not entry.get(key)]
+            if missing:
+                raise ResolutionError(
+                    f"diarization model {diarizer_id!r} {part} file is missing {missing}"
+                )
+    speaker = dict(_find(catalog.get("speakerModels", []), speaker_id))
+    if speaker.get("url") and not speaker.get("sha256"):
+        raise ResolutionError(
+            f"speaker model {speaker.get('id')!r} has no pinned SHA256"
+        )
+
+    segmentation_id = bundle.get("segmentationModelId", "none")
+    entries = catalog.get("segmentationModels", [])
+    if segmentation_id in ("none", "") or not entries:
+        segmentation = {"id": segmentation_id or "none", "url": "", "sha256": "", "license": "n/a"}
+    else:
+        segmentation = dict(_find(entries, segmentation_id))
+    if segmentation.get("url") and not segmentation.get("sha256"):
+        raise ResolutionError(
+            f"segmentation model {segmentation.get('id')!r} has no pinned SHA256"
+        )
+    # Turn detection is only meaningful when there is an embedder to identify the
+    # turns it finds, so a diarization-less image never carries the extra weights.
+    if not speaker.get("url"):
+        segmentation = {"id": "none", "url": "", "sha256": "", "license": "n/a"}
+
+    return {
+        "bundle": bundle,
+        "model": model,
+        "speaker": speaker,
+        "segmentation": segmentation,
+        "vad": vad,
+        "preview": preview,
+        "diarizer": diarizer,
+        "memoryMiB": memory_mib,
+        "numThreads": _threads_for(memory_mib),
+    }
+
+
+def render_model_env(selection: dict) -> str:
+    model = selection["model"]
+    speaker = selection["speaker"]
+    segmentation = selection.get("segmentation") or {"id": "none"}
+    vad = selection.get("vad") or {"id": "none"}
+    bundle = selection.get("bundle") or {}
+    files = model["files"]
+    preview = selection.get("preview") or {}
+    preview_files = preview.get("files") or {}
+    diarizer = selection.get("diarizer") or {}
+    diarizer_model = (diarizer.get("files") or {}).get("model") or {}
+    diarizer_data = (diarizer.get("files") or {}).get("data") or {}
+    engine = "two_pass" if preview else model.get("engine", "streaming")
+    lines = [
+        "# Generated by the LMA AsrImageSource custom resource. Do not edit.",
+        f"ASR_BUNDLE_ID={bundle.get('id', '')}",
+        # The bundle's own calibrated operating point, baked in so the image has a
+        # working default without any stack parameter or DynamoDB override. Blank
+        # when this pairing has never been calibrated, which the engine treats as
+        # "withhold speaker labels" rather than "guess".
+        f"ASR_SPEAKER_THRESHOLD={bundle.get('speakerThreshold', '')}",
+        f"ASR_MIN_SEGMENT_MS={bundle.get('minSegmentMs', '')}",
+        f"ASR_MODEL_ID={model['id']}",
+        f"ASR_MODEL_URL={model['url']}",
+        f"ASR_MODEL_SHA256={model['sha256']}",
+        f"ASR_MODEL_ARCHIVE={model.get('archive', 'tar.bz2')}",
+        f"ASR_MODEL_STRIP_COMPONENTS={model.get('stripComponents', 1)}",
+        f"ASR_MODEL_KIND={model.get('modelKind', 'transducer')}",
+        f"ASR_MODEL_ENCODER_FILE={files['encoder']}",
+        f"ASR_MODEL_DECODER_FILE={files['decoder']}",
+        f"ASR_MODEL_JOINER_FILE={files.get('joiner', '')}",
+        f"ASR_MODEL_TOKENS_FILE={files.get('tokens', '')}",
+        f"ASR_MODEL_CONV_FRONTEND_FILE={files.get('conv_frontend', '')}",
+        f"ASR_MODEL_TOKENIZER_FILE={files.get('tokenizer', '')}",
+        f"ASR_MODEL_ENCODER_DATA_FILE={files.get('encoder_data', '')}",
+        f"ASR_MODEL_LANGUAGE={model.get('decodeLanguage', '')}",
+        # BOTH names, deliberately. The runtime selects its engine from $ASR_ENGINE
+        # (warmup.py, ws_server.py); ASR_MODEL_ENGINE is only descriptive. Writing the
+        # descriptive one alone meant an 'accurate' bundle still warmed the STREAMING
+        # recognizer, which then failed the image build loading offline weights
+        # ("'window_size' does not exist in the metadata") - so the offline engine
+        # could never have worked.
+        f"ASR_ENGINE={engine}",
+        f"ASR_MODEL_ENGINE={model.get('engine', 'streaming')}",
+        f"ASR_MODEL_LICENSE={model.get('license', 'unknown')}",
+        f"ASR_PREVIEW_MODEL_ID={preview.get('id', '')}",
+        f"ASR_PREVIEW_MODEL_URL={preview.get('url', '')}",
+        f"ASR_PREVIEW_MODEL_SHA256={preview.get('sha256', '')}",
+        f"ASR_PREVIEW_MODEL_ARCHIVE={preview.get('archive', 'tar.bz2')}",
+        f"ASR_PREVIEW_MODEL_STRIP_COMPONENTS={preview.get('stripComponents', 1)}",
+        f"ASR_PREVIEW_MODEL_ENCODER_FILE={preview_files.get('encoder', '')}",
+        f"ASR_PREVIEW_MODEL_DECODER_FILE={preview_files.get('decoder', '')}",
+        f"ASR_PREVIEW_MODEL_JOINER_FILE={preview_files.get('joiner', '')}",
+        f"ASR_PREVIEW_MODEL_TOKENS_FILE={preview_files.get('tokens', '')}",
+        f"ASR_PREVIEW_MODEL_LICENSE={preview.get('license', '')}",
+        f"ASR_DIARIZER_KIND={diarizer.get('kind', '')}",
+        f"ASR_DIARIZER_MODEL_ID={diarizer.get('id', '')}",
+        f"ASR_DIARIZER_MODEL_URL={diarizer_model.get('url', '')}",
+        f"ASR_DIARIZER_MODEL_SHA256={diarizer_model.get('sha256', '')}",
+        f"ASR_DIARIZER_MODEL_FILE={diarizer_model.get('path', '')}",
+        f"ASR_DIARIZER_DATA_URL={diarizer_data.get('url', '')}",
+        f"ASR_DIARIZER_DATA_SHA256={diarizer_data.get('sha256', '')}",
+        f"ASR_DIARIZER_DATA_FILE={diarizer_data.get('path', '')}",
+        f"ASR_DIARIZER_LICENSE={diarizer.get('license', '')}",
+        f"ASR_SPEAKER_MODEL_ID={speaker.get('id', 'none')}",
+        f"ASR_SPEAKER_MODEL_URL={speaker.get('url', '')}",
+        f"ASR_SPEAKER_MODEL_SHA256={speaker.get('sha256', '')}",
+        f"ASR_SPEAKER_MODEL_LICENSE={speaker.get('license', 'n/a')}",
+        f"ASR_SEGMENTATION_MODEL_ID={segmentation.get('id', 'none')}",
+        f"ASR_SEGMENTATION_MODEL_URL={segmentation.get('url', '')}",
+        f"ASR_SEGMENTATION_MODEL_SHA256={segmentation.get('sha256', '')}",
+        f"ASR_SEGMENTATION_MODEL_ARCHIVE={segmentation.get('archive', 'tar.bz2')}",
+        f"ASR_SEGMENTATION_MODEL_FILE={segmentation.get('file', 'model.onnx')}",
+        f"ASR_SEGMENTATION_MODEL_STRIP_COMPONENTS={segmentation.get('stripComponents', 1)}",
+        f"ASR_SEGMENTATION_MODEL_WINDOW_SEC={segmentation.get('windowSec', 10.0)}",
+        f"ASR_SEGMENTATION_MODEL_LICENSE={segmentation.get('license', 'n/a')}",
+        f"ASR_VAD_MODEL_ID={vad.get('id', 'none')}",
+        f"ASR_VAD_MODEL_URL={vad.get('url', '')}",
+        f"ASR_VAD_MODEL_SHA256={vad.get('sha256', '')}",
+        f"ASR_VAD_MODEL_LICENSE={vad.get('license', 'n/a')}",
+        f"SHERPA_ONNX_VERSION={model['sherpaOnnx']}",
+        f"ONNXRUNTIME_VERSION={model['onnxruntime']}",
+        "",
+    ]
+    return "\n".join(lines)
+
+
+def rewrite_zip(source: bytes, model_env: str) -> bytes:
+    out = io.BytesIO()
+    with zipfile.ZipFile(io.BytesIO(source)) as src, zipfile.ZipFile(
+        out, "w", zipfile.ZIP_DEFLATED
+    ) as dst:
+        if CATALOG_MEMBER not in src.namelist():
+            raise ResolutionError(f"{CATALOG_MEMBER} is missing from the source zip")
+        for item in src.infolist():
+            if item.filename == MODEL_ENV_MEMBER:
+                continue
+            dst.writestr(item, src.read(item.filename))
+        dst.writestr(MODEL_ENV_MEMBER, model_env)
+    return out.getvalue()
+
+
+def read_catalog(source: bytes) -> dict:
+    with zipfile.ZipFile(io.BytesIO(source)) as src:
+        return json.loads(src.read(CATALOG_MEMBER))
+
+
+def build(properties: dict) -> tuple[str, dict]:
+    source_bucket, _, source_key = _prop(properties, "SourceLocation").partition("/")
+    if not source_bucket or not source_key:
+        raise ResolutionError(
+            "SourceLocation must be 'bucket/key' for the published image source zip"
+        )
+    dest_bucket = _prop(properties, "DestBucket")
+    dest_prefix = _prop(properties, "DestPrefix") or "asr-microvm-image-source"
+
+    source = s3.get_object(Bucket=source_bucket, Key=source_key)["Body"].read()
+    selection = resolve(properties, read_catalog(source))
+    model_env = render_model_env(selection)
+
+    fingerprint = hashlib.sha256(f"{source_key}\n{model_env}".encode()).hexdigest()[:16]
+    key = f"{dest_prefix}/asr-microvm-src-{fingerprint}.zip"
+
+    s3.put_object(
+        Bucket=dest_bucket,
+        Key=key,
+        Body=rewrite_zip(source, model_env),
+        ContentType="application/zip",
+    )
+    logger.info("Published ASR image source to s3://%s/%s", dest_bucket, key)
+
+    speaker_url = selection["speaker"].get("url", "")
+    bundle = selection["bundle"]
+    threshold = bundle.get("speakerThreshold")
+    return key, {
+        "SourceUri": f"s3://{dest_bucket}/{key}",
+        "SourceLocation": f"{dest_bucket}/{key}",
+        "BundleId": bundle.get("id", ""),
+        "BundleName": bundle.get("name", ""),
+        "BundleStatus": bundle.get("status", "uncalibrated"),
+        "LicenceSummary": bundle.get("licenceSummary", "unknown"),
+        "Redistributable": "true" if bundle.get("redistributable") else "false",
+        "ModelId": selection["model"]["id"],
+        "PreviewModelId": (selection.get("preview") or {}).get("id", "none"),
+        "DiarizerModelId": (selection.get("diarizer") or {}).get("id", "none"),
+        "ModelLicense": selection["model"].get("license", "unknown"),
+        "SpeakerModelId": selection["speaker"].get("id", "none"),
+        "DiarizationAvailable": "true" if speaker_url or selection.get("diarizer") else "false",
+        # Blank when this pairing has no calibrated operating point; a guessed
+        # threshold fragments or merges speakers.
+        "SpeakerThreshold": "" if threshold is None else str(threshold),
+        "MinSegmentMs": str(bundle.get("minSegmentMs", "")),
+        "BaselineMemoryMiB": str(selection["memoryMiB"]),
+        "NumThreads": str(selection["numThreads"]),
+        "SegmentationModelId": selection["segmentation"].get("id", "none"),
+        "TurnDetectionAvailable": "true" if selection["segmentation"].get("url") else "false",
+        "AsrEngine": (
+            "two_pass" if selection.get("preview") else selection["model"].get("engine", "streaming")
+        ),
+        "VadModelId": selection["vad"].get("id", "none"),
+    }
+
+
+def _stack_is_deleting(stack_id: str) -> bool:
+    try:
+        stacks = cloudformation.describe_stacks(StackName=stack_id)["Stacks"]
+        return str(stacks[0].get("StackStatus", "")).startswith("DELETE")
+    except Exception:  # noqa: BLE001 - unknown means "not deleting": touch only our key
+        logger.exception("Could not read the status of %s", stack_id)
+        return False
+
+
+def _delete_versions(bucket: str, prefix: str | None = None) -> int:
+    """Remove every version and delete marker under ``prefix`` (the whole bucket if None)."""
+    kwargs = {"Bucket": bucket}
+    if prefix:
+        kwargs["Prefix"] = prefix
+    removed = 0
+    for page in s3.get_paginator("list_object_versions").paginate(**kwargs):
+        objects = [
+            {"Key": item["Key"], "VersionId": item["VersionId"]}
+            for group in ("Versions", "DeleteMarkers")
+            for item in page.get(group, [])
+        ]
+        if objects:
+            s3.delete_objects(Bucket=bucket, Delete={"Objects": objects, "Quiet": True})
+            removed += len(objects)
+    return removed
+
+
+def lambda_handler(event, context):
+    request_type = event.get("RequestType")
+    properties = event.get("ResourceProperties", {}) or {}
+    logger.info("AsrImageSource %s", request_type)
+
+    try:
+        if request_type == "Delete":
+            physical_id = event.get("PhysicalResourceId", "")
+            dest_bucket = _prop(properties, "DestBucket")
+            # The bucket is versioned and every rebuild writes a new key, so a stack
+            # delete has to empty it or the bucket cannot be removed. A replacement
+            # during an update only removes the superseded key.
+            if dest_bucket:
+                try:
+                    if _stack_is_deleting(event.get("StackId", "")):
+                        removed = _delete_versions(dest_bucket)
+                        logger.info("Emptied %d object(s) from %s", removed, dest_bucket)
+                    elif physical_id.endswith(".zip"):
+                        _delete_versions(dest_bucket, prefix=physical_id)
+                except Exception:  # noqa: BLE001 - never block a stack delete
+                    logger.exception("Could not clean up s3://%s/%s", dest_bucket, physical_id)
+            cfn_response.send(event, context, cfn_response.SUCCESS, {}, physical_id)
+            return
+
+        key, data = build(properties)
+        cfn_response.send(event, context, cfn_response.SUCCESS, data, key)
+    except Exception as exc:  # noqa: BLE001 - a failure must reach CloudFormation
+        logger.exception("AsrImageSource failed")
+        cfn_response.send(
+            event,
+            context,
+            cfn_response.FAILED,
+            {},
+            event.get("PhysicalResourceId"),
+            reason=str(exc)[:900],
+        )

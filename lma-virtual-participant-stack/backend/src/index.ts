@@ -4,12 +4,19 @@ import Chime from './chime.js';
 import Zoom from './zoom.js';
 import ZoomSdk from './zoom-sdk.js';
 import Teams from './teams.js';
+import TeamsSdk from './teams-sdk.js';
 import Webex from './webex.js';
 import { details, ExitInfo, formatExitMessage, didJoinMeeting } from './details.js';
 import { transcriptionService } from './scribe.js';
 import { VirtualParticipantStatusManager } from './status-manager.js';
 import { recordingService } from './recording.js';
 import { videoRecorder } from './video-recorder.js';
+import {
+    installAudioDiagnostics,
+    startAudioDeviceSpecPolling,
+    startAudioDiagnosticsPolling,
+    startSenderTrackBypass,
+} from './audio-diagnostics.js';
 import { sendEndMeeting, sendStartMeeting } from './kinesis-stream.js';
 import { MCPCommandHandler } from './mcp-command-handler.js';
 import { LambdaClient, InvokeCommand } from '@aws-sdk/client-lambda';
@@ -17,6 +24,7 @@ import { simliAvatar } from './simli-avatar.js';
 import { voiceAssistant } from './voice-assistant.js';
 import { agentSpeakingDetector } from './agent-speaking-detector.js';
 import { acquireProfile, persistProfile, releaseProfile } from './profile-store.js';
+import { requiresAlbSelfRegistration } from './launch-mode.js';
 import {
     patchPreferencesFor3pCookies,
     patchPreferencesForExternalProtocols,
@@ -32,7 +40,12 @@ import {
 const WINDOW_WIDTH = 1920;
 const WINDOW_HEIGHT = 1080 - 130;
 
-const getCloakLaunchArgs = (fingerprintSeed: number, simliEnabled: boolean): string[] => [
+const isTeamsPlatform = (platform: string): boolean => platform.toUpperCase() === 'TEAMS';
+
+const isTeamsSdkJoin = (): boolean =>
+    isTeamsPlatform(details.invite.meetingPlatform) && details.teamsMethod === 'sdk';
+
+const getCloakLaunchArgs = (fingerprintSeed: number, needWebrtcHostCandidates: boolean): string[] => [
     `--fingerprint=${fingerprintSeed}`,
     `--fingerprint-screen-width=${WINDOW_WIDTH}`,
     `--fingerprint-screen-height=${WINDOW_HEIGHT}`,
@@ -69,14 +82,16 @@ const getCloakLaunchArgs = (fingerprintSeed: number, simliEnabled: boolean): str
     '--no-first-run',
     '--no-default-browser-check',
     // CloakBrowser's compiled WebRTC IP-leak patch suppresses ALL ICE host
-    // candidates by default, which prevents the Simli avatar's page-to-page
-    // WebRTC video bridge (Simli page -> meeting page) from ever connecting
-    // (connectionState stays 'new'). Both flags are required to restore host
-    // candidate gathering; verified empirically. Only the container's private
-    // RFC1918 IP is exposed, and no proxy is in use, so this leaks nothing the
-    // TCP connection doesn't already reveal. See simli-avatar.ts bridge.
-    ...(simliEnabled ? ['--force-webrtc-ip-handling-policy=default'] : []),
-    ...(simliEnabled ? ['--webrtc-ip-handling-policy=default'] : []),
+    // candidates by default, which prevents any in-page WebRTC media from
+    // connecting: the Simli avatar's page-to-page video bridge, and the ACS
+    // calling SDK's media transport for the Teams SDK join path (the call
+    // signals fine but media setup fails and ACS drops the call with
+    // code=490 subCode=4502 while still in the lobby). Both flags are
+    // required to restore host candidate gathering; verified empirically.
+    // Only the container's private RFC1918 IP is exposed, and no proxy is in
+    // use, so this leaks nothing the TCP connection doesn't already reveal.
+    ...(needWebrtcHostCandidates ? ['--force-webrtc-ip-handling-policy=default'] : []),
+    ...(needWebrtcHostCandidates ? ['--webrtc-ip-handling-policy=default'] : []),
 ];
 
 // Global variables for graceful shutdown
@@ -121,6 +136,12 @@ const closeAndPersistProfile = async (): Promise<void> => {
 
 // Local testing mode - skip ALB registration and AppSync updates
 const isLocalTest = process.env.LOCAL_TEST === 'true';
+
+// Launch mode. Under MICROVM there is no ALB in front of noVNC: RunMicrovm
+// returns a dedicated HTTPS endpoint that the launcher publishes, so the
+// container must not attempt to discover its own IP or self-register (there is
+// no ECS task metadata endpoint either). See launch-mode.ts.
+const needsAlbRegistration = requiresAlbSelfRegistration(process.env.VP_LAUNCH_TYPE);
 
 // Read the build stamp baked into the image at build time (see Dockerfile).
 // Logged at startup so it's trivial to confirm which image a task runs.
@@ -224,8 +245,9 @@ const main = async (): Promise<void> => {
         throw new Error('VNC server initialization failed');
     }
 
-    // Register with ALB target group and wait for healthy (skip in local test mode)
-    if (statusManager && !isLocalTest) {
+    // Register with ALB target group and wait for healthy (skip in local test mode
+    // and under MICROVM, which has no ALB — the MicroVM endpoint replaces it).
+    if (statusManager && !isLocalTest && needsAlbRegistration) {
         try {
             await statusManager.setRegisteringNetwork();
             console.log('Registering task with ALB target group...');
@@ -243,6 +265,8 @@ const main = async (): Promise<void> => {
         }
     } else if (isLocalTest) {
         console.log('✓ Skipping ALB registration (local test mode)');
+    } else if (!needsAlbRegistration) {
+        console.log('✓ Skipping ALB registration (MICROVM launch: endpoint published by launcher)');
     }
 
     // VNC ready signal is deferred until AFTER fresh-profile warmup so the
@@ -338,17 +362,29 @@ const main = async (): Promise<void> => {
     console.log(`[browser]   fingerprint seed  = ${fingerprintSeed}`);
     console.log(`[browser]   profile freshness = ${isFresh ? 'FRESH (warmup will run)' : 'EXISTING (skipping warmup)'}`);
 
+    // Timing instrumentation: browser launch dominated VP startup on MicroVMs
+    // (~142s vs ~1-3s for the identical image and args locally), and the launch
+    // is a single opaque await. Logging the elapsed time makes any regression
+    // visible in CloudWatch instead of requiring a log-timestamp reconstruction.
+    const browserLaunchStart = Date.now();
     const context = await launchPersistentContext({
         headless: false,
         humanize: true,
         humanPreset: 'default',
         userDataDir,
         viewport: { width: WINDOW_WIDTH, height: WINDOW_HEIGHT },
-        args: getCloakLaunchArgs(fingerprintSeed, simliAvatar.isSimliEnabled()),
+        args: (() => {
+            const needWebrtc = simliAvatar.isSimliEnabled() || isTeamsSdkJoin();
+            console.log(`[browser] WebRTC host-candidate flags: ${needWebrtc ? 'ENABLED' : 'disabled'}`);
+            return getCloakLaunchArgs(fingerprintSeed, needWebrtc);
+        })(),
         launchOptions: {
             ignoreDefaultArgs: ['--mute-audio', '--enable-automation'],
         },
     } as any);
+    console.log(
+        `[browser] launchPersistentContext took ${((Date.now() - browserLaunchStart) / 1000).toFixed(1)}s`,
+    );
     browserContext = context;
     // Sane default for actions; the one meeting-length wait (end-of-meeting
     // watcher) passes its own explicit { timeout }. Do NOT set a multi-hour
@@ -358,8 +394,9 @@ const main = async (): Promise<void> => {
     await new Promise(resolve => setTimeout(resolve, 2000));
     console.log('✓ Chrome launched with remote debugging on port 9222');
 
-    const zoomSdkPath = details.invite.meetingPlatform === 'ZOOM' && details.zoomMethod === 'sdk';
-    if (isFresh && !zoomSdkPath) {
+    const platform = details.invite.meetingPlatform;
+    const sdkPath = (platform === 'ZOOM' && details.zoomMethod === 'sdk') || isTeamsSdkJoin();
+    if (isFresh && !sdkPath) {
         if (statusManager) {
             await statusManager.setWarmingProfile();
         }
@@ -372,8 +409,8 @@ const main = async (): Promise<void> => {
         } catch (err) {
             console.warn('[warmup] Warmup error (non-fatal, continuing to meeting):', err);
         }
-    } else if (zoomSdkPath) {
-        console.log('[warmup] Skipping warmup (Zoom SDK path does not visit zoom.us)');
+    } else if (sdkPath) {
+        console.log('[warmup] Skipping warmup (SDK join path does not visit the meeting platform site)');
     }
 
     // Now that warmup (if any) is done, publish the VNC endpoint so the user's
@@ -403,6 +440,25 @@ const main = async (): Promise<void> => {
     // Create page BEFORE MCP — external CDP client during newPage() deadlocks target handshake.
     const page = await context.newPage();
     page.setDefaultTimeout(20000);
+
+    // Observational audio diagnostics for GitHub #543. Installed BEFORE any
+    // navigation: addInitScript only runs in documents created afterwards, which
+    // is why the Simli getUserMedia override (injected once the avatar is ready)
+    // never ran on Teams at all. Read-only by design — the previous attempt at
+    // this path mutated constraints and silently killed transcription (#545).
+    await installAudioDiagnostics(page);
+    // Node-side draining: page console.log does NOT reach CloudWatch under
+    // cloakbrowser (only warnings/errors do), which is why the first version of
+    // these diagnostics produced nothing across three live sessions.
+    const stopAudioDiagnostics = startAudioDiagnosticsPolling(page);
+    // Keep the meeting client's Web Audio graph off the transmit path (Teams
+    // chops the agent's voice inside it — see startSenderTrackBypass).
+    const stopSenderBypass = startSenderTrackBypass(page);
+    // PulseAudio device formats, logged only when they change. Teams opens the
+    // virtual mic twice with conflicting formats (mono vs stereo); with
+    // avoid-resampling that can make PulseAudio re-negotiate the device
+    // repeatedly, which glitches audio without dropping any RTP packet (#543).
+    const stopDeviceSpecs = startAudioDeviceSpecPolling();
 
     // Renderer-crash latch. A renderer OOM crash leaves every page.evaluate
     // hanging on "Target crashed", so meeting.initialize() never returns and
@@ -437,6 +493,9 @@ const main = async (): Promise<void> => {
         if (
             text.includes('[LMA-Simli]') ||
             text.includes('[Simli]') ||
+            // Audio path diagnostics (#543): requested constraints, the settings
+            // actually applied, and outbound Opus packet cadence.
+            text.includes('[LMA-Audio]') ||
             type === 'error' ||
             type === 'warning'
         ) {
@@ -584,7 +643,7 @@ const main = async (): Promise<void> => {
         return avatarPrepared;
     };
 
-    let meeting: Chime | Zoom | ZoomSdk | Teams | Webex;
+    let meeting: Chime | Zoom | ZoomSdk | Teams | TeamsSdk | Webex;
     let success = false;
     let exitInfo: ExitInfo | null = null;
 
@@ -609,7 +668,8 @@ const main = async (): Promise<void> => {
                 break;
             case 'TEAMS':
             case 'Teams':
-                meeting = new Teams();
+                meeting = details.teamsMethod === 'sdk' ? new TeamsSdk() : new Teams();
+                console.log(`Teams join method: ${details.teamsMethod}`);
                 break;
             case 'WEBEX':
                 meeting = new Webex();
@@ -676,7 +736,15 @@ const main = async (): Promise<void> => {
         // Cleanup - set flag to prevent uncaughtException from killing process mid-cleanup
         cleanupInProgress = true;
         console.log('Cleaning up...');
-        
+
+        // Stop the diagnostics timer first: an un-cleared interval holding a page
+        // reference would keep the Node process alive past teardown.
+        try {
+            stopAudioDiagnostics();
+            stopSenderBypass();
+            stopDeviceSpecs();
+        } catch { /* never block cleanup */ }
+
         try {
             // Stop transcription service
             await transcriptionService.stopTranscription();

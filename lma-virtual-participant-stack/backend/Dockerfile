@@ -1,6 +1,6 @@
 # checkov:skip=CKV_DOCKER_2: "ECS target-group health check on 5901"
 
-# CloakBrowser ships a glibc-only patched Chromium binary (pinned 0.3.29);
+# CloakBrowser ships a glibc-only patched Chromium binary (see the pin below);
 # ECR Public mirror avoids Docker Hub anonymous rate limits in CodeBuild.
 FROM public.ecr.aws/docker/library/python:3.12-slim
 
@@ -39,12 +39,29 @@ RUN curl -fsSL https://deb.nodesource.com/setup_22.x | bash - \
     && apt-get install -y --no-install-recommends nodejs \
     && rm -rf /var/lib/apt/lists/*
 
-# Pinned to match the npm cloakbrowser dep (see package.json). 0.3.31 brings the
-# 58-patch fingerprint binary (Chrome 146 profiles) and a humanize iframe
-# pointer-events fix; deps/peerDeps/engines are unchanged from 0.3.29 (no
-# breaking changes verified against the changelog).
-ARG CLOAKBROWSER_VERSION=0.3.31
-RUN pip install --no-cache-dir "cloakbrowser[geoip]==${CLOAKBROWSER_VERSION}" \
+# This pip package is BUILD-TIME ONLY: it downloads the patched Chromium into
+# CLOAKBROWSER_CACHE_DIR. Nothing at runtime imports it — the VP drives the
+# browser through the *npm* `cloakbrowser` client (src/index.ts), so this pin
+# and package.json must stay on the same version line to keep the wrapper that
+# lays the binary down in step with the client that launches it.
+#
+# It had drifted badly: 0.3.31 here vs npm 0.5.x in package.json. Realigned to
+# 0.5.10. `cloakbrowser info` reports the *identical* binary on both
+# (chromium-146.0.7680.177.5), so the patched browser — and therefore the
+# fingerprint surface — is unchanged by this bump; only the downloader moved.
+# The 0.5.x CLI keeps the `install`/`info` subcommands used below, and its new
+# free-tier note ("more than one concurrent session" needs a key) is satisfied
+# by design: one container per meeting runs exactly one browser session.
+#
+# The ARG is deliberately NOT named CLOAKBROWSER_VERSION. Docker exposes ARGs as
+# environment variables to RUN, and cloakbrowser 0.5.x reads $CLOAKBROWSER_VERSION
+# as a *Chromium binary* version pin — so the wrapper version leaked in as a
+# browser pin and `install` died with "Invalid browser version pin. Use a full
+# numeric Chromium version, e.g. '148.0.7778.215.2'." 0.3.31 ignored the
+# variable, which is why the old pin never tripped over it. Verified by docker
+# build; do not rename this back.
+ARG CLOAKBROWSER_PIP_VERSION=0.5.10
+RUN pip install --no-cache-dir "cloakbrowser[geoip]==${CLOAKBROWSER_PIP_VERSION}" \
     && python -m cloakbrowser install \
     && python -m cloakbrowser info
 
@@ -75,10 +92,54 @@ RUN BD="${BUILD_DATE:-$(date -u +%Y-%m-%dT%H:%M:%SZ)}" && \
 
 RUN mkdir -p /srv/cloakbrowser-profiles
 
-EXPOSE 5900 5901
+# 5900 raw VNC, 5901 noVNC/websockify, 9000 Lambda MicroVMs lifecycle hooks.
+# 9000 is unused (and unexposed to any listener) under the ECS launch types.
+EXPOSE 5900 5901 9000
 
 RUN chmod +x /srv/entrypoint.sh
 RUN useradd -m -d /home/appuser -s /bin/bash appuser
-RUN chown -R appuser:appuser /srv /opt/cloakbrowser
+
+# Pin PulseAudio to the pipeline's native format: 16 kHz mono.
+#
+# PulseAudio's compiled default is 48 kHz stereo, and every stage of the VP audio
+# path is 16 kHz mono PCM16 (Nova Sonic in and out, Transcribe, the pacat
+# playback streams). With the default, Nova's voice was resampled 16k->48k into
+# agent_output, again through the loopback into combined_audio, and again through
+# module-remap-source into Chromium's virtual mic — three conversions before the
+# meeting heard it, which made the assistant sound warbly (GitHub #538).
+#
+# resample-method: PulseAudio defaults to speex-float-1, tuned for speed. Any
+# residual conversion should favour quality; speex-float-5 is still cheap.
+# Written as the appuser's own config since the daemon runs as that user.
+#
+# NOTE: `avoid-resampling = yes` is deliberately NOT set. It makes PulseAudio
+# RECONFIGURE a device to a client's rate instead of resampling for it, which
+# does nothing here — every sink already carries an explicit
+# `rate=16000 channels=1 format=s16le` (entrypoint.sh), and that pinning is what
+# actually removed the triple resample. What it can do is harm: Teams opens the
+# agent_mic remap source TWICE with conflicting formats (one mono capture with
+# echoCancellation/AGC on, one stereo capture with them off — both observed live
+# via the audio diagnostics), so two clients demand incompatible formats from one
+# monitor source. Zoom opens it once, and Zoom is the platform that sounds fine.
+# Device re-negotiation glitches audio without dropping an RTP packet, which
+# matches every measurement taken for #543: the container-side recording is
+# clean, packet counters are clean, and only the meeting listener hears garble.
+RUN mkdir -p /home/appuser/.config/pulse && \
+    printf '%s\n' \
+      'default-sample-rate = 16000' \
+      'alternate-sample-rate = 16000' \
+      'default-sample-channels = 1' \
+      'default-sample-format = s16le' \
+      'resample-method = speex-float-5' \
+      'flat-volumes = no' \
+      > /home/appuser/.config/pulse/daemon.conf
+
+RUN chown -R appuser:appuser /srv /opt/cloakbrowser /home/appuser/.config
 USER appuser
+
+# Default entrypoint stays entrypoint.sh so ECS (EC2/FARGATE) behaviour is
+# byte-for-byte unchanged. The MicroVM image build overrides CMD to run the
+# supervisor instead — it boots the same stack via entrypoint.sh STACK_ONLY,
+# answers the lifecycle hooks, and spawns the app once /run delivers the
+# per-meeting config. See src/microvm-supervisor.ts.
 ENTRYPOINT ["/srv/entrypoint.sh"]

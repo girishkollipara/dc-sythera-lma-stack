@@ -1,0 +1,17 @@
+# Test dependencies for the ASR MicroVM runtime.
+#
+# The inference wheels (sherpa-onnx, onnxruntime) are NOT needed: the runtime
+# takes its decoder, VAD and speaker-embedding backends by injection, so the whole
+# pipeline is exercised with scripted fakes and no model weights. Those wheels are
+# installed only inside the ARM64 image, pinned per model by the catalog (see
+# model.env and the Dockerfile). numpy IS needed: the offline engine's VAD gate is
+# a numpy-only wrapper that the tests construct directly.
+pytest==9.1.1
+pytest-asyncio==1.4.0
+# Line coverage for `make test-coverage` (scripts/coverage_report.py). Not used
+# by `make test-asr`, which stays a plain test run.
+pytest-cov==7.1.0
+pydantic==2.13.5
+websockets==17.2
+numpy==2.4.6
+ruff==0.16.10

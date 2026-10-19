@@ -25,12 +25,13 @@ https://github.com/user-attachments/assets/7642f659-ed9e-4abf-8baf-2f6fb27b08cb
 - **AI meeting assistant** — Strands Agents SDK with Amazon Bedrock, with built-in tools for transcript search, web search, document search, and meeting history
 - **MCP server integration** — Extend the assistant with external tools (Salesforce, Amazon Quick Suite, custom servers)
 - **On-demand and automatic summaries** — Generate summaries, action items, and insights during and after meetings
-- **Virtual Participant** — Headless Chrome bot joins Zoom, Teams, Chime, Google Meet, and WebEx meetings
+- **Virtual Participant** — Headless Chrome bot joins Zoom, Teams, Chime, and WebEx meetings
+- **Desktop Capture App** — Native macOS / Windows menu-bar app captures system + microphone audio (and optionally screen video) for meetings joined from a native desktop app — no browser tab, no bot
 - **Voice assistant** — Nova Sonic 2 or ElevenLabs voice responses with optional Simli animated avatar
 - **Translator Mode** — Real-time bidirectional AI interpreter that joins meetings via the Virtual Participant and speaks each utterance in the other language
 - **Meetings Query Tool** — Semantic search across all past meeting transcripts via Bedrock Knowledge Base
 - **Embeddable components** — iframe integration for embedding LMA in external applications
-- **Meeting recording** — Optional stereo audio recordings stored in S3
+- **Meeting recording** — Optional stereo audio recordings stored in S3, plus optional MP4 video recording from the Virtual Participant or Desktop Capture App
 - **Meeting inventory** — Searchable list of all meetings with sharing and access control
 
 ## Documentation
@@ -43,7 +44,9 @@ Quick links:
 - [Prerequisites & Deployment](./docs/prerequisites-and-deployment.md)
 - [Quick Start Guide](./docs/quick-start-guide.md)
 - [Meeting Assistant](./docs/meeting-assistant.md)
+- [Meeting Sources](./docs/meeting-sources.md) — compare all capture options
 - [Virtual Participant](./docs/virtual-participant.md)
+- [Desktop Capture App](./docs/desktop-capture-app.md)
 - [Voice Assistant](./docs/voice-assistant.md)
 - [MCP Servers](./docs/mcp-servers.md)
 - [Developer Guide](./docs/developer-guide.md)
@@ -52,7 +55,7 @@ Quick links:
 
    <img src="./images/lma-architecture.png" alt="LMA Architecture"/>
 
-The LMA user starts a meeting session using the Stream Audio tab or Virtual Participant feature. A secure WebSocket connection streams two-channel audio to a Fargate-based WebSocket server, which relays it to Amazon Transcribe. Transcription results flow through Kinesis Data Streams to the Call Event Processor Lambda, which integrates with the Strands Agents SDK, Amazon Bedrock, and optionally Bedrock Knowledge Bases. Results are persisted to DynamoDB and pushed to the React web UI in real time via AppSync GraphQL subscriptions.
+The LMA user starts a meeting session using the Stream Audio tab, the Chrome extension, the native Desktop Capture App, or the Virtual Participant feature. A secure WebSocket connection streams two-channel audio to a Fargate-based WebSocket server, which relays it to Amazon Transcribe. Transcription results flow through Kinesis Data Streams to the Call Event Processor Lambda, which integrates with the Strands Agents SDK, Amazon Bedrock, and optionally Bedrock Knowledge Bases. Results are persisted to DynamoDB and pushed to the React web UI in real time via AppSync GraphQL subscriptions.
 
 For full architecture details, see [Infrastructure & Security](./docs/infrastructure-and-security.md).
 
@@ -62,7 +65,8 @@ For full architecture details, see [Infrastructure & Security](./docs/infrastruc
 |--------|-------------|
 | US East (N. Virginia) | [![Launch Stack](https://cdn.rawgit.com/buildkite/cloudformation-launch-stack-button-svg/master/launch-stack.svg)](https://us-east-1.console.aws.amazon.com/cloudformation/home?region=us-east-1#/stacks/create/review?templateURL=https://s3.us-east-1.amazonaws.com/aws-ml-blog-us-east-1/artifacts/lma/lma-main.yaml&stackName=LMA) |
 | US West (Oregon) | [![Launch Stack](https://cdn.rawgit.com/buildkite/cloudformation-launch-stack-button-svg/master/launch-stack.svg)](https://us-west-2.console.aws.amazon.com/cloudformation/home?region=us-west-2#/stacks/create/review?templateURL=https://s3.us-west-2.amazonaws.com/aws-ml-blog-us-west-2/artifacts/lma/lma-main.yaml&stackName=LMA) |
-| AP Southeast (Sydney) | [![Launch Stack](https://cdn.rawgit.com/buildkite/cloudformation-launch-stack-button-svg/master/launch-stack.svg)](https://ap-southeast-2.console.aws.amazon.com/cloudformation/home?region=ap-southeast-2#/stacks/create/review?templateURL=https://s3.ap-southeast-2.amazonaws.com/aws-bigdata-blog-replica-ap-southeast-2/artifacts/lma/lma-main.yaml&stackName=LMA) |
+| Asia Pacific (Tokyo) | [![Launch Stack](https://cdn.rawgit.com/buildkite/cloudformation-launch-stack-button-svg/master/launch-stack.svg)](https://ap-northeast-1.console.aws.amazon.com/cloudformation/home?region=ap-northeast-1#/stacks/create/review?templateURL=https://s3.ap-northeast-1.amazonaws.com/aws-bigdata-blog-replica-ap-northeast-1/artifacts/lma/lma-main.yaml&stackName=LMA) |
+| Europe (Ireland) | [![Launch Stack](https://cdn.rawgit.com/buildkite/cloudformation-launch-stack-button-svg/master/launch-stack.svg)](https://eu-west-1.console.aws.amazon.com/cloudformation/home?region=eu-west-1#/stacks/create/review?templateURL=https://s3.eu-west-1.amazonaws.com/aws-bigdata-blog-replica-eu-west-1/artifacts/lma/lma-main.yaml&stackName=LMA) |
 
 See [Prerequisites & Deployment](./docs/prerequisites-and-deployment.md) for full deployment instructions.
 

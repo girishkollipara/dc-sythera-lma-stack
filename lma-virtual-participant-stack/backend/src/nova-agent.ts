@@ -20,6 +20,38 @@ import { defaultProvider } from '@aws-sdk/credential-provider-node';
 import { randomUUID } from 'crypto';
 import { loadNovaSonicConfig, MeetingMode } from './nova-sonic-config-loader.js';
 
+/**
+ * Which region to reach Amazon Nova Sonic in.
+ *
+ * Nova Sonic is available in fewer regions than LMA itself, so a deployment
+ * pinned to a particular region for compliance can keep everything else local and
+ * reach the voice assistant elsewhere (GitHub #508). `AMAZON_NOVA_SONIC_REGION`
+ * carries the `AmazonNovaSonicRegion` stack parameter; empty or unset means the
+ * stack's own region, which is what every existing deployment gets.
+ *
+ * An explicitly passed region still wins, so a caller that already knows where to
+ * go is not overridden by the environment.
+ */
+export function resolveNovaSonicRegion(
+    configured: string | undefined,
+    env: Record<string, string | undefined> = process.env,
+): string {
+    const fromEnv = (env.AMAZON_NOVA_SONIC_REGION || '').trim();
+    return configured || fromEnv || stackRegion(env);
+}
+
+/**
+ * The region this stack is deployed to — where everything except the Nova Sonic
+ * model itself lives.
+ *
+ * `VP_AWS_REGION` is the fallback because `AWS_REGION` is reserved and rejected at
+ * MicroVM image-build time, so the MicroVM path stages it under the prefixed name
+ * (the same order is used in status-manager.ts and microvm-supervisor.ts).
+ */
+export function stackRegion(env: Record<string, string | undefined> = process.env): string {
+    return env.AWS_REGION || env.VP_AWS_REGION || 'us-east-1';
+}
+
 export interface NovaAgentConfig {
   modelId: string;
   systemPrompt: string;
@@ -89,7 +121,8 @@ export class NovaAgent implements VoiceAssistantProvider {
   private _isInterrupted: boolean = false; // Gate: drops all audio (voice + avatar) after barge-in until next turn
   private activationTimeout: NodeJS.Timeout | null = null;
   private defaultActivationDuration: number;
-  private region: string;
+  /** Where the Nova Sonic model is invoked. NOT the stack's region — see stackRegion(). */
+  private novaSonicRegion: string;
   private audioChunkCount: number = 0;
   
   // Persistent audio playback stream (replaces per-batch paplay spawning)
@@ -97,11 +130,17 @@ export class NovaAgent implements VoiceAssistantProvider {
   private speakingTimeout: NodeJS.Timeout | null = null;
   private readonly SPEAKING_TIMEOUT_MS = 500; // Mark as not speaking after 500ms of silence
   
-  // Session refresh configuration
-  private readonly SESSION_REFRESH_INTERVAL = 5 * 60 * 1000; // 5 minutes (3 min buffer before 8 min timeout)
+  // Session refresh configuration. Nova closes the stream itself after 295s
+  // without interactive content ("Timed out waiting for audio bytes or
+  // interactive content"), and neither continuous meeting silence nor the 30s
+  // keep-alive counts as interactive — so at the old 300s this timer lost the
+  // race by 5 seconds in every quiet meeting. 240s pre-empts it with margin.
+  private readonly SESSION_REFRESH_INTERVAL = 4 * 60 * 1000;
   private sessionRefreshTimer: NodeJS.Timeout | null = null;
   private isRefreshing: boolean = false;
   private refreshQueued: boolean = false;
+  private lastUserActivityAt: number = 0;
+  private readonly USER_QUIET_MS_BEFORE_REFRESH = 5000;
   private keepAliveTimer: NodeJS.Timeout | null = null;
   private readonly KEEP_ALIVE_INTERVAL = 30 * 1000; // Send keep-alive every 30 seconds
   
@@ -146,7 +185,7 @@ export class NovaAgent implements VoiceAssistantProvider {
       ? config.translatorUnmutePhrases.map(normalizeForTrigger).filter(p => p.length > 0)
       : [...DEFAULT_TRANSLATOR_UNMUTE_PHRASES];
     this.defaultActivationDuration = config.activationDuration || 30;
-    this.region = config.region || process.env.AWS_REGION || 'us-east-1';
+    this.novaSonicRegion = resolveNovaSonicRegion(config.region);
     this.strandsLambdaArn = config.strandsLambdaArn || process.env.STRANDS_LAMBDA_ARN;
     
     // Set initial activation state based on mode
@@ -162,7 +201,11 @@ export class NovaAgent implements VoiceAssistantProvider {
     console.log(`  Model: ${this.modelId}`);
     console.log(`  Voice: ${this.voiceId}`);
     console.log(`  Endpointing sensitivity: ${this.endpointingSensitivity}`);
-    console.log(`  Region: ${this.region}`);
+    const local = stackRegion();
+    console.log(
+      `  Nova Sonic region: ${this.novaSonicRegion}` +
+        (this.novaSonicRegion !== local ? ` (stack region is ${local})` : ''),
+    );
     console.log(`  Activation mode: ${this.activationMode}`);
     console.log(`  Meeting mode: ${this.meetingMode}`);
     if (this.meetingMode === 'translator') {
@@ -187,7 +230,13 @@ export class NovaAgent implements VoiceAssistantProvider {
       if (tableName) {
         try {
           const dynamoDbClient = new DynamoDBClient({
-            region: this.region,
+            // The stack's region, NOT the Nova Sonic one: this table is created by
+            // lma-nova-sonic-config-stack locally and the task role's grant (and its
+            // kms:ViaService condition) is pinned to ${AWS::Region}. Following the
+            // Nova Sonic region here would hit a table that does not exist, and
+            // loadNovaSonicConfig would quietly fall back to its defaults —
+            // discarding the operator's configured prompt, voice and meeting mode.
+            region: stackRegion(),
             credentials: defaultProvider(),
           });
           
@@ -258,7 +307,8 @@ export class NovaAgent implements VoiceAssistantProvider {
       });
 
       this.bedrockClient = new BedrockRuntimeClient({
-        region: this.region,
+        // The only client that follows the Nova Sonic region.
+        region: this.novaSonicRegion,
         credentials: defaultProvider(),
         requestHandler: nodeHttp2Handler,
       });
@@ -266,7 +316,10 @@ export class NovaAgent implements VoiceAssistantProvider {
       // Initialize Lambda client if Strands Lambda ARN is configured
       if (this.strandsLambdaArn) {
         this.lambdaClient = new LambdaClient({
-          region: this.region,
+          // The stack's region, for the same reason as the config table: the Strands
+          // function is deployed locally and granted by its exact ARN, so a client in
+          // another region fails every tool call.
+          region: stackRegion(),
           credentials: defaultProvider(),
         });
         console.log('✓ Lambda client initialized for Strands agent tool');
@@ -842,6 +895,18 @@ export class NovaAgent implements VoiceAssistantProvider {
       return;
     }
 
+    // A refresh tears down the bidirectional stream, so a user mid-utterance
+    // loses whatever they were saying: the old session dies with their audio
+    // and the new one only receives the text as history, which never triggers
+    // a response. The agent then appears deaf until re-addressed. Nova's USER
+    // text events are the freshest signal we have for "someone is talking",
+    // so hold the refresh until they have been quiet for a few seconds.
+    if (Date.now() - this.lastUserActivityAt < this.USER_QUIET_MS_BEFORE_REFRESH) {
+      console.log('🗣️  User recently speaking - will retry refresh check in 2 seconds');
+      setTimeout(() => this.checkAndExecuteQueuedRefresh(), 2000);
+      return;
+    }
+
     // Agent is idle - execute refresh
     this.refreshQueued = false;
     this.refreshSession().catch(error => {
@@ -1207,6 +1272,9 @@ export class NovaAgent implements VoiceAssistantProvider {
               // Accumulate text for current turn if it's a FINAL transcript
               if (currentTurn.role && currentTurn.isFinal) {
                 currentTurn.content += textContent;
+                if (currentTurn.role === 'USER') {
+                  this.lastUserActivityAt = Date.now();
+                }
               }
             } else if (jsonResponse.event?.audioOutput) {
               // Received audio from Nova - play it immediately (non-blocking)
@@ -1665,15 +1733,24 @@ export class NovaAgent implements VoiceAssistantProvider {
     }
 
     const playbackRate = parseInt(process.env.NOVA_PLAYBACK_RATE || '16000');
-    
-    console.log('🔊 Starting persistent pacat playback stream...');
+    // 20ms was too tight to survive scheduling jitter: on a 2-vCPU MicroVM,
+    // Chromium + the avatar's 1080p rescale + video recording + Transcribe
+    // together stall the writer long enough to underrun the buffer, which is
+    // audible as crackling (GitHub #543). 80ms gives 4x the headroom and is
+    // still far below conversational turn-taking latency, so the assistant does
+    // not feel slower to reply.
+    const playbackLatencyMs = parseInt(process.env.NOVA_PLAYBACK_LATENCY_MS || '80');
+
+    console.log(
+      `🔊 Starting persistent pacat playback stream (${playbackRate}Hz, ${playbackLatencyMs}ms buffer)...`,
+    );
     this.pacatProcess = spawn('pacat', [
       '--playback',
       '--device=agent_output',
       '--format=s16le',
       '--rate=' + playbackRate,
       '--channels=1',
-      '--latency-msec=20',
+      '--latency-msec=' + playbackLatencyMs,
     ]);
 
     this.pacatProcess.stdin?.on('error', (error: any) => {

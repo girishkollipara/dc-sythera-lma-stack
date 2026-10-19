@@ -21,13 +21,27 @@ from lma_cli.formatters import (
     stack_outputs_table,
 )
 
-# Region-specific public template URLs
+# Region-specific public template URLs.
+#
+# Must stay in step with aws-release.sh. Published regions are limited to those
+# where AWS Lambda MicroVMs are available, because VPLaunchType defaults to
+# MICROVM and cloudformation:ValidateTemplate rejects the Virtual Participant
+# template where AWS::Lambda::MicrovmImage is unknown. ap-southeast-2 (Sydney)
+# was published previously and is replaced by ap-northeast-1 until MicroVMs
+# reach it; to deploy elsewhere, publish yourself and set VPLaunchType=EC2 or
+# FARGATE.
 TEMPLATE_URLS = {
     "us-east-1": "https://s3.us-east-1.amazonaws.com/aws-ml-blog-us-east-1/artifacts/lma/lma-main.yaml",
     "us-west-2": "https://s3.us-west-2.amazonaws.com/aws-ml-blog-us-west-2/artifacts/lma/lma-main.yaml",
-    "ap-southeast-2": (
-        "https://s3.ap-southeast-2.amazonaws.com/"
-        "aws-bigdata-blog-replica-ap-southeast-2/artifacts/lma/lma-main.yaml"
+    # Tokyo and Ireland publish to the Big Data Blog replica buckets — the ML Blog
+    # buckets exist only in us-east-1 and us-west-2.
+    "ap-northeast-1": (
+        "https://s3.ap-northeast-1.amazonaws.com/"
+        "aws-bigdata-blog-replica-ap-northeast-1/artifacts/lma/lma-main.yaml"
+    ),
+    "eu-west-1": (
+        "https://s3.eu-west-1.amazonaws.com/"
+        "aws-bigdata-blog-replica-eu-west-1/artifacts/lma/lma-main.yaml"
     ),
 }
 

@@ -25,7 +25,7 @@ import {
   Alert,
 } from '@cloudscape-design/components';
 import '@cloudscape-design/global-styles/index.css';
-import useWebSocket from 'react-use-websocket';
+import * as ReactUseWebSocket from 'react-use-websocket';
 import { generateClient } from 'aws-amplify/api';
 import { fetchUserAttributes } from 'aws-amplify/auth';
 
@@ -34,6 +34,14 @@ import useAppContext from '../../contexts/app';
 import useSettingsContext from '../../contexts/settings';
 import { getTimestampStr } from '../common/utilities';
 import createUploadMeeting from '../../graphql/queries/createUploadMeeting';
+
+// react-use-websocket ships a CJS bundle. Vite 8 / rolldown exports the CJS
+// module.exports OBJECT as the ESM default (a "double-wrapped default"), so the
+// hook is not the default itself but one level in. Unwrap to whichever level is
+// actually the function so this works regardless of bundler interop. (Same
+// interop class as the react-audio-player fix; blanks the page if wrong.)
+const useWebSocket =
+  typeof ReactUseWebSocket.default === 'function' ? ReactUseWebSocket.default : ReactUseWebSocket.default.default;
 
 let SOURCE_SAMPLING_RATE;
 const DEFAULT_BLANK_FIELD_MSG = 'This will be set back to the default value if left blank.';
@@ -56,6 +64,15 @@ const UPLOAD_PHASE = {
 // AppSync client — reused only for the createUploadMeeting mutation.
 const appsyncClient = generateClient();
 
+// Only the field this form needs; the Transcription Engine page owns the full record.
+const getAsrEngineDefaultQuery = `
+  query GetAsrConfig($AsrConfigId: ID!) {
+    getAsrConfig(AsrConfigId: $AsrConfigId) {
+      streamingEngineMicrovm
+    }
+  }
+`;
+
 /**
  * StreamAudio — unified component for both live streaming and uploading
  * pre-recorded meetings.
@@ -67,9 +84,35 @@ const appsyncClient = generateClient();
  *     - 'select'  → shows the Input mode Tiles switcher (previous behavior)
  *     - undefined → defaults to 'select' (preserves legacy standalone use)
  */
-const StreamAudio = ({ mode: modeProp }) => {
+const StreamAudio = ({ mode: modeProp = undefined }) => {
   const { currentSession, user, authState } = useAppContext();
   const { settings } = useSettingsContext();
+  // The on-demand ASR engine is offered per meeting only where it is deployed.
+  // Distinct from AsrDiarizationAvailable, which is also false for a
+  // transcription-only bundle.
+  const asrEngineAvailable = `${settings?.AsrEngineAvailable}` === 'true';
+  // Which engine transcribes streaming meetings is a deployment setting on the ASR
+  // Config page, not a per-meeting choice. It is read live from the config table so
+  // this form follows what an admin has set: the capture sample rate and the
+  // speaker-count field below depend on it.
+  const [asrEngineDefault, setAsrEngineDefault] = useState('transcribe');
+  useEffect(() => {
+    if (!asrEngineAvailable) return undefined;
+    let cancelled = false;
+    appsyncClient
+      .graphql({ query: getAsrEngineDefaultQuery, variables: { AsrConfigId: 'CustomAsrConfig' } })
+      .then((result) => {
+        if (!cancelled && result.data?.getAsrConfig?.streamingEngineMicrovm === true) {
+          setAsrEngineDefault('microvm');
+        }
+      })
+      .catch(() => {
+        // Stays 'transcribe', which is also what the server falls back to.
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [asrEngineAvailable]);
   // Amplify v6 exposes tokens as currentSession.tokens.{accessToken,idToken}.toString().
   // The refresh token is not exposed via fetchAuthSession in v6; pass an empty string
   // since the websocket server's JWT verifier only strictly requires access/id tokens.
@@ -94,6 +137,12 @@ const StreamAudio = ({ mode: modeProp }) => {
     agentId: userIdentifier || DEFAULT_LOCAL_SPEAKER_NAME,
     fromNumber: DEFAULT_OTHER_SPEAKER_NAME,
     toNumber: SYSTEM,
+    // Per-channel Amazon Transcribe speaker partitioning. Sent in the START
+    // frame; both default off so the transcript is unchanged unless asked for.
+    // Distinct from the upload mode's `enableDiarization` below, which drives a
+    // Transcribe *batch* job and is a different feature.
+    diarizeSystemChannel: false,
+    diarizeMicChannel: false,
   });
   // Track whether the user has manually edited the agentId field so we don't
   // overwrite their input when the authenticated user's identifier becomes
@@ -143,6 +192,11 @@ const StreamAudio = ({ mode: modeProp }) => {
   const [isFlashing, setIsFlashing] = useState(false);
   const [micMuted, setMicMuted] = useState(false);
   const [recordedMeetingId, setRecordedMeetingId] = useState('');
+
+  // How many people share this microphone/tab. Nobody but the user can know it, so
+  // it is asked for rather than guessed — the same question Upload Audio asks.
+  // Blank means "discover as many speakers as appear".
+  const [streamMaxSpeakers, setStreamMaxSpeakers] = useState('');
 
   // --- Upload mode state --------------------------------------------------
   const [uploadFiles, setUploadFiles] = useState([]);
@@ -226,6 +280,20 @@ const StreamAudio = ({ mode: modeProp }) => {
     });
   };
 
+  const handleDiarizeSystemChannelChange = (e) => {
+    setCallMetaData({
+      ...callMetaData,
+      diarizeSystemChannel: e.detail.checked,
+    });
+  };
+
+  const handleDiarizeMicChannelChange = (e) => {
+    setCallMetaData({
+      ...callMetaData,
+      diarizeMicChannel: e.detail.checked,
+    });
+  };
+
   const audioProcessor = useRef();
   const audioContext = useRef();
   const displayStream = useRef();
@@ -289,6 +357,9 @@ const StreamAudio = ({ mode: modeProp }) => {
       callId: `${meetingPrefix} - ${getTimestampStr()}`,
       agentId: callMetaData.agentId || DEFAULT_LOCAL_SPEAKER_NAME,
       fromNumber: callMetaData.fromNumber || DEFAULT_OTHER_SPEAKER_NAME,
+      // Omitted when blank rather than sent as 0, so leaving the field alone means
+      // "no opinion" and the deployment's own cap applies.
+      ...(Number.parseInt(streamMaxSpeakers, 10) > 0 ? { maxSpeakers: Number.parseInt(streamMaxSpeakers, 10) } : {}),
     };
     setCallMetaData(callMetaDataCopy);
     return callMetaDataCopy;
@@ -300,7 +371,11 @@ const StreamAudio = ({ mode: modeProp }) => {
     `);
     const recordingCallMetaData = getFinalCallMetadata();
     try {
-      audioContext.current = new window.AudioContext();
+      // 16 kHz is the ASR models' native rate, so capturing there means no
+      // resampling anywhere in the chain. Other rates still work (the
+      // transcriber resamples), they just cost CPU and buy no accuracy.
+      audioContext.current =
+        asrEngineDefault === 'microvm' ? new window.AudioContext({ sampleRate: 16000 }) : new window.AudioContext();
       displayStream.current = await window.navigator.mediaDevices.getDisplayMedia({
         video: true,
         audio: true,
@@ -317,7 +392,9 @@ const StreamAudio = ({ mode: modeProp }) => {
       recordingCallMetaData.callEvent = 'START';
 
       // eslint-disable-next-line prettier/prettier
-      console.log(`DEBUG - [${new Date().toISOString()}]: Send Call START msg: ${JSON.stringify(recordingCallMetaData)}`);
+      console.log(
+        `DEBUG - [${new Date().toISOString()}]: Send Call START msg: ${JSON.stringify(recordingCallMetaData)}`,
+      );
       sendMessage(JSON.stringify(recordingCallMetaData));
       setStreamingStarted(true);
 
@@ -683,6 +760,69 @@ const StreamAudio = ({ mode: modeProp }) => {
                 </FormField>
               </ColumnLayout>
 
+              {mode === MODE_STREAM && (
+                <Box margin={{ top: 'l' }}>
+                  <FormField
+                    label="Speaker identification"
+                    description={
+                      'Optionally tell apart individual voices within a channel. Each distinct voice ' +
+                      'is labelled (spk_0), (spk_1), … alongside the names above. Works best with ' +
+                      'five or fewer speakers per channel.'
+                    }
+                    stretch
+                  >
+                    <SpaceBetween direction="vertical" size="xxs">
+                      <Checkbox
+                        checked={callMetaData.diarizeSystemChannel}
+                        onChange={handleDiarizeSystemChannelChange}
+                        disabled={recording}
+                        description="Use when the shared tab has several people on the call."
+                      >
+                        Identify separate speakers in the shared tab audio
+                      </Checkbox>
+                      <Checkbox
+                        checked={callMetaData.diarizeMicChannel}
+                        onChange={handleDiarizeMicChannelChange}
+                        disabled={recording}
+                        description="Use when several people share this microphone, e.g. in a meeting room."
+                      >
+                        Identify separate speakers on my microphone
+                      </Checkbox>
+                    </SpaceBetween>
+                  </FormField>
+                  {(callMetaData.diarizeSystemChannel || callMetaData.diarizeMicChannel) &&
+                    asrEngineDefault === 'microvm' && (
+                      <Box margin={{ top: 's' }}>
+                        <FormField
+                          label="Speakers per channel (optional)"
+                          description={
+                            'How many people share your microphone or the shared tab, if you know. ' +
+                            'Leave blank to discover as many voices as appear. Setting it caps the ' +
+                            'labels per channel, which helps when short utterances would otherwise ' +
+                            'be mistaken for new speakers.'
+                          }
+                          errorText={
+                            streamMaxSpeakers !== '' &&
+                            (Number.isNaN(Number.parseInt(streamMaxSpeakers, 10)) ||
+                              Number.parseInt(streamMaxSpeakers, 10) < 1 ||
+                              Number.parseInt(streamMaxSpeakers, 10) > 30)
+                              ? 'Must be between 1 and 30, or blank'
+                              : undefined
+                          }
+                        >
+                          <Input
+                            value={streamMaxSpeakers}
+                            type="number"
+                            placeholder="discover automatically"
+                            onChange={({ detail }) => setStreamMaxSpeakers(detail.value)}
+                            disabled={recording}
+                          />
+                        </FormField>
+                      </Box>
+                    )}
+                </Box>
+              )}
+
               {recording && mode === MODE_STREAM && (
                 <Box
                   margin={{ top: 'xl' }}
@@ -839,10 +979,6 @@ const StreamAudio = ({ mode: modeProp }) => {
 
 StreamAudio.propTypes = {
   mode: PropTypes.oneOf([MODE_STREAM, MODE_UPLOAD, MODE_SELECT]),
-};
-
-StreamAudio.defaultProps = {
-  mode: undefined,
 };
 
 export default StreamAudio;

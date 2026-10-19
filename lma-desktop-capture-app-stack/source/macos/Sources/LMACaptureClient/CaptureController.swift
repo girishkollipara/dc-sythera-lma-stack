@@ -1,0 +1,424 @@
+import Foundation
+
+/// Shared engine controller used by BOTH the headless CLI (main.swift) and the
+/// menu-bar GUI (MenuBarApp.swift). Owns the socket + mixer + capture lifecycle
+/// and exposes simple, thread-safe operations (login, start, stop, pause, mute)
+/// plus callbacks the UI can bind to. Keeping this UI-agnostic means the CLI
+/// path (which the downloadable package ships) is unaffected by the GUI.
+///
+/// State transitions:
+///   idle → (login) → authenticated → (start) → streaming ⇄ paused → (stop) → idle
+final class CaptureController {
+    enum State: Equatable {
+        case idle
+        case signingIn
+        case authenticated
+        case starting
+        case streaming
+        case stopping
+        case error(String)
+    }
+
+    /// Decides, from the STREAM of state changes, when a recording session began
+    /// and whether it ended well — so the UI announces "your meeting is being
+    /// processed" only when a meeting actually got uploaded.
+    ///
+    /// Why a tracker and not a test on the new state alone: teardown always
+    /// passes through `.stopping`, for a clean Stop AND for a fatal auth, so
+    /// `.stopping` carries no information about the outcome. Judging it in
+    /// isolation is what made a dead session (token rejected, nothing sent)
+    /// announce a successful upload with a link to a meeting that was never
+    /// created. Instead `.stopping` is treated as "still in flight" and the
+    /// outcome is taken from the TERMINAL state that follows it: `.error` failed,
+    /// `.authenticated`/`.idle` succeeded.
+    ///
+    /// This also removes any dependence on the order in which the fatal-auth path
+    /// happens to set its states, which is a fragile thing to rely on. Pure and
+    /// sequence-tested in SelfTest.
+    struct SessionTracker {
+        enum Event: Equatable {
+            case none
+            case started
+            case ended(succeeded: Bool)
+        }
+
+        /// True while a recording session is in flight (including during teardown).
+        private(set) var active = false
+
+        mutating func observe(_ state: State) -> Event {
+            switch state {
+            case .streaming:
+                if active { return .none }   // repeat/no-op
+                active = true
+                return .started
+            case .stopping, .starting, .signingIn:
+                // Transient: a session may still be in flight, so decide nothing.
+                return .none
+            case .error:
+                guard active else { return .none }   // e.g. a sign-in or pre-stream failure
+                active = false
+                return .ended(succeeded: false)
+            case .authenticated, .idle:
+                guard active else { return .none }
+                active = false
+                return .ended(succeeded: true)
+            }
+        }
+    }
+
+    private(set) var config: Config
+    /// Keeps the access token fresh while signed in. Lives on the CONTROLLER, not
+    /// the socket, so it survives Stop/Start and keeps refreshing while nothing
+    /// is streaming — that is what makes a Start an hour later succeed instead of
+    /// 401ing (issue #535).
+    private var tokenStore: TokenStore?
+    private var socket: TranscriberSocket?
+    private var mixer: StereoMixer?
+    private var capture: AudioCapture?
+    private var videoSocket: VideoSocket?
+    private var videoCapture: VideoCapture?
+    /// The in-flight `start()` continuation (capture bring-up). Held so stop()
+    /// can cancel it — see the comment at its creation site.
+    private var startTask: Task<Void, Never>?
+    /// When the audio stream started — baseline for videoTimeOffsetMs.
+    private var audioStartDate: Date?
+    private let lock = NSLock()
+    private var _state: State = .idle
+
+    // UI callbacks (invoked on the main queue).
+    var onStateChange: ((State) -> Void)?
+    var onLevels: ((_ meetingRMS: Float, _ micRMS: Float, _ connected: Bool, _ paused: Bool) -> Void)?
+    var onLog: ((String) -> Void)?
+    /// Fired when the chosen video source became unavailable and capture fell
+    /// back to something else (e.g. the selected window closed, so the whole
+    /// display is now being recorded). Privacy-relevant, so it is surfaced
+    /// rather than logged quietly.
+    var onVideoFallback: ((String) -> Void)?
+
+    /// The callId of the active/most-recent stream (for "Open in LMA" deep link).
+    private(set) var activeCallId: String = ""
+
+    // Settings (persisted by the GUI, applied at start). Empty = use the
+    // config/CLI value, so the headless CLI path is completely unaffected.
+    /// Speaker label for the mic channel (ch_1 → agentId). GUI default: the
+    /// signed-in email.
+    var micLabel: String = ""
+    /// Speaker label for the system-audio channel (ch_0 → fromNumber).
+    var systemLabel: String = ""
+    /// Ask Transcribe to tell apart individual voices on the system/meeting
+    /// channel (ch_0), appending (spk_0), (spk_1), … to systemLabel.
+    ///
+    /// `nil` means "not set by the GUI", so the config/CLI value
+    /// (--diarize-system / LMA_DIARIZE_SYSTEM) stands — the same convention the
+    /// empty-string labels above use. A plain `Bool` would default to false and
+    /// silently override the CLI flag, since the headless path never pushes
+    /// settings to the controller.
+    var diarizeSystemChannel: Bool?
+    /// Same for the mic channel (ch_1) — a shared conference-room microphone.
+    var diarizeMicChannel: Bool?
+    /// CoreAudio UID of the mic to capture from. Empty = system default.
+    var micDeviceUID: String = ""
+    /// Also capture and stream desktop video (screen or window). Default off.
+    var videoEnabled: Bool = false
+    /// Persisted video source id ("display:<id>" / "window:<id>"; "" = main display).
+    var videoSourceID: String = ""
+    /// True while a video stream is running for the active call (UI badge).
+    private(set) var isVideoActive: Bool = false
+
+    init(config: Config) {
+        self.config = config
+        // A token supplied up front (LMA_ACCESS_TOKEN / --token, plus an optional
+        // --refresh-token) deserves the same upkeep as one we signed in for.
+        if !config.accessToken.isEmpty { installTokenStore() }
+    }
+
+    var state: State { lock.lock(); defer { lock.unlock() }; return _state }
+
+    private func setState(_ s: State) {
+        lock.lock(); _state = s; lock.unlock()
+        DispatchQueue.main.async { [weak self] in self?.onStateChange?(s) }
+    }
+
+    private func log(_ msg: String) {
+        DispatchQueue.main.async { [weak self] in self?.onLog?(msg) }
+    }
+
+    // MARK: - Auth
+
+    /// Sign in via SRP and store tokens on the config. `password` is not retained.
+    func login(username: String, password: String) async -> Bool {
+        setState(.signingIn)
+        do {
+            let tokens = try await SRP.login(
+                username: username, password: password,
+                poolId: config.userPoolId, clientId: config.clientId,
+                region: config.effectiveRegion)
+            config.username = username
+            config.accessToken = tokens.accessToken
+            config.idToken = tokens.idToken
+            // KEEP the refresh token. Discarding it here is the root cause of
+            // issue #535 — without it the ~1 h access token cannot be renewed and
+            // the app can only recover by being quit and relaunched.
+            config.refreshToken = tokens.refreshToken
+            installTokenStore()
+            log("Signed in as \(username)")
+            setState(.authenticated)
+            return true
+        } catch {
+            log("Login failed: \(error)")
+            setState(.error("\(error)"))
+            return false
+        }
+    }
+
+    /// Build the refresher for the tokens now on `config` and start its proactive
+    /// schedule. Refreshed tokens are mirrored back onto `config` so everything
+    /// that reads it (isAuthenticated, sockets created later) stays correct.
+    private func installTokenStore() {
+        // Retire any previous refresher first. Nothing reachable installs a store
+        // while another is live (the sign-in form only appears once the tokens are
+        // cleared), but an in-flight refresh on an abandoned store would write its
+        // stale token onto `config` through onRefresh and clobber the new session.
+        // One line to make that unrepresentable rather than merely unreachable.
+        tokenStore?.invalidate()
+        let store = TokenStore(accessToken: config.accessToken, idToken: config.idToken,
+                               refreshToken: config.refreshToken,
+                               clientId: config.clientId, region: config.effectiveRegion)
+        store.onRefresh = { [weak self] access, id in
+            self?.config.accessToken = access
+            self?.config.idToken = id
+        }
+        store.onLog = { [weak self] msg in self?.onLog?(msg) }
+        tokenStore = store
+        store.armProactiveRefresh()
+    }
+
+    /// True when we already have an access token (pasted or from a prior login).
+    var isAuthenticated: Bool {
+        if case .streaming = state { return true }
+        return !config.accessToken.isEmpty || state == .authenticated
+    }
+
+    /// Sign out: stop any active stream, clear tokens, return to idle. The
+    /// remembered login id (if any) is left intact so the field can prefill.
+    func logout() {
+        if socket != nil { stop() }
+        tokenStore?.invalidate()   // stop refreshing on behalf of a signed-out user
+        tokenStore = nil
+        config.accessToken = ""
+        config.idToken = ""
+        config.refreshToken = ""
+        log("Signed out")
+        setState(.idle)
+    }
+
+    /// The access token was rejected AND could not be renewed (revoked refresh
+    /// token, changed password, deleted user). Stop the stream and fall back to
+    /// the signed-out state CARRYING the reason, so the popover re-shows the
+    /// sign-in form with the error — the macOS counterpart of the Windows tray
+    /// app's `OnFatalAuth` handler (windows/Engine/CaptureController.cs).
+    ///
+    /// This replaces an `exit(1)` inside the socket. A menu-bar app must not kill
+    /// itself over a recoverable auth error: the process dying is what forced the
+    /// quit-and-relaunch reported in issue #535.
+    private func handleFatalAuth(_ message: String) {
+        log("Token rejected — sign in again.")
+        tokenStore?.invalidate()
+        tokenStore = nil
+        // Clearing the tokens is what makes `isAuthenticated` false, and that is
+        // what puts the sign-in form (and this error text) back on screen.
+        config.accessToken = ""
+        config.idToken = ""
+        config.refreshToken = ""
+        if socket != nil {
+            stop(then: .error(message))
+        } else {
+            setState(.error(message))
+        }
+    }
+
+    // MARK: - Streaming lifecycle
+
+    /// Begin capture + streaming. Uses a fresh callId per session unless the
+    /// caller set one on the config. Safe to call only when authenticated.
+    func start(callId: String? = nil) {
+        guard !config.accessToken.isEmpty else { setState(.error("Not signed in")); return }
+        setState(.starting)
+
+        if let c = callId, !c.isEmpty { config.callId = c }
+        activeCallId = config.callId
+
+        // Apply Settings overrides: speaker labels ride the START frame as
+        // agentId (mic/ch_1) and fromNumber (system/ch_0).
+        if !micLabel.isEmpty { config.agentId = micLabel }
+        if !systemLabel.isEmpty { config.fromNumber = systemLabel }
+        // Per-channel speaker identification: only the GUI sets these, so leave
+        // the CLI/env value alone when nil.
+        if let d = diarizeSystemChannel { config.diarizeSystemChannel = d }
+        if let d = diarizeMicChannel { config.diarizeMicChannel = d }
+
+        let sock = TranscriberSocket(config: config, tokens: tokenStore)
+        let mix = StereoMixer(sampleRate: config.sampleRate) { [weak sock] chunk in sock?.sendPCM(chunk) }
+        let cap = AudioCapture(mixer: mix, targetRate: config.sampleRate, micDeviceUID: micDeviceUID)
+
+        sock.onStateChange = { connected in mix.setConnected(connected) }
+        sock.onFatalAuth = { [weak self] msg in
+            DispatchQueue.main.async { self?.handleFatalAuth(msg) }
+        }
+        mix.onLevels = { [weak self] mRMS, kRMS, connected, paused in
+            DispatchQueue.main.async { self?.onLevels?(mRMS, kRMS, connected, paused) }
+        }
+
+        socket = sock; mixer = mix; capture = cap
+
+        sock.connect()
+        mix.start()
+        audioStartDate = Date()
+        // Retained + cancelled by stop(): mic/screen capture can take seconds to
+        // come up (a Screen Recording prompt blocks it), and without the
+        // cancellation checks a stop that lands first — notably the fatal-auth
+        // path — would have its final state overwritten by `.streaming` and
+        // would start a video lane after teardown.
+        startTask = Task { [weak self] in
+            do {
+                try await cap.start()
+                guard !Task.isCancelled else { return }
+                self?.log("Streaming \(self?.activeCallId ?? "")")
+                self?.setState(.streaming)
+                self?.startVideoIfEnabled()
+            } catch {
+                guard !Task.isCancelled else { return }
+                self?.log("Capture failed: \(error)")
+                self?.setState(.error("\(error)"))
+            }
+        }
+    }
+
+    /// Start the optional desktop-video lane: a second SCK stream feeding
+    /// fMP4 segments over a second websocket. Failures here never touch the
+    /// audio path — video is best-effort.
+    private func startVideoIfEnabled() {
+        guard videoEnabled else { return }
+        let vSock = VideoSocket(config: config)
+        let vCap = VideoCapture(sourceID: videoSourceID) { [weak vSock] segment in
+            vSock?.sendSegment(segment)
+        }
+        // The offset between audio-stream start and the first video frame lets
+        // the server align video with the transcript timeline when muxing.
+        vCap.onFirstFrame = { [weak self, weak vSock] in
+            guard let self = self, let start = self.audioStartDate,
+                  let first = self.videoCapture?.firstFrameDate else { return }
+            vSock?.videoTimeOffsetMs = max(0, Int(first.timeIntervalSince(start) * 1000))
+        }
+        // Surface a source fallback (chosen window gone → whole screen).
+        vCap.onFallback = { [weak self] message in
+            self?.onVideoFallback?(message)
+        }
+        // Buffer overflow during a long outage (or a server without video
+        // support): abandon video for this call; audio continues.
+        vSock.onOverflow = { [weak self] in
+            self?.stopVideo(sendEnd: false)
+            self?.log("Screen video stopped (connection lost); audio unaffected")
+        }
+        videoSocket = vSock
+        videoCapture = vCap
+        vSock.connect()
+        Task { [weak self] in
+            do {
+                try await vCap.start()
+                self?.isVideoActive = true
+                self?.log("Streaming with screen video")
+            } catch {
+                self?.log("Screen video failed to start (audio unaffected): \(error)")
+                self?.stopVideo(sendEnd: false)
+            }
+        }
+    }
+
+    /// Tear down the video lane. When `sendEnd`, flush the encoder's final
+    /// segments and send END_VIDEO so the server finalizes the recording.
+    private func stopVideo(sendEnd: Bool) {
+        guard videoSocket != nil || videoCapture != nil else { return }
+        isVideoActive = false
+        let vCap = videoCapture
+        let vSock = videoSocket
+        videoCapture = nil
+        videoSocket = nil
+        Task {
+            // Stopping the writer flushes remaining fMP4 segments through the
+            // onSegment callback BEFORE we send END_VIDEO/close.
+            await vCap?.stop()
+            if sendEnd {
+                vSock?.beginClose()
+                vSock?.sendEnd()
+                try? await Task.sleep(nanoseconds: 400_000_000)
+                vSock?.close()
+            } else {
+                vSock?.close()
+            }
+        }
+    }
+
+    /// Stop: send END, tear down capture + socket, return to authenticated/idle.
+    ///
+    /// `finalState` overrides where we land. The fatal-auth path needs it: this
+    /// teardown finishes asynchronously and would otherwise overwrite the error
+    /// state with `.idle`, swallowing the reason the stream stopped.
+    func stop(then finalState: State? = nil) {
+        setState(.stopping)
+        startTask?.cancel()      // don't let a late capture bring-up undo this
+        startTask = nil
+        stopVideo(sendEnd: true)
+        capture?.stop()
+        mixer?.stop()
+        socket?.beginClose()   // mark intentional first so teardown stays quiet
+        socket?.sendEnd()
+        let sock = socket
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) { [weak self] in
+            sock?.close()
+            self?.socket = nil; self?.mixer = nil; self?.capture = nil
+            if let final = finalState {
+                self?.setState(final)
+            } else {
+                self?.setState(self?.config.accessToken.isEmpty == true ? .idle : .authenticated)
+            }
+        }
+    }
+
+    // MARK: - Controls (no-ops when not streaming)
+
+    func setPaused(_ p: Bool) { mixer?.setPaused(p); videoCapture?.setPaused(p) }
+    func setMicMuted(_ m: Bool) { mixer?.setMicMuted(m) }
+    func setMeetingMuted(_ m: Bool) { mixer?.setMeetingMuted(m) }
+
+    var isPaused: Bool { mixer?.isPaused ?? false }
+    var isMicMuted: Bool { mixer?.isMicMuted ?? false }
+    var isMeetingMuted: Bool { mixer?.isMeetingMuted ?? false }
+
+    /// URL to open the active meeting in the LMA web UI, or the meetings list if
+    /// nothing is streaming.
+    ///
+    /// Uses the configured `webEndpoint` (the web-app CloudFront distribution),
+    /// which is DIFFERENT from the WebSocket endpoint host — deriving it from the
+    /// WS host yields a 404. Only if webEndpoint is unset do we fall back to the
+    /// WS host (best effort).
+    func lmaURL() -> URL? {
+        var base = config.webEndpoint
+        if base.isEmpty {
+            guard let comps = URLComponents(string: config.endpoint), let host = comps.host else { return nil }
+            base = "https://\(host)/"
+        }
+        // Normalize to "https://host/" (strip any trailing slash, then add one).
+        if base.hasSuffix("/") { base.removeLast() }
+        var s = "\(base)/#/calls"
+        if !activeCallId.isEmpty {
+            // encodeURIComponent-equivalent: encode everything not URL-safe
+            // (the web UI uses encodeURIComponent, and callIds contain spaces/colons).
+            let allowed = CharacterSet(charactersIn:
+                "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_.!~*'()")
+            let enc = activeCallId.addingPercentEncoding(withAllowedCharacters: allowed) ?? activeCallId
+            s += "/" + enc
+        }
+        return URL(string: s)
+    }
+}

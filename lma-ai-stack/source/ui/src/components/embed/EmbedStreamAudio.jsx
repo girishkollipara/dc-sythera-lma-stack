@@ -11,6 +11,8 @@
  *   participants  - Pre-fill participant label (stream audio)
  *   owner         - Pre-fill meeting owner (microphone label)
  *   autoStart     - Auto-start streaming on load (true/false)
+ *   diarizeSystem - Identify separate speakers in the shared tab audio (true/false)
+ *   diarizeMic    - Identify separate speakers on the microphone (true/false)
  */
 import { ConsoleLogger } from 'aws-amplify/utils';
 import React, { useState, useRef, useCallback, useEffect } from 'react';
@@ -29,11 +31,15 @@ import {
   Link,
 } from '@cloudscape-design/components';
 import '@cloudscape-design/global-styles/index.css';
-import useWebSocket from 'react-use-websocket';
+import * as ReactUseWebSocket from 'react-use-websocket';
 import { DEFAULT_OTHER_SPEAKER_NAME, DEFAULT_LOCAL_SPEAKER_NAME, SYSTEM } from '../common/constants';
 import useAppContext from '../../contexts/app';
 import useSettingsContext from '../../contexts/settings';
 import { getTimestampStr } from '../common/utilities';
+
+// See StreamAudio.jsx: unwrap the double-wrapped CJS default for Vite 8 interop.
+const useWebSocket =
+  typeof ReactUseWebSocket.default === 'function' ? ReactUseWebSocket.default : ReactUseWebSocket.default.default;
 
 const logger = new ConsoleLogger('EmbedStreamAudio');
 
@@ -54,6 +60,12 @@ const EmbedStreamAudio = ({ params, sendToParent }) => {
   const initialTopic = params.meetingTopic || 'Stream Audio';
   const initialParticipants = params.participants || DEFAULT_OTHER_SPEAKER_NAME;
   const initialOwner = params.owner || userIdentifier;
+  // Per-channel Amazon Transcribe speaker partitioning. Configured by the
+  // embedding page via query params rather than with checkboxes: this variant is
+  // deliberately chrome-free and driven by its host. Both default off.
+  // EmbedPage has already coerced these to booleans (as it does for autoStart).
+  const initialDiarizeSystem = params.diarizeSystem === true;
+  const initialDiarizeMic = params.diarizeMic === true;
 
   const [meetingTopic, setMeetingTopic] = useState(initialTopic);
   const [callMetaData, setCallMetaData] = useState({
@@ -61,6 +73,8 @@ const EmbedStreamAudio = ({ params, sendToParent }) => {
     agentId: initialOwner,
     fromNumber: initialParticipants,
     toNumber: SYSTEM,
+    diarizeSystemChannel: initialDiarizeSystem,
+    diarizeMicChannel: initialDiarizeMic,
   });
 
   const [recording, setRecording] = useState(false);
@@ -428,6 +442,8 @@ EmbedStreamAudio.propTypes = {
     participants: PropTypes.string,
     owner: PropTypes.string,
     autoStart: PropTypes.bool,
+    diarizeSystem: PropTypes.bool,
+    diarizeMic: PropTypes.bool,
   }).isRequired,
   sendToParent: PropTypes.func.isRequired,
 };

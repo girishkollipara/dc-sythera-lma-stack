@@ -22,12 +22,16 @@
  * noVNC source files; noVNC is consumed as an unmodified library dependency.
  * ---------------------------------------------------------------------------
  */
-import { fetchAuthSession } from 'aws-amplify/auth';
 import React, { useEffect, useRef, useState } from 'react';
 import PropTypes from 'prop-types';
 // noVNC (@novnc/novnc) is distributed under the Mozilla Public License, v. 2.0.
 // Source: https://github.com/novnc/noVNC. See THIRD-PARTY-LICENSES.txt.
-import RFB from '@novnc/novnc/lib/rfb';
+// noVNC v1.7.0 exposes the RFB module via the package-root "exports" string
+// (./core/rfb.js). The eslint-plugin-import resolver does not understand this
+// bare-string exports map, so disable the false-positive unresolved error.
+// eslint-disable-next-line import/no-unresolved
+import RFB from '@novnc/novnc';
+import { generateClient } from 'aws-amplify/api';
 import {
   Container,
   Header,
@@ -39,19 +43,23 @@ import {
   Toggle,
   Badge,
 } from '@cloudscape-design/components';
+import { buildVncConnection, isMicrovmEndpoint, fetchMicrovmAuthToken, fetchVncEdgeToken } from './vncConnection';
+
+// Used to mint the short-lived VNC token for whichever transport is in play.
+const gqlClient = generateClient();
 
 const VNCViewer = ({
   vpId,
   vncEndpoint,
   websocketUrl,
-  status,
-  manualActionType,
-  manualActionMessage,
-  manualActionTimeoutSeconds,
-  manualActionStartTime,
-  compact,
-  onOpenNewTab,
-  showHeader,
+  status = null,
+  manualActionType = null,
+  manualActionMessage = null,
+  manualActionTimeoutSeconds = null,
+  manualActionStartTime = null,
+  compact = false,
+  onOpenNewTab = null,
+  showHeader = true,
 }) => {
   const canvasRef = useRef(null);
   const rfbRef = useRef(null);
@@ -118,27 +126,46 @@ const VNCViewer = ({
     setConnecting(true);
     setError(null);
 
-    // Get Cognito token and connect
+    // Mint a token for this session, then connect
     const connectWithAuth = async () => {
       try {
-        // Get current Cognito session
-        const session = await fetchAuthSession();
-        const idToken = session?.tokens?.idToken?.toString();
-        if (!idToken) {
-          throw new Error('No Cognito ID token available');
+        // Two transports, depending on VPLaunchType (see vncConnection.js). Both
+        // tokens are minted by an authenticated resolver that checks the
+        // caller's access to this VP, are scoped to that VP's noVNC port, and
+        // are short-lived, so each is minted per connection attempt:
+        //  - ECS: wss://<cloudfront>/vnc/<vpId>?token=<signed edge token>
+        //  - MicroVM: the VM's own endpoint, with a port-scoped token passed as
+        //    a WebSocket subprotocol (browsers can't set the X-aws-proxy-auth
+        //    header that Lambda would otherwise expect).
+        let authToken;
+        let edgeToken;
+        // The VNC server asks for its own credential; the ECS mint returns it
+        // with the token so this stays one round trip.
+        let vncPassword = '';
+        if (isMicrovmEndpoint(vncEndpoint)) {
+          authToken = await fetchMicrovmAuthToken(gqlClient, vpId);
+        } else {
+          const minted = await fetchVncEdgeToken(gqlClient, vpId);
+          edgeToken = minted.token;
+          vncPassword = minted.vncPassword || '';
         }
+        const { url: wsUrl, wsProtocols } = buildVncConnection({
+          endpoint: vncEndpoint,
+          edgeToken,
+          authToken,
+        });
 
-        // Append token as query parameter to the WebSocket URL
-        // Format: wss://cloudfront-domain/vnc/{vpId}?token={idToken}
-        const url = new URL(vncEndpoint);
-        url.searchParams.append('token', idToken);
-        const wsUrl = url.toString();
-
-        console.log('Connecting to VNC via CloudFront with authentication');
+        console.log(
+          isMicrovmEndpoint(vncEndpoint)
+            ? 'Connecting to VNC via the MicroVM endpoint'
+            : 'Connecting to VNC via CloudFront with authentication',
+        );
         console.log('Virtual Participant ID:', vpId);
 
         const rfb = new RFB(canvasRef.current, wsUrl, {
-          credentials: { password: '' },
+          credentials: { password: vncPassword },
+          // noVNC 1.7 forwards this to `new WebSocket(url, protocols)`.
+          ...(wsProtocols.length > 0 ? { wsProtocols } : {}),
         });
 
         // Configure RFB
@@ -489,17 +516,6 @@ VNCViewer.propTypes = {
   compact: PropTypes.bool,
   onOpenNewTab: PropTypes.func,
   showHeader: PropTypes.bool,
-};
-
-VNCViewer.defaultProps = {
-  status: null,
-  manualActionType: null,
-  manualActionMessage: null,
-  manualActionTimeoutSeconds: null,
-  manualActionStartTime: null,
-  compact: false,
-  onOpenNewTab: null,
-  showHeader: true,
 };
 
 export default VNCViewer;

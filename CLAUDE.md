@@ -8,7 +8,7 @@ Live Meeting Assistant (LMA) -- an AWS-based solution for real-time meeting tran
 
 ## Build & Publish
 
-**Prerequisites:** bash, node v18/v20/v22, npm, docker (running), zip, python3, pip3, virtualenv, aws cli, sam cli (>=1.118.0).
+**Prerequisites:** bash, node >=22.22.2 (required by jsdom 30 in the UI test stack; exact pin in `.nvmrc`, installed by `make setup-node`), npm, docker (running), zip, python3, pip3, virtualenv, aws cli, sam cli (>=1.118.0).
 
 **AWS profile:** Always use `AWS_PROFILE=default` for build/deploy/test commands in this repo unless the user explicitly tells you otherwise. Other profiles (e.g. `bedrock`) point at unrelated accounts and will fail with `AccessDenied` on S3/CloudFormation.
 
@@ -36,12 +36,24 @@ npm test                    # vitest tests
 **WebSocket server** (in `lma-websocket-transcriber-stack/source/app/`):
 ```bash
 npm install && npm run build   # TypeScript build
-npm test                       # jest tests
+npm test                       # build + node --test on dist/**/*.test.js
+```
+
+**ASR MicroVM runtime** (in `lma-asr-microvm-stack/source/`):
+```bash
+python3 -m venv .venv && .venv/bin/pip install -r requirements-dev.txt
+.venv/bin/python -m pytest -q   # no model weights needed (backends are injected)
+.venv/bin/ruff check .
 ```
 
 **Virtual Participant** (in `lma-virtual-participant-stack/backend/`):
 ```bash
 npm install && npm run build   # TypeScript build
+npm test                       # node:test unit tests
+```
+Its CloudFormation/entrypoint tests are Python:
+```bash
+python3 -m pytest lma-virtual-participant-stack/test/
 ```
 
 ## Linting
@@ -67,6 +79,7 @@ Python uses Black (formatter), Flake8, Pylint (100 char lines). Config in `lma-a
 | `lma-ai-stack/` | Core stack: Lambda functions, AppSync GraphQL API, Cognito auth, DynamoDB, UI (React/CloudFront) | Python (Lambdas), React (UI) |
 | `lma-websocket-transcriber-stack/` | WebSocket server on ECS Fargate ingesting stereo audio, streaming to Amazon Transcribe, writing to Kinesis | TypeScript/Fastify |
 | `lma-virtual-participant-stack/` | Headless CloakBrowser/Chromium (Playwright) on ECS Fargate joining meetings, optional voice assistant + avatar | TypeScript |
+| `lma-asr-microvm-stack/` | Optional on-demand streaming ASR + speaker diarization on Lambda MicroVMs (alternative to Amazon Transcribe); model selectable by CFN parameter | Python (sherpa-onnx) |
 | `lma-vpc-stack/` | VPC networking, security groups, NAT gateways | CloudFormation |
 | `lma-meetingassist-setup-stack/` | Meeting assistant configuration | CloudFormation |
 | `lma-bedrockkb-stack/` | Bedrock Knowledge Base setup | CloudFormation |
@@ -76,6 +89,8 @@ Python uses Black (formatter), Flake8, Pylint (100 char lines). Config in `lma-a
 | `lma-nova-sonic-config-stack/` | Nova Sonic voice assistant config | CloudFormation |
 
 **Data flow:** Browser audio -> WebSocket server (Fargate) -> Amazon Transcribe -> Kinesis Data Stream -> Call Event Processor Lambda (Strands Agents SDK) -> DynamoDB + AppSync (real-time GraphQL subscriptions) -> React UI.
+
+The Amazon Transcribe step is pluggable: when `EnableMicrovmAsr=true` and an admin moves a meeting source onto it on the Transcription Engine page, meetings are instead transcribed by an ASR MicroVM (one per meeting, one WebSocket session per audio channel), which returns text and speaker labels together. Both engines emit identical `ADD_TRANSCRIPT_SEGMENT` events, so nothing downstream of Kinesis is engine-aware. See `docs/microvm-asr.md`.
 
 **Key source locations:**
 - Lambda functions: `lma-ai-stack/source/lambda_functions/` (19 functions)
@@ -97,6 +112,89 @@ Full documentation lives in `./docs/` with the master entry point at `docs/INDEX
 - Feature branches: `feature/` prefix
 - Release branches: `release/` prefix
 
+## Security Disclosure Hygiene
+
+<EXTREMELY_IMPORTANT>
+> **Mandatory for every change in this repository.**
+
+This repository is **public**: `aws-samples` on GitHub is the primary, and the
+GitLab remote is an internal mirror of it. Commit messages, PR/MR titles and
+bodies, branch names, CHANGELOG entries, release notes and code comments are
+all public and permanent.
+
+**Never describe a security weakness in any of them.** This applies to the
+weakness being fixed, to one being hardened against, and to anything removed
+or restricted. Specifically, never write:
+
+- What an attacker could do, or how ("any authenticated user can…", "allows
+  forged tokens", "unsanitized input reaches…", "privilege escalation via…").
+- The precondition or entry point that makes something reachable.
+- Which versions or deployment configurations are affected.
+- Severity or flaw-class vocabulary (`CRITICAL`, `RCE`, `XSS`, `CVE`,
+  `vulnerability`, `exploit`, `bypass`, `injection`, `unauthenticated`) **used
+  to characterise a defect in this repository**. The same words in their
+  ordinary senses are fine — a cache bypass, a dependency `CVE` bump, prompt
+  injection as a product concern, Teams' own lobby-bypass setting.
+- Links to internal findings, threat-model IDs, scanner issue IDs, or tickets
+  whose contents describe the weakness.
+
+The same rule applies to every other artifact this repository publishes: files
+under `docs/` (built into the public documentation site), `threat-modeling/`,
+GitHub issue titles, comments and closing references, GitHub release notes and
+tag messages, `.github/workflows/` step and job names, and suppression
+rationale wherever it lives — `reason:` fields in cfn-nag/checkov metadata,
+`# nosec`, `# noqa` and `# nosemgrep` comments, and `suppressionReason` entries
+in `.srt/suppressions.json`. Suppression rationale is expected to explain why a
+finding does not apply to the code as it stands; write it as a statement about
+the code, not as an analysis of what would otherwise be reachable.
+
+**Write the change, not the weakness.** Describe the new behaviour in neutral,
+forward-looking engineering terms — name the control that is now in place,
+never the gap it closes. Well-formed subjects look like:
+
+- `feat(<scope>): require signed capability tokens for access`
+- `feat(<scope>): sanitize rendered output before insertion`
+- `feat(<scope>): restrict management operations to the Admin group`
+- `chore(<scope>): narrow Content-Security-Policy directives`
+
+A subject is malformed if, after the change has shipped, a reader of it still
+knows what used to be possible. Anything of the shape *"fix: \<flaw class\> —
+\<what it allowed\>"*, or that names a control together with the consequence of
+its absence ("…, current one allows …", "…, prevents …"), fails the rule
+however it is worded. Do not illustrate the rule with a specific bad example
+drawn from this repository: a paired "don't write / write instead" example is
+itself a disclosure.
+
+Tests follow the same rule: name them for the invariant they assert —
+`test_rejects_token_with_invalid_signature` — not for the attack that motivated
+them (`test_auth_bypass`). Keep the `test_` prefix pytest requires. A name that
+states what the code now guarantees is fine even if it contains a word from the
+list above (`test_unauthenticated_user_rejected` is a good name).
+
+Detailed findings, exploitability analysis and remediation write-ups belong in
+an internal Taskei task — **not** in this repo. That includes `.srt/` and
+`.dsr/`: their tracked files are committed to this public repository, not
+internal scratch space.
+
+Where a **security-motivated** behaviour change needs a CHANGELOG entry,
+describe the new behaviour and any migration step rather than the prior
+shortcoming. This does not change how ordinary bug fixes are written —
+`### Fixed` entries still lead with the user-visible symptom and a sentence of
+cause, as `.claude/skills/prepare-changelog.md` requires.
+
+**This is about wording, not about withholding.** If users must act — rotate a
+credential, redeploy, change a stack parameter, or stop relying on a setting —
+say so plainly in the CHANGELOG and the release notes, in terms of the action
+required and the behaviour that changed. Where the impact genuinely cannot be
+conveyed without describing the weakness, do not water the entry down: raise it
+through the channel in
+[CONTRIBUTING.md](CONTRIBUTING.md#security-issue-notifications) (AWS/Amazon
+Security) and publish a GitHub Security Advisory or AWS security bulletin, then
+link that advisory from the CHANGELOG. An advisory published through those
+channels is the one place where the weakness is described on purpose; silence
+is never an acceptable substitute for one.
+</EXTREMELY_IMPORTANT>
+
 ## Skill Files
 
 Project-specific coding patterns, checklists, and review workflows live in
@@ -111,6 +209,9 @@ patterns.
 | `.claude/skills/infrastructure.md` | CloudFormation / SAM templates, nested stacks, GovCloud rules |
 | `.claude/skills/code-review.md` | Pre-commit self-review checklist for your own changes |
 | `.claude/skills/pr-review.md` | Reviewing a GitHub PR or GitLab MR at a URL (e.g. `review <url>`) |
+| `.claude/skills/dependabot-prs.md` | Triaging, verifying and merging Dependabot dependency PRs |
+| `.claude/skills/prepare-changelog.md` | Writing or updating CHANGELOG entries for a release |
+| `.claude/skills/integ-tests.md` | Running end-to-end integration tests against a live deployed stack (`make integ-tests`) |
 
 When asked to `review <PR/MR URL>`, follow `.claude/skills/pr-review.md` and
 produce a structured review answering the six questions (good PR / safe /
