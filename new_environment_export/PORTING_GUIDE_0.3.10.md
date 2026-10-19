@@ -106,9 +106,13 @@ apply the same logic to the TypeScript in `lma-virtual-participant-stack/backend
 git fetch origin
 git switch -c feature/lma-0.3.10-sync origin/qa      # qa already has part of our work + Jenkins CI/CD
 git remote add upstream https://github.com/aws-samples/amazon-transcribe-live-meeting-assistant.git
-git fetch upstream
-git merge upstream/main                               # upstream main = 0.3.10
+git fetch upstream --tags
+git merge v0.3.10                                     # AWS's 0.3.10 release tag (fixed; upstream/main keeps moving)
 ```
+
+What each line does: (1) refresh our GitHub branches, (2) create the new branch from `qa` and switch
+to it, (3) add AWS's repo as a second remote called `upstream` — once only, (4) download AWS's
+branches and release tags, (5) merge the 0.3.10 release into the new branch.
 
 Git will stop with **merge conflicts** in about 9 files. For each conflicted file: take 0.3.10's
 version, then re-add the `qa` change on top. The `qa` changes are small and listed in
