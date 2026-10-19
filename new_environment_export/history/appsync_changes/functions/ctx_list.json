@@ -1,0 +1,12 @@
+{
+ "identity":{"sub":"s1","issuer":"https://iss","username":"bob","claims":{},"sourceIp":["1.2.3.4"],"defaultAuthStrategy":"ALLOW","groups":[]},
+ "stash":{"myProjectIds":["projA"]},
+ "result":{"items":[
+   {"Owner":"bob","SharedWith":[],"CallId":"1-owner"},
+   {"Owner":"alice","SharedWith":["bob"],"CallId":"2-shared"},
+   {"Owner":"alice","SharedWith":[],"ProjectId":"projA","ExcludedUsers":[],"CallId":"3-projA"},
+   {"Owner":"alice","SharedWith":[],"ProjectId":"projA","ExcludedUsers":["bob"],"CallId":"4-excluded"},
+   {"Owner":"alice","SharedWith":[],"ProjectId":"projB","CallId":"5-projB"},
+   {"Owner":"alice","SharedWith":[],"CallId":"6-none"}
+ ],"nextToken":null}
+}

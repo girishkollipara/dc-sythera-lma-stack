@@ -1,0 +1,33 @@
+{
+ "RoleName": "LMASA-AISTACK-4VKHCQQY3CJR-AppSyncDynamoDbRole-K65SfE5yoWP2",
+ "PolicyName": "dynamoDB",
+ "PolicyDocument": {
+  "Version": "2012-10-17",
+  "Statement": [
+   {
+    "Action": [
+     "dynamodb:Query",
+     "dynamodb:Scan",
+     "dynamodb:GetItem",
+     "dynamodb:PutItem",
+     "dynamodb:UpdateItem",
+     "dynamodb:DeleteItem",
+     "dynamodb:BatchGetItem"
+    ],
+    "Resource": [
+     "arn:aws:dynamodb:us-east-1:528757797189:table/LMASA-AISTACK-4VKHCQQY3CJR-EventSourcingTable-V49M8Y0JQODE",
+     "arn:aws:dynamodb:us-east-1:528757797189:table/LMASA-AISTACK-4VKHCQQY3CJR-EventSourcingTable-V49M8Y0JQODE/index/*"
+    ],
+    "Effect": "Allow"
+   },
+   {
+    "Action": [
+     "kms:Decrypt",
+     "kms:DescribeKey"
+    ],
+    "Resource": "arn:aws:kms:us-east-1:528757797189:key/1fed6af6-44f8-42c1-9e07-d1d8075ae926",
+    "Effect": "Allow"
+   }
+  ]
+ }
+}

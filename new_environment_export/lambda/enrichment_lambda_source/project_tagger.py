@@ -1,8 +1,9 @@
 """Tag EventSourcing meeting records (c# + cls#) with their ProjectId.
 
 Runs off the EventSourcing table's DynamoDB stream. For a newly-created call
-record we look up the meeting's project in MongoDB (active_meetings_board, keyed
-by lma_call_id == CallId) and write `ProjectId` onto BOTH the call record and its
+record we look up the meeting's project in MongoDB (active_meetings_board, the
+board whose lma_sessions holds this CallId — any of the meeting's bots) and
+write `ProjectId` onto BOTH the call record and its
 list row in ONE transaction — so project members can see the meeting (Fact A,
 docs/BACKEND_INTEGRATION_SPEC.md §4).
 
@@ -38,9 +39,16 @@ _ddb = boto3.client("dynamodb")
 
 
 def _project_id_for_call(call_id):
-    """Look up the meeting's project in the board by CallId. Returns a ULID or None."""
+    """
+    Look up the meeting's project in the board by CallId. Returns a ULID or None.
+
+    A meeting can have several bots (one per Synthera user who booked one);
+    each bot is a session on the meeting's single board, carrying its own
+    call id. Matching ANY session means every bot of the meeting gets the
+    same project — not only whichever bot reported last.
+    """
     doc = get_collection(_BOARD_COLLECTION).find_one(
-        {"lma_call_id": call_id},
+        {"lma_sessions.call_id": call_id},
         {"project_ids": 1, "_id": 0},
     )
     if not doc:

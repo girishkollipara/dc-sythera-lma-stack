@@ -32,8 +32,8 @@
   "kind": "PIPELINE",
   "dataSourceName": null,
   "pipeline": [
-   "ygbufyqq3fbtzp3r4hcchrjogy",
-   "x2ai2kctsrg5xpakgfbxlsrs4q"
+   "GetCallForAddSeg",
+   "PutSegment"
   ],
   "runtime": "VTL"
  },
@@ -179,10 +179,13 @@
  },
  {
   "field": "Mutation.shareVirtualParticipant",
-  "kind": "UNIT",
-  "dataSourceName": "VirtualParticipantTable",
-  "pipeline": [],
-  "runtime": "VTL"
+  "kind": "PIPELINE",
+  "dataSourceName": null,
+  "pipeline": [
+   "VirtualParticipantGetOldSharedWith",
+   "ShareVirtualParticipantTransact"
+  ],
+  "runtime": "APPSYNC_JS"
  },
  {
   "field": "Mutation.toggleVNCPreview",
@@ -207,10 +210,13 @@
  },
  {
   "field": "Mutation.unshareVirtualParticipant",
-  "kind": "UNIT",
-  "dataSourceName": "VirtualParticipantTable",
-  "pipeline": [],
-  "runtime": "VTL"
+  "kind": "PIPELINE",
+  "dataSourceName": null,
+  "pipeline": [
+   "VirtualParticipantGetOldSharedWith",
+   "UnshareVirtualParticipantTransact"
+  ],
+  "runtime": "APPSYNC_JS"
  },
  {
   "field": "Mutation.updateAgent",
@@ -287,10 +293,20 @@
   "kind": "PIPELINE",
   "dataSourceName": null,
   "pipeline": [
-   "tboyn6taezhd5gbk6xqcstav7y",
-   "eoj5g4ptcverzhl5bpgdfrvd2q"
+   "GetUserProjects",
+   "GetCallAuth"
   ],
   "runtime": "VTL"
+ },
+ {
+  "field": "Query.getCallCount",
+  "kind": "PIPELINE",
+  "dataSourceName": null,
+  "pipeline": [
+   "GetUserProjectsJS",
+   "GetCallCountQuery"
+  ],
+  "runtime": "APPSYNC_JS"
  },
  {
   "field": "Query.getChatButtonConfig",
@@ -325,9 +341,9 @@
   "kind": "PIPELINE",
   "dataSourceName": null,
   "pipeline": [
-   "tboyn6taezhd5gbk6xqcstav7y",
-   "kdackkhwifgrjat5joiot3husu",
-   "yejebowbnbavnnqvyfpo4nnttq"
+   "GetUserProjects",
+   "GetCallForSeg",
+   "QuerySegments"
   ],
   "runtime": "VTL"
  },
@@ -336,9 +352,9 @@
   "kind": "PIPELINE",
   "dataSourceName": null,
   "pipeline": [
-   "tboyn6taezhd5gbk6xqcstav7y",
-   "kdackkhwifgrjat5joiot3husu",
-   "mfxbudlypnau3crnj634lclvdy"
+   "GetUserProjects",
+   "GetCallForSeg",
+   "QuerySegmentsSentiment"
   ],
   "runtime": "VTL"
  },
@@ -354,8 +370,8 @@
   "kind": "PIPELINE",
   "dataSourceName": null,
   "pipeline": [
-   "tboyn6taezhd5gbk6xqcstav7y",
-   "ccdn4s5b7jez3m5gzxx2uremee"
+   "GetUserProjects",
+   "ListCallsQuery"
   ],
   "runtime": "VTL"
  },
@@ -364,18 +380,28 @@
   "kind": "PIPELINE",
   "dataSourceName": null,
   "pipeline": [
-   "tboyn6taezhd5gbk6xqcstav7y",
-   "oe6uotzisvcqrmsnmwr7jeaiwq"
+   "GetUserProjects",
+   "ListCallsDateHourQuery"
   ],
   "runtime": "VTL"
+ },
+ {
+  "field": "Query.listCallsDateRange",
+  "kind": "PIPELINE",
+  "dataSourceName": null,
+  "pipeline": [
+   "GetUserProjectsJS",
+   "ListCallsDateRangeQuery"
+  ],
+  "runtime": "APPSYNC_JS"
  },
  {
   "field": "Query.listCallsDateShard",
   "kind": "PIPELINE",
   "dataSourceName": null,
   "pipeline": [
-   "tboyn6taezhd5gbk6xqcstav7y",
-   "jfdqw2g7azejnduhhpx66hwstq"
+   "GetUserProjects",
+   "ListCallsDateShardQuery"
   ],
   "runtime": "VTL"
  },
@@ -402,10 +428,14 @@
  },
  {
   "field": "Query.listVirtualParticipants",
-  "kind": "UNIT",
-  "dataSourceName": "VirtualParticipantTable",
-  "pipeline": [],
-  "runtime": "VTL"
+  "kind": "PIPELINE",
+  "dataSourceName": null,
+  "pipeline": [
+   "VPOwnerQueryOrAdminScan",
+   "VPGetSharedIds",
+   "VPBatchGetSharedAndMerge"
+  ],
+  "runtime": "APPSYNC_JS"
  },
  {
   "field": "Query.parseMeetingInvitation",
@@ -426,8 +456,8 @@
   "kind": "PIPELINE",
   "dataSourceName": null,
   "pipeline": [
-   "fqtxuulpn5atlohvb4od2outfi",
-   "rmh753xp75ftlixzt6b4pz2fiy"
+   "GetUserProjectsJS",
+   "GetCallForSub"
   ],
   "runtime": "APPSYNC_JS"
  },
@@ -436,7 +466,7 @@
   "kind": "PIPELINE",
   "dataSourceName": null,
   "pipeline": [
-   "fqtxuulpn5atlohvb4od2outfi"
+   "GetUserProjectsJS"
   ],
   "runtime": "APPSYNC_JS"
  },
@@ -466,8 +496,8 @@
   "kind": "PIPELINE",
   "dataSourceName": null,
   "pipeline": [
-   "fqtxuulpn5atlohvb4od2outfi",
-   "rmh753xp75ftlixzt6b4pz2fiy"
+   "GetUserProjectsJS",
+   "GetCallForSub"
   ],
   "runtime": "APPSYNC_JS"
  },

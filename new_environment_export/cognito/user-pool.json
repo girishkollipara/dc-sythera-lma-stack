@@ -1,0 +1,319 @@
+{
+ "UserPool": {
+  "Id": "us-east-1_pOCRCo1Wx",
+  "Name": "LMASA-COGNITOSTACK-U9VMZPR645VS-UserPool",
+  "Policies": {
+   "PasswordPolicy": {
+    "MinimumLength": 8,
+    "RequireUppercase": true,
+    "RequireLowercase": true,
+    "RequireNumbers": true,
+    "RequireSymbols": true,
+    "TemporaryPasswordValidityDays": 7
+   },
+   "SignInPolicy": {
+    "AllowedFirstAuthFactors": [
+     "PASSWORD"
+    ]
+   }
+  },
+  "DeletionProtection": "INACTIVE",
+  "LambdaConfig": {
+   "PreSignUp": "arn:aws:lambda:us-east-1:528757797189:function:LMASA-COGNITOSTACK-U9VMZP-CognitoUserPoolEmailDoma-mRB7pR6mV1fE",
+   "CustomMessage": "arn:aws:lambda:us-east-1:528757797189:function:LMASA-COGNITOSTACK-U9VMZP-CognitoCustomMessageFunc-2FVAIh4LxCQe",
+   "PreAuthentication": "arn:aws:lambda:us-east-1:528757797189:function:LMASA-COGNITOSTACK-U9VMZP-CognitoUserPoolEmailDoma-mRB7pR6mV1fE"
+  },
+  "LastModifiedDate": "2026-05-14T07:58:05.365000-04:00",
+  "CreationDate": "2026-05-14T07:58:05.365000-04:00",
+  "SchemaAttributes": [
+   {
+    "Name": "profile",
+    "AttributeDataType": "String",
+    "DeveloperOnlyAttribute": false,
+    "Mutable": true,
+    "Required": false,
+    "StringAttributeConstraints": {
+     "MinLength": "0",
+     "MaxLength": "2048"
+    }
+   },
+   {
+    "Name": "address",
+    "AttributeDataType": "String",
+    "DeveloperOnlyAttribute": false,
+    "Mutable": true,
+    "Required": false,
+    "StringAttributeConstraints": {
+     "MinLength": "0",
+     "MaxLength": "2048"
+    }
+   },
+   {
+    "Name": "birthdate",
+    "AttributeDataType": "String",
+    "DeveloperOnlyAttribute": false,
+    "Mutable": true,
+    "Required": false,
+    "StringAttributeConstraints": {
+     "MinLength": "10",
+     "MaxLength": "10"
+    }
+   },
+   {
+    "Name": "gender",
+    "AttributeDataType": "String",
+    "DeveloperOnlyAttribute": false,
+    "Mutable": true,
+    "Required": false,
+    "StringAttributeConstraints": {
+     "MinLength": "0",
+     "MaxLength": "2048"
+    }
+   },
+   {
+    "Name": "preferred_username",
+    "AttributeDataType": "String",
+    "DeveloperOnlyAttribute": false,
+    "Mutable": true,
+    "Required": false,
+    "StringAttributeConstraints": {
+     "MinLength": "0",
+     "MaxLength": "2048"
+    }
+   },
+   {
+    "Name": "updated_at",
+    "AttributeDataType": "Number",
+    "DeveloperOnlyAttribute": false,
+    "Mutable": true,
+    "Required": false,
+    "NumberAttributeConstraints": {
+     "MinValue": "0"
+    }
+   },
+   {
+    "Name": "website",
+    "AttributeDataType": "String",
+    "DeveloperOnlyAttribute": false,
+    "Mutable": true,
+    "Required": false,
+    "StringAttributeConstraints": {
+     "MinLength": "0",
+     "MaxLength": "2048"
+    }
+   },
+   {
+    "Name": "picture",
+    "AttributeDataType": "String",
+    "DeveloperOnlyAttribute": false,
+    "Mutable": true,
+    "Required": false,
+    "StringAttributeConstraints": {
+     "MinLength": "0",
+     "MaxLength": "2048"
+    }
+   },
+   {
+    "Name": "identities",
+    "AttributeDataType": "String",
+    "DeveloperOnlyAttribute": false,
+    "Mutable": true,
+    "Required": false,
+    "StringAttributeConstraints": {}
+   },
+   {
+    "Name": "sub",
+    "AttributeDataType": "String",
+    "DeveloperOnlyAttribute": false,
+    "Mutable": false,
+    "Required": true,
+    "StringAttributeConstraints": {
+     "MinLength": "1",
+     "MaxLength": "2048"
+    }
+   },
+   {
+    "Name": "email_verified",
+    "AttributeDataType": "Boolean",
+    "DeveloperOnlyAttribute": false,
+    "Mutable": true,
+    "Required": false
+   },
+   {
+    "Name": "phone_number_verified",
+    "AttributeDataType": "Boolean",
+    "DeveloperOnlyAttribute": false,
+    "Mutable": true,
+    "Required": false
+   },
+   {
+    "Name": "phone_number",
+    "AttributeDataType": "String",
+    "DeveloperOnlyAttribute": false,
+    "Mutable": true,
+    "Required": false,
+    "StringAttributeConstraints": {
+     "MinLength": "0",
+     "MaxLength": "2048"
+    }
+   },
+   {
+    "Name": "zoneinfo",
+    "AttributeDataType": "String",
+    "DeveloperOnlyAttribute": false,
+    "Mutable": true,
+    "Required": false,
+    "StringAttributeConstraints": {
+     "MinLength": "0",
+     "MaxLength": "2048"
+    }
+   },
+   {
+    "Name": "custom:jobtitle",
+    "AttributeDataType": "String",
+    "DeveloperOnlyAttribute": false,
+    "Mutable": true,
+    "Required": false,
+    "StringAttributeConstraints": {}
+   },
+   {
+    "Name": "custom:department",
+    "AttributeDataType": "String",
+    "DeveloperOnlyAttribute": false,
+    "Mutable": true,
+    "Required": false,
+    "StringAttributeConstraints": {}
+   },
+   {
+    "Name": "custom:manager",
+    "AttributeDataType": "String",
+    "DeveloperOnlyAttribute": false,
+    "Mutable": true,
+    "Required": false,
+    "StringAttributeConstraints": {}
+   },
+   {
+    "Name": "locale",
+    "AttributeDataType": "String",
+    "DeveloperOnlyAttribute": false,
+    "Mutable": true,
+    "Required": false,
+    "StringAttributeConstraints": {
+     "MinLength": "0",
+     "MaxLength": "2048"
+    }
+   },
+   {
+    "Name": "email",
+    "AttributeDataType": "String",
+    "DeveloperOnlyAttribute": false,
+    "Mutable": false,
+    "Required": true,
+    "StringAttributeConstraints": {
+     "MinLength": "0",
+     "MaxLength": "2048"
+    }
+   },
+   {
+    "Name": "given_name",
+    "AttributeDataType": "String",
+    "DeveloperOnlyAttribute": false,
+    "Mutable": true,
+    "Required": false,
+    "StringAttributeConstraints": {
+     "MinLength": "0",
+     "MaxLength": "2048"
+    }
+   },
+   {
+    "Name": "family_name",
+    "AttributeDataType": "String",
+    "DeveloperOnlyAttribute": false,
+    "Mutable": true,
+    "Required": false,
+    "StringAttributeConstraints": {
+     "MinLength": "0",
+     "MaxLength": "2048"
+    }
+   },
+   {
+    "Name": "middle_name",
+    "AttributeDataType": "String",
+    "DeveloperOnlyAttribute": false,
+    "Mutable": true,
+    "Required": false,
+    "StringAttributeConstraints": {
+     "MinLength": "0",
+     "MaxLength": "2048"
+    }
+   },
+   {
+    "Name": "name",
+    "AttributeDataType": "String",
+    "DeveloperOnlyAttribute": false,
+    "Mutable": true,
+    "Required": false,
+    "StringAttributeConstraints": {
+     "MinLength": "0",
+     "MaxLength": "2048"
+    }
+   },
+   {
+    "Name": "nickname",
+    "AttributeDataType": "String",
+    "DeveloperOnlyAttribute": false,
+    "Mutable": true,
+    "Required": false,
+    "StringAttributeConstraints": {
+     "MinLength": "0",
+     "MaxLength": "2048"
+    }
+   }
+  ],
+  "AutoVerifiedAttributes": [
+   "email"
+  ],
+  "EmailVerificationMessage": "Please verify your email to complete account registration. Confirmation Code {####}.",
+  "EmailVerificationSubject": "Account Verification",
+  "VerificationMessageTemplate": {
+   "EmailMessage": "Please verify your email to complete account registration. Confirmation Code {####}.",
+   "EmailSubject": "Account Verification",
+   "DefaultEmailOption": "CONFIRM_WITH_CODE"
+  },
+  "UserAttributeUpdateSettings": {
+   "AttributesRequireVerificationBeforeUpdate": []
+  },
+  "MfaConfiguration": "OFF",
+  "EstimatedNumberOfUsers": 51,
+  "EmailConfiguration": {
+   "EmailSendingAccount": "COGNITO_DEFAULT"
+  },
+  "UserPoolTags": {},
+  "Domain": "lmasa-1778759884233304864",
+  "AdminCreateUserConfig": {
+   "AllowAdminCreateUserOnly": false,
+   "UnusedAccountValidityDays": 7,
+   "InviteMessageTemplate": {
+    "EmailMessage": "<p>Hello {username},</p>\n<p>Welcome to Live Meeting Assistant (LMA)! Your temporary password is: <strong>{####}</strong></p>\n<p>When the CloudFormation stack is COMPLETE, navigate to the Outputs tab of your CloudFormation stack and get the URL associated with ApplicationCloudfrontEndpoint. This is your LMA web interface. When you first login, it will prompt you to set a permanent password.</p> \n<p>Don't attempt to download the Chrome browser extension from LMA until the \nCloudFormation stack status is CREATE_COMPLETE or UPDATE_COMPLETE, as the \nextension will not be available until then.</p>\n<p>Thanks,</p>\n<p>Live Meeting Assistant (amazon.com/live-meeting-assistant)</p>\n<p><em>Stack: LMASA, v0.3.2, 2026-04-30T14:39:18Z</em></p>",
+    "EmailSubject": "Welcome to Live Meeting Assistant!"
+   }
+  },
+  "UsernameConfiguration": {
+   "CaseSensitive": false
+  },
+  "Arn": "arn:aws:cognito-idp:us-east-1:528757797189:userpool/us-east-1_pOCRCo1Wx",
+  "AccountRecoverySetting": {
+   "RecoveryMechanisms": [
+    {
+     "Priority": 1,
+     "Name": "verified_email"
+    },
+    {
+     "Priority": 2,
+     "Name": "verified_phone_number"
+    }
+   ]
+  },
+  "UserPoolTier": "ESSENTIALS"
+ }
+}

@@ -1,0 +1,18 @@
+{
+ "typeName": "Query",
+ "fieldName": "getCallCount",
+ "resolverArn": "arn:aws:appsync:us-east-1:528757797189:apis/lo3gpjswjjdqrh6xn5xkgipeme/types/Query/resolvers/getCallCount",
+ "kind": "PIPELINE",
+ "pipelineConfig": {
+  "functions": [
+   "fqtxuulpn5atlohvb4od2outfi",
+   "rih3eo4xxnhodc6iib6zyvukyu"
+  ]
+ },
+ "maxBatchSize": 0,
+ "runtime": {
+  "name": "APPSYNC_JS",
+  "runtimeVersion": "1.0.0"
+ },
+ "code": "export function request(ctx) {\n  return {};\n}\n\nexport function response(ctx) {\n  return ctx.prev.result;\n}\n"
+}

@@ -1,0 +1,41 @@
+{
+ "Role": {
+  "Path": "/service-role/",
+  "RoleName": "appsync-ds-lam-hRolz0iCyudj-SyntheraProjectChatb",
+  "RoleId": "AROAXWHDLWFCVZMC4CU2C",
+  "Arn": "arn:aws:iam::528757797189:role/service-role/appsync-ds-lam-hRolz0iCyudj-SyntheraProjectChatb",
+  "CreateDate": "2026-06-25T22:03:19+00:00",
+  "AssumeRolePolicyDocument": {
+   "Version": "2012-10-17",
+   "Statement": [
+    {
+     "Effect": "Allow",
+     "Principal": {
+      "Service": "appsync.amazonaws.com"
+     },
+     "Action": "sts:AssumeRole",
+     "Condition": {
+      "StringEquals": {
+       "aws:SourceAccount": "528757797189"
+      },
+      "ArnEquals": {
+       "aws:SourceArn": "arn:aws:appsync:us-east-1:528757797189:apis/lo3gpjswjjdqrh6xn5xkgipeme"
+      }
+     }
+    }
+   ]
+  },
+  "MaxSessionDuration": 3600,
+  "RoleLastUsed": {
+   "LastUsedDate": "2026-10-15T16:20:53+00:00",
+   "Region": "us-east-1"
+  }
+ },
+ "AttachedPolicies": [
+  {
+   "PolicyName": "appsync-ds-lam-hRolz0iCyudj-SyntheraProjectChatb",
+   "PolicyArn": "arn:aws:iam::528757797189:policy/service-role/appsync-ds-lam-hRolz0iCyudj-SyntheraProjectChatb"
+  }
+ ],
+ "CloudFormationOwned": false
+}

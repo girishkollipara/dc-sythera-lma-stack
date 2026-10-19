@@ -1,0 +1,10 @@
+{
+    "typeName": "Query",
+    "fieldName": "getCall",
+    "dataSourceName": "CallEventSourcing",
+    "resolverArn": "arn:aws:appsync:us-east-1:528757797189:apis/lo3gpjswjjdqrh6xn5xkgipeme/types/Query/resolvers/getCall",
+    "requestMappingTemplate": "#set( $PK = \"c#${ctx.args.CallId}\" )\n{\n  \"version\": \"2018-05-29\",\n  \"operation\": \"GetItem\",\n  \"key\": {\n    \"PK\": $util.dynamodb.toDynamoDBJson($PK),\n    \"SK\": $util.dynamodb.toDynamoDBJson($PK),\n  },\n}",
+    "responseMappingTemplate": "#if ( $ctx.error )\n  $util.error($ctx.error.message, $ctx.error.type)\n#end\n\n## This resolver can be invoked by either a Lambda function with IAM authentication\n## or a User authenticated using Cognito. The Lambda function gets unrestricted access\n## to all the call records stored in the DynamoDB to perform the backend operations in the \n## Call Event Processor function. \n\n#set($isCognitoUser = true)\n#if($context.identity.userArn && $context.identity.userArn.contains(\":assumed-role/\"))\n  #set($isCognitoUser = false)\n#end\n\n## If this record isn't being requested by Lambda or any of the authorized users\n## (Admin, meeting owner or user that the meeting has been shared with) throw\n## an unauthorized exception.\n\n#if($isCognitoUser \n    && !$context.identity.groups.contains(\"Admin\")\n    && $context.result.Owner != $context.identity.username\n    && !$context.result.SharedWith.contains($context.identity.username))\n      $util.error(\"User $context.identity.username is not authorized\", \"AuthorizationError\")\n#else\n  $utils.toJson($context.result)\n#end",
+    "kind": "UNIT",
+    "maxBatchSize": 0
+}

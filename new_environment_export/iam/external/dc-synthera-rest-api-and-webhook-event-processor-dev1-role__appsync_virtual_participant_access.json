@@ -1,0 +1,18 @@
+{
+ "RoleName": "dc-synthera-rest-api-and-webhook-event-processor-dev1-role",
+ "PolicyName": "appsync_virtual_participant_access",
+ "PolicyDocument": {
+  "Version": "2012-10-17",
+  "Statement": [
+   {
+    "Sid": "AllowAppSyncVirtualParticipantCalls",
+    "Effect": "Allow",
+    "Action": "appsync:GraphQL",
+    "Resource": [
+     "arn:aws:appsync:us-east-1:528757797189:apis/lo3gpjswjjdqrh6xn5xkgipeme/types/Mutation/fields/createVirtualParticipant",
+     "arn:aws:appsync:us-east-1:528757797189:apis/lo3gpjswjjdqrh6xn5xkgipeme/types/Mutation/fields/deleteVirtualParticipants"
+    ]
+   }
+  ]
+ }
+}

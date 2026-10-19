@@ -1,0 +1,40 @@
+{
+ "RoleName": "LMASA-AISTACK-4VKHCQQY3CJ-VirtualParticipantDataSou-IJlzjslOWLIo",
+ "PolicyName": "DynamoDBAccess",
+ "PolicyDocument": {
+  "Version": "2012-10-17",
+  "Statement": [
+   {
+    "Action": [
+     "dynamodb:Query",
+     "dynamodb:Scan",
+     "dynamodb:GetItem",
+     "dynamodb:PutItem",
+     "dynamodb:UpdateItem",
+     "dynamodb:DeleteItem",
+     "dynamodb:BatchGetItem",
+     "dynamodb:TransactWriteItems"
+    ],
+    "Resource": [
+     "arn:aws:dynamodb:us-east-1:528757797189:table/LMASA-AISTACK-4VKHCQQY3CJR-VirtualParticipant",
+     "arn:aws:dynamodb:us-east-1:528757797189:table/LMASA-AISTACK-4VKHCQQY3CJR-VirtualParticipant/index/*",
+     "arn:aws:dynamodb:us-east-1:528757797189:table/LMASA-VirtualParticipantShareIndex"
+    ],
+    "Effect": "Allow"
+   },
+   {
+    "Condition": {
+     "StringEquals": {
+      "kms:ViaService": "dynamodb.us-east-1.amazonaws.com"
+     }
+    },
+    "Action": [
+     "kms:Decrypt",
+     "kms:DescribeKey"
+    ],
+    "Resource": "arn:aws:kms:us-east-1:528757797189:key/1fed6af6-44f8-42c1-9e07-d1d8075ae926",
+    "Effect": "Allow"
+   }
+  ]
+ }
+}

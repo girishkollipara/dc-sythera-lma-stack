@@ -1,0 +1,14 @@
+{
+ "RECORDINGS_BUCKET_NAME": "lmasa-recordingsbucket-8virmwlgow36",
+ "SCHEDULER_ROLE_ARN": "arn:aws:iam::528757797189:role/LMASA-VIRTUALPARTICIPANTST-VPSchedulerExecutionRole-X4Ig7X8qtTtT",
+ "SUBNETS": "[\"subnet-035b862c6058f28f2\", \"subnet-00ab6bb3680d64d68\"]",
+ "VP_LAUNCH_TYPE": "FARGATE",
+ "SECURITY_GROUPS": "[\"sg-0fce20b5b14d24cd8\"]",
+ "SCHEDULE_GROUP_NAME": "LMASA-vp-schedules",
+ "CLUSTER_ARN": "arn:aws:ecs:us-east-1:528757797189:cluster/LMASA-VIRTUALPARTICIPANTSTACK-1IAVIZT1439R2-Cluster-hEH0LkElgiwp",
+ "CALL_DATA_STREAM_NAME": "LMASA-CallDataStream-G7f4Y5Yq2P94",
+ "VP_TASK_REGISTRY_TABLE_NAME": "LMASA-AISTACK-4VKHCQQY3CJR-VPTaskRegistry",
+ "GRAPHQL_ENDPOINT": "https://kujxnwymnnfkfpavveu5doevc4.appsync-api.us-east-1.amazonaws.com/graphql",
+ "CONTAINER_NAME": "scribe",
+ "TASK_DEFINITION_ARN": "arn:aws:ecs:us-east-1:528757797189:task-definition/LMASA-VIRTUALPARTICIPANTSTACK-1IAVIZT1439R2VirtualParticipantTaskDef:3"
+}

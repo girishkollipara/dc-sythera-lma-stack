@@ -39,6 +39,11 @@ type Call implements DynamoDbBase @aws_cognito_user_pools @aws_iam {
   UpdatedAt: AWSDateTime!
 }
 
+type CallCount @aws_cognito_user_pools @aws_iam {
+  count: Int
+  truncated: Boolean
+}
+
 type CallList @aws_cognito_user_pools @aws_iam {
   Calls: [CallListItem]
   nextToken: String
@@ -131,7 +136,7 @@ type InstallMCPServerOutput @aws_cognito_user_pools @aws_iam {
   Success: Boolean!
 }
 
-#   LLM Prompt Summary Templates
+#       LLM Prompt Summary Templates
 type LLMPromptTemplate @aws_cognito_user_pools @aws_iam {
   LLMPromptTemplateId: ID!
 }
@@ -142,7 +147,7 @@ type MCPApiKey @aws_cognito_user_pools {
   keyPrefix: String!
 }
 
-#   MCP Server Management (Account-Level)
+#       MCP Server Management (Account-Level)
 type MCPServer @aws_cognito_user_pools @aws_iam {
   AccountId: String!
   AuthConfig: AWSJSON
@@ -204,7 +209,7 @@ type Mutation @aws_iam {
   updateVirtualParticipant(input: UpdateVirtualParticipantInput!): VirtualParticipant @aws_cognito_user_pools @aws_iam
 }
 
-#   Nova Sonic Voice Assistant Configuration
+#       Nova Sonic Voice Assistant Configuration
 type NovaSonicConfig @aws_cognito_user_pools @aws_iam {
   NovaSonicConfigId: ID!
 }
@@ -224,6 +229,7 @@ type OverallSentiment @aws_cognito_user_pools @aws_iam {
 
 type Query @aws_cognito_user_pools @aws_iam {
   getCall(CallId: ID!): Call
+  getCallCount(endDateTime: AWSDateTime!, startDateTime: AWSDateTime!): CallCount
   getChatButtonConfig(ChatButtonConfigId: ID!): ChatButtonConfig @aws_cognito_user_pools @aws_iam
   getLLMPromptTemplate(LLMPromptTemplateId: ID!): LLMPromptTemplate @aws_cognito_user_pools @aws_iam
   getMCPServer(serverId: ID!): MCPServer @aws_cognito_user_pools
@@ -233,6 +239,7 @@ type Query @aws_cognito_user_pools @aws_iam {
   getVirtualParticipant(id: ID!): VirtualParticipant @aws_cognito_user_pools @aws_iam
   listCalls(endDateTime: AWSDateTime, startDateTime: AWSDateTime): CallList
   listCallsDateHour(date: AWSDate, hour: Int): CallList
+  listCallsDateRange(endDateTime: AWSDateTime!, limit: Int, nextToken: String, projectId: ID, startDateTime: AWSDateTime!): CallList
   listCallsDateShard(date: AWSDate, shard: Int): CallList
   listInstalledMCPServers: [MCPServer] @aws_cognito_user_pools
   listMCPApiKeys: [MCPApiKey] @aws_cognito_user_pools
@@ -411,7 +418,7 @@ type UpdateNovaSonicConfigOutput @aws_cognito_user_pools @aws_iam {
   Success: Boolean!
 }
 
-#   User Management (Admin-only)
+#       User Management (Admin-only)
 type User @aws_cognito_user_pools {
   createdAt: AWSDateTime
   email: String
@@ -425,7 +432,7 @@ type UserList @aws_cognito_user_pools {
   users: [User]
 }
 
-#   VNC Preview Control
+#       VNC Preview Control
 type VNCPreviewControl @aws_cognito_user_pools @aws_iam {
   Action: String!
   CallId: ID!
@@ -583,6 +590,8 @@ input CreateVirtualParticipantInput {
   meetingPassword: String
   meetingPlatform: String!
   meetingTime: AWSTimestamp
+  ownerEmail: String
+  ownerUsername: String
   status: String!
 }
 
@@ -623,7 +632,7 @@ input EndVirtualParticipantInput {
   id: ID!
 }
 
-#   OAuth 2.1 Flow Types
+#       OAuth 2.1 Flow Types
 input InitOAuthFlowInput {
   authorizationUrl: String!
   clientId: String!

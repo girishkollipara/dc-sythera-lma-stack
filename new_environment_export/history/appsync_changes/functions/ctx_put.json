@@ -1,0 +1,3 @@
+{"arguments":{"input":{"CallId":"c1","SegmentId":"s1","Transcript":"hello","IsPartial":false,"Owner":"alice","SharedWith":["x"]}},
+ "identity":{"sub":"s","issuer":"i","username":"proc","claims":{},"sourceIp":["1.2.3.4"],"defaultAuthStrategy":"ALLOW","groups":[]},
+ "stash":{"callProjectId":"projA","callExcluded":["bob"]}}

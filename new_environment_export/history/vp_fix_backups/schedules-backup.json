@@ -1,0 +1,324 @@
+{
+  "89ea5eec-9e2c-41a4-83c0-92a42eef7e9a": {
+    "ActionAfterCompletion": "DELETE",
+    "Arn": "arn:aws:scheduler:us-east-1:528757797189:schedule/LMASA-vp-schedules/89ea5eec-9e2c-41a4-83c0-92a42eef7e9a",
+    "CreationDate": "2026-07-09 00:15:50.323000-04:00",
+    "FlexibleTimeWindow": {
+      "Mode": "OFF"
+    },
+    "GroupName": "LMASA-vp-schedules",
+    "LastModificationDate": "2026-07-09 00:15:50.323000-04:00",
+    "Name": "89ea5eec-9e2c-41a4-83c0-92a42eef7e9a",
+    "ScheduleExpression": "at(2026-07-22T22:03:00)",
+    "ScheduleExpressionTimezone": "UTC",
+    "State": "ENABLED",
+    "Target": {
+      "Arn": "arn:aws:scheduler:::aws-sdk:ecs:runTask",
+      "Input": "{\"ClientToken\": \"89ea5eec-9e2c-41a4-83c0-92a42eef7e9a\", \"TaskDefinition\": \"arn:aws:ecs:us-east-1:528757797189:task-definition/LMASA-VIRTUALPARTICIPANTSTACK-1IAVIZT1439R2VirtualParticipantTaskDef:3\", \"Cluster\": \"arn:aws:ecs:us-east-1:528757797189:cluster/LMASA-VIRTUALPARTICIPANTSTACK-1IAVIZT1439R2-Cluster-hEH0LkElgiwp\", \"LaunchType\": \"FARGATE\", \"NetworkConfiguration\": {\"AwsvpcConfiguration\": {\"AssignPublicIp\": \"DISABLED\", \"SecurityGroups\": [\"sg-0fce20b5b14d24cd8\"], \"Subnets\": [\"subnet-035b862c6058f28f2\", \"subnet-00ab6bb3680d64d68\"]}}, \"Overrides\": {\"ContainerOverrides\": [{\"Name\": \"scribe\", \"Environment\": [{\"Name\": \"VIRTUAL_PARTICIPANT_ID\", \"Value\": \"89ea5eec-9e2c-41a4-83c0-92a42eef7e9a\"}, {\"Name\": \"MEETING_PLATFORM\", \"Value\": \"TEAMS\"}, {\"Name\": \"MEETING_ID\", \"Value\": \"23475315488147\"}, {\"Name\": \"MEETING_PASSWORD\", \"Value\": \"<REDACTED>\"}, {\"Name\": \"MEETING_NAME\", \"Value\": \"testing meeting invite single only\"}, {\"Name\": \"MEETING_TIME\", \"Value\": \"1784757900\"}, {\"Name\": \"LMA_USER\", \"Value\": \"microsoftentraid_1434e8e6-2c06-4231-972c-4c173686d1bc\"}, {\"Name\": \"GRAPHQL_ENDPOINT\", \"Value\": \"https://kujxnwymnnfkfpavveu5doevc4.appsync-api.us-east-1.amazonaws.com/graphql\"}, {\"Name\": \"CALL_DATA_STREAM_NAME\", \"Value\": \"LMASA-CallDataStream-G7f4Y5Yq2P94\"}, {\"Name\": \"RECORDINGS_BUCKET_NAME\", \"Value\": \"lmasa-recordingsbucket-8virmwlgow36\"}, {\"Name\": \"VP_TASK_REGISTRY_TABLE_NAME\", \"Value\": \"LMASA-AISTACK-4VKHCQQY3CJR-VPTaskRegistry\"}]}]}, \"EnableExecuteCommand\": false}",
+      "RetryPolicy": {
+        "MaximumEventAgeInSeconds": 86400,
+        "MaximumRetryAttempts": 185
+      },
+      "RoleArn": "arn:aws:iam::528757797189:role/LMASA-VIRTUALPARTICIPANTST-VPSchedulerExecutionRole-X4Ig7X8qtTtT"
+    }
+  },
+  "bfa85adb-2b66-45a8-865f-16721e61bb0c": {
+    "ActionAfterCompletion": "DELETE",
+    "Arn": "arn:aws:scheduler:us-east-1:528757797189:schedule/LMASA-vp-schedules/bfa85adb-2b66-45a8-865f-16721e61bb0c",
+    "CreationDate": "2026-07-15 07:13:31.641000-04:00",
+    "FlexibleTimeWindow": {
+      "Mode": "OFF"
+    },
+    "GroupName": "LMASA-vp-schedules",
+    "LastModificationDate": "2026-07-15 07:13:31.641000-04:00",
+    "Name": "bfa85adb-2b66-45a8-865f-16721e61bb0c",
+    "ScheduleExpression": "at(2026-07-16T17:03:00)",
+    "ScheduleExpressionTimezone": "UTC",
+    "State": "ENABLED",
+    "Target": {
+      "Arn": "arn:aws:scheduler:::aws-sdk:ecs:runTask",
+      "Input": "{\"ClientToken\": \"bfa85adb-2b66-45a8-865f-16721e61bb0c\", \"TaskDefinition\": \"arn:aws:ecs:us-east-1:528757797189:task-definition/LMASA-VIRTUALPARTICIPANTSTACK-1IAVIZT1439R2VirtualParticipantTaskDef:3\", \"Cluster\": \"arn:aws:ecs:us-east-1:528757797189:cluster/LMASA-VIRTUALPARTICIPANTSTACK-1IAVIZT1439R2-Cluster-hEH0LkElgiwp\", \"LaunchType\": \"FARGATE\", \"NetworkConfiguration\": {\"AwsvpcConfiguration\": {\"AssignPublicIp\": \"DISABLED\", \"SecurityGroups\": [\"sg-0fce20b5b14d24cd8\"], \"Subnets\": [\"subnet-035b862c6058f28f2\", \"subnet-00ab6bb3680d64d68\"]}}, \"Overrides\": {\"ContainerOverrides\": [{\"Name\": \"scribe\", \"Environment\": [{\"Name\": \"VIRTUAL_PARTICIPANT_ID\", \"Value\": \"bfa85adb-2b66-45a8-865f-16721e61bb0c\"}, {\"Name\": \"MEETING_PLATFORM\", \"Value\": \"TEAMS\"}, {\"Name\": \"MEETING_ID\", \"Value\": \"45495413353133\"}, {\"Name\": \"MEETING_PASSWORD\", \"Value\": \"<REDACTED>\"}, {\"Name\": \"MEETING_NAME\", \"Value\": \"Social Media & SEO Daily Discussion\"}, {\"Name\": \"MEETING_TIME\", \"Value\": \"1784221500\"}, {\"Name\": \"LMA_USER\", \"Value\": \"microsoftentraid_c51b9034-751e-4c89-b75d-16766e01bd6f\"}, {\"Name\": \"GRAPHQL_ENDPOINT\", \"Value\": \"https://kujxnwymnnfkfpavveu5doevc4.appsync-api.us-east-1.amazonaws.com/graphql\"}, {\"Name\": \"CALL_DATA_STREAM_NAME\", \"Value\": \"LMASA-CallDataStream-G7f4Y5Yq2P94\"}, {\"Name\": \"RECORDINGS_BUCKET_NAME\", \"Value\": \"lmasa-recordingsbucket-8virmwlgow36\"}, {\"Name\": \"VP_TASK_REGISTRY_TABLE_NAME\", \"Value\": \"LMASA-AISTACK-4VKHCQQY3CJR-VPTaskRegistry\"}]}]}, \"EnableExecuteCommand\": false}",
+      "RetryPolicy": {
+        "MaximumEventAgeInSeconds": 86400,
+        "MaximumRetryAttempts": 185
+      },
+      "RoleArn": "arn:aws:iam::528757797189:role/LMASA-VIRTUALPARTICIPANTST-VPSchedulerExecutionRole-X4Ig7X8qtTtT"
+    }
+  },
+  "c349651f-74f4-41d0-92a3-6ff198b3a971": {
+    "ActionAfterCompletion": "DELETE",
+    "Arn": "arn:aws:scheduler:us-east-1:528757797189:schedule/LMASA-vp-schedules/c349651f-74f4-41d0-92a3-6ff198b3a971",
+    "CreationDate": "2026-07-09 14:40:43.013000-04:00",
+    "FlexibleTimeWindow": {
+      "Mode": "OFF"
+    },
+    "GroupName": "LMASA-vp-schedules",
+    "LastModificationDate": "2026-07-09 14:40:43.013000-04:00",
+    "Name": "c349651f-74f4-41d0-92a3-6ff198b3a971",
+    "ScheduleExpression": "at(2026-07-17T18:28:00)",
+    "ScheduleExpressionTimezone": "UTC",
+    "State": "ENABLED",
+    "Target": {
+      "Arn": "arn:aws:scheduler:::aws-sdk:ecs:runTask",
+      "Input": "{\"ClientToken\": \"c349651f-74f4-41d0-92a3-6ff198b3a971\", \"TaskDefinition\": \"arn:aws:ecs:us-east-1:528757797189:task-definition/LMASA-VIRTUALPARTICIPANTSTACK-1IAVIZT1439R2VirtualParticipantTaskDef:3\", \"Cluster\": \"arn:aws:ecs:us-east-1:528757797189:cluster/LMASA-VIRTUALPARTICIPANTSTACK-1IAVIZT1439R2-Cluster-hEH0LkElgiwp\", \"LaunchType\": \"FARGATE\", \"NetworkConfiguration\": {\"AwsvpcConfiguration\": {\"AssignPublicIp\": \"DISABLED\", \"SecurityGroups\": [\"sg-0fce20b5b14d24cd8\"], \"Subnets\": [\"subnet-035b862c6058f28f2\", \"subnet-00ab6bb3680d64d68\"]}}, \"Overrides\": {\"ContainerOverrides\": [{\"Name\": \"scribe\", \"Environment\": [{\"Name\": \"VIRTUAL_PARTICIPANT_ID\", \"Value\": \"c349651f-74f4-41d0-92a3-6ff198b3a971\"}, {\"Name\": \"MEETING_PLATFORM\", \"Value\": \"TEAMS\"}, {\"Name\": \"MEETING_ID\", \"Value\": \"AAMkAGUzOWFkYWI2LTBhMTktNDAzZi1iM2NlLWZhODAwMTgxZWRkNABGAAAAAABXGgcQGQw8QZfH1xxPyig-BwBxEHLK9ZYzSLbk1HdSOMd3AAAAAAENAABxEHLK9ZYzSLbk1HdSOMd3AABq3IJyAAA=\"}, {\"Name\": \"MEETING_PASSWORD\", \"Value\": \"\"}, {\"Name\": \"MEETING_NAME\", \"Value\": \"Lemonade & Cookies Social \"}, {\"Name\": \"MEETING_TIME\", \"Value\": \"1784313000\"}, {\"Name\": \"LMA_USER\", \"Value\": \"microsoftentraid_1434e8e6-2c06-4231-972c-4c173686d1bc\"}, {\"Name\": \"GRAPHQL_ENDPOINT\", \"Value\": \"https://kujxnwymnnfkfpavveu5doevc4.appsync-api.us-east-1.amazonaws.com/graphql\"}, {\"Name\": \"CALL_DATA_STREAM_NAME\", \"Value\": \"LMASA-CallDataStream-G7f4Y5Yq2P94\"}, {\"Name\": \"RECORDINGS_BUCKET_NAME\", \"Value\": \"lmasa-recordingsbucket-8virmwlgow36\"}, {\"Name\": \"VP_TASK_REGISTRY_TABLE_NAME\", \"Value\": \"LMASA-AISTACK-4VKHCQQY3CJR-VPTaskRegistry\"}]}]}, \"EnableExecuteCommand\": false}",
+      "RetryPolicy": {
+        "MaximumEventAgeInSeconds": 86400,
+        "MaximumRetryAttempts": 185
+      },
+      "RoleArn": "arn:aws:iam::528757797189:role/LMASA-VIRTUALPARTICIPANTST-VPSchedulerExecutionRole-X4Ig7X8qtTtT"
+    }
+  },
+  "fcae3f02-f7e1-421e-b836-c6a6bbbd145f": {
+    "ActionAfterCompletion": "DELETE",
+    "Arn": "arn:aws:scheduler:us-east-1:528757797189:schedule/LMASA-vp-schedules/fcae3f02-f7e1-421e-b836-c6a6bbbd145f",
+    "CreationDate": "2026-07-13 11:38:15.595000-04:00",
+    "FlexibleTimeWindow": {
+      "Mode": "OFF"
+    },
+    "GroupName": "LMASA-vp-schedules",
+    "LastModificationDate": "2026-07-13 11:38:15.595000-04:00",
+    "Name": "fcae3f02-f7e1-421e-b836-c6a6bbbd145f",
+    "ScheduleExpression": "at(2026-07-30T15:38:00)",
+    "ScheduleExpressionTimezone": "UTC",
+    "State": "ENABLED",
+    "Target": {
+      "Arn": "arn:aws:scheduler:::aws-sdk:ecs:runTask",
+      "Input": "{\"ClientToken\": \"fcae3f02-f7e1-421e-b836-c6a6bbbd145f\", \"TaskDefinition\": \"arn:aws:ecs:us-east-1:528757797189:task-definition/LMASA-VIRTUALPARTICIPANTSTACK-1IAVIZT1439R2VirtualParticipantTaskDef:3\", \"Cluster\": \"arn:aws:ecs:us-east-1:528757797189:cluster/LMASA-VIRTUALPARTICIPANTSTACK-1IAVIZT1439R2-Cluster-hEH0LkElgiwp\", \"LaunchType\": \"FARGATE\", \"NetworkConfiguration\": {\"AwsvpcConfiguration\": {\"AssignPublicIp\": \"DISABLED\", \"SecurityGroups\": [\"sg-0fce20b5b14d24cd8\"], \"Subnets\": [\"subnet-035b862c6058f28f2\", \"subnet-00ab6bb3680d64d68\"]}}, \"Overrides\": {\"ContainerOverrides\": [{\"Name\": \"scribe\", \"Environment\": [{\"Name\": \"VIRTUAL_PARTICIPANT_ID\", \"Value\": \"fcae3f02-f7e1-421e-b836-c6a6bbbd145f\"}, {\"Name\": \"MEETING_PLATFORM\", \"Value\": \"TEAMS\"}, {\"Name\": \"MEETING_ID\", \"Value\": \"230685367539203\"}, {\"Name\": \"MEETING_PASSWORD\", \"Value\": \"<REDACTED>\"}, {\"Name\": \"MEETING_NAME\", \"Value\": \"Meeting Panel Discussion\"}, {\"Name\": \"MEETING_TIME\", \"Value\": \"1785426000\"}, {\"Name\": \"LMA_USER\", \"Value\": \"microsoftentraid_4b28c7c9-6ba9-4f0d-bd87-ceeae0856713\"}, {\"Name\": \"GRAPHQL_ENDPOINT\", \"Value\": \"https://kujxnwymnnfkfpavveu5doevc4.appsync-api.us-east-1.amazonaws.com/graphql\"}, {\"Name\": \"CALL_DATA_STREAM_NAME\", \"Value\": \"LMASA-CallDataStream-G7f4Y5Yq2P94\"}, {\"Name\": \"RECORDINGS_BUCKET_NAME\", \"Value\": \"lmasa-recordingsbucket-8virmwlgow36\"}, {\"Name\": \"VP_TASK_REGISTRY_TABLE_NAME\", \"Value\": \"LMASA-AISTACK-4VKHCQQY3CJR-VPTaskRegistry\"}]}]}, \"EnableExecuteCommand\": false}",
+      "RetryPolicy": {
+        "MaximumEventAgeInSeconds": 86400,
+        "MaximumRetryAttempts": 185
+      },
+      "RoleArn": "arn:aws:iam::528757797189:role/LMASA-VIRTUALPARTICIPANTST-VPSchedulerExecutionRole-X4Ig7X8qtTtT"
+    }
+  },
+  "38337d34-2c38-4e80-b5c8-fbb0cf60ffd4": {
+    "ActionAfterCompletion": "DELETE",
+    "Arn": "arn:aws:scheduler:us-east-1:528757797189:schedule/LMASA-vp-schedules/38337d34-2c38-4e80-b5c8-fbb0cf60ffd4",
+    "CreationDate": "2026-07-09 14:02:03.939000-04:00",
+    "FlexibleTimeWindow": {
+      "Mode": "OFF"
+    },
+    "GroupName": "LMASA-vp-schedules",
+    "LastModificationDate": "2026-07-09 14:02:03.939000-04:00",
+    "Name": "38337d34-2c38-4e80-b5c8-fbb0cf60ffd4",
+    "ScheduleExpression": "at(2026-07-18T12:58:00)",
+    "ScheduleExpressionTimezone": "UTC",
+    "State": "ENABLED",
+    "Target": {
+      "Arn": "arn:aws:scheduler:::aws-sdk:ecs:runTask",
+      "Input": "{\"ClientToken\": \"38337d34-2c38-4e80-b5c8-fbb0cf60ffd4\", \"TaskDefinition\": \"arn:aws:ecs:us-east-1:528757797189:task-definition/LMASA-VIRTUALPARTICIPANTSTACK-1IAVIZT1439R2VirtualParticipantTaskDef:3\", \"Cluster\": \"arn:aws:ecs:us-east-1:528757797189:cluster/LMASA-VIRTUALPARTICIPANTSTACK-1IAVIZT1439R2-Cluster-hEH0LkElgiwp\", \"LaunchType\": \"FARGATE\", \"NetworkConfiguration\": {\"AwsvpcConfiguration\": {\"AssignPublicIp\": \"DISABLED\", \"SecurityGroups\": [\"sg-0fce20b5b14d24cd8\"], \"Subnets\": [\"subnet-035b862c6058f28f2\", \"subnet-00ab6bb3680d64d68\"]}}, \"Overrides\": {\"ContainerOverrides\": [{\"Name\": \"scribe\", \"Environment\": [{\"Name\": \"VIRTUAL_PARTICIPANT_ID\", \"Value\": \"38337d34-2c38-4e80-b5c8-fbb0cf60ffd4\"}, {\"Name\": \"MEETING_PLATFORM\", \"Value\": \"TEAMS\"}, {\"Name\": \"MEETING_ID\", \"Value\": \"226053079587611\"}, {\"Name\": \"MEETING_PASSWORD\", \"Value\": \"<REDACTED>\"}, {\"Name\": \"MEETING_NAME\", \"Value\": \"Updated Topic 17:07:46\"}, {\"Name\": \"MEETING_TIME\", \"Value\": \"1784379600\"}, {\"Name\": \"LMA_USER\", \"Value\": \"microsoftentraid_5b3fe156-6142-4297-a633-dcb04244cd30\"}, {\"Name\": \"GRAPHQL_ENDPOINT\", \"Value\": \"https://kujxnwymnnfkfpavveu5doevc4.appsync-api.us-east-1.amazonaws.com/graphql\"}, {\"Name\": \"CALL_DATA_STREAM_NAME\", \"Value\": \"LMASA-CallDataStream-G7f4Y5Yq2P94\"}, {\"Name\": \"RECORDINGS_BUCKET_NAME\", \"Value\": \"lmasa-recordingsbucket-8virmwlgow36\"}, {\"Name\": \"VP_TASK_REGISTRY_TABLE_NAME\", \"Value\": \"LMASA-AISTACK-4VKHCQQY3CJR-VPTaskRegistry\"}]}]}, \"EnableExecuteCommand\": false}",
+      "RetryPolicy": {
+        "MaximumEventAgeInSeconds": 86400,
+        "MaximumRetryAttempts": 185
+      },
+      "RoleArn": "arn:aws:iam::528757797189:role/LMASA-VIRTUALPARTICIPANTST-VPSchedulerExecutionRole-X4Ig7X8qtTtT"
+    }
+  },
+  "3a48defa-bc90-4a4a-8750-8fc5f33a2305": {
+    "ActionAfterCompletion": "DELETE",
+    "Arn": "arn:aws:scheduler:us-east-1:528757797189:schedule/LMASA-vp-schedules/3a48defa-bc90-4a4a-8750-8fc5f33a2305",
+    "CreationDate": "2026-07-09 11:59:18.909000-04:00",
+    "FlexibleTimeWindow": {
+      "Mode": "OFF"
+    },
+    "GroupName": "LMASA-vp-schedules",
+    "LastModificationDate": "2026-07-09 11:59:18.909000-04:00",
+    "Name": "3a48defa-bc90-4a4a-8750-8fc5f33a2305",
+    "ScheduleExpression": "at(2026-07-18T12:58:00)",
+    "ScheduleExpressionTimezone": "UTC",
+    "State": "ENABLED",
+    "Target": {
+      "Arn": "arn:aws:scheduler:::aws-sdk:ecs:runTask",
+      "Input": "{\"ClientToken\": \"3a48defa-bc90-4a4a-8750-8fc5f33a2305\", \"TaskDefinition\": \"arn:aws:ecs:us-east-1:528757797189:task-definition/LMASA-VIRTUALPARTICIPANTSTACK-1IAVIZT1439R2VirtualParticipantTaskDef:3\", \"Cluster\": \"arn:aws:ecs:us-east-1:528757797189:cluster/LMASA-VIRTUALPARTICIPANTSTACK-1IAVIZT1439R2-Cluster-hEH0LkElgiwp\", \"LaunchType\": \"FARGATE\", \"NetworkConfiguration\": {\"AwsvpcConfiguration\": {\"AssignPublicIp\": \"DISABLED\", \"SecurityGroups\": [\"sg-0fce20b5b14d24cd8\"], \"Subnets\": [\"subnet-035b862c6058f28f2\", \"subnet-00ab6bb3680d64d68\"]}}, \"Overrides\": {\"ContainerOverrides\": [{\"Name\": \"scribe\", \"Environment\": [{\"Name\": \"VIRTUAL_PARTICIPANT_ID\", \"Value\": \"3a48defa-bc90-4a4a-8750-8fc5f33a2305\"}, {\"Name\": \"MEETING_PLATFORM\", \"Value\": \"TEAMS\"}, {\"Name\": \"MEETING_ID\", \"Value\": \"226053079587611\"}, {\"Name\": \"MEETING_PASSWORD\", \"Value\": \"<REDACTED>\"}, {\"Name\": \"MEETING_NAME\", \"Value\": \"Updated Topic 17:07:46\"}, {\"Name\": \"MEETING_TIME\", \"Value\": \"1784379600\"}, {\"Name\": \"LMA_USER\", \"Value\": \"microsoftentraid_5b3fe156-6142-4297-a633-dcb04244cd30\"}, {\"Name\": \"GRAPHQL_ENDPOINT\", \"Value\": \"https://kujxnwymnnfkfpavveu5doevc4.appsync-api.us-east-1.amazonaws.com/graphql\"}, {\"Name\": \"CALL_DATA_STREAM_NAME\", \"Value\": \"LMASA-CallDataStream-G7f4Y5Yq2P94\"}, {\"Name\": \"RECORDINGS_BUCKET_NAME\", \"Value\": \"lmasa-recordingsbucket-8virmwlgow36\"}, {\"Name\": \"VP_TASK_REGISTRY_TABLE_NAME\", \"Value\": \"LMASA-AISTACK-4VKHCQQY3CJR-VPTaskRegistry\"}]}]}, \"EnableExecuteCommand\": false}",
+      "RetryPolicy": {
+        "MaximumEventAgeInSeconds": 86400,
+        "MaximumRetryAttempts": 185
+      },
+      "RoleArn": "arn:aws:iam::528757797189:role/LMASA-VIRTUALPARTICIPANTST-VPSchedulerExecutionRole-X4Ig7X8qtTtT"
+    }
+  },
+  "66aa1966-700a-4ec2-9e1f-9ea5d413c462": {
+    "ActionAfterCompletion": "DELETE",
+    "Arn": "arn:aws:scheduler:us-east-1:528757797189:schedule/LMASA-vp-schedules/66aa1966-700a-4ec2-9e1f-9ea5d413c462",
+    "CreationDate": "2026-07-13 13:08:15.539000-04:00",
+    "FlexibleTimeWindow": {
+      "Mode": "OFF"
+    },
+    "GroupName": "LMASA-vp-schedules",
+    "LastModificationDate": "2026-07-13 13:08:15.539000-04:00",
+    "Name": "66aa1966-700a-4ec2-9e1f-9ea5d413c462",
+    "ScheduleExpression": "at(2026-07-18T17:08:00)",
+    "ScheduleExpressionTimezone": "UTC",
+    "State": "ENABLED",
+    "Target": {
+      "Arn": "arn:aws:scheduler:::aws-sdk:ecs:runTask",
+      "Input": "{\"ClientToken\": \"66aa1966-700a-4ec2-9e1f-9ea5d413c462\", \"TaskDefinition\": \"arn:aws:ecs:us-east-1:528757797189:task-definition/LMASA-VIRTUALPARTICIPANTSTACK-1IAVIZT1439R2VirtualParticipantTaskDef:3\", \"Cluster\": \"arn:aws:ecs:us-east-1:528757797189:cluster/LMASA-VIRTUALPARTICIPANTSTACK-1IAVIZT1439R2-Cluster-hEH0LkElgiwp\", \"LaunchType\": \"FARGATE\", \"NetworkConfiguration\": {\"AwsvpcConfiguration\": {\"AssignPublicIp\": \"DISABLED\", \"SecurityGroups\": [\"sg-0fce20b5b14d24cd8\"], \"Subnets\": [\"subnet-035b862c6058f28f2\", \"subnet-00ab6bb3680d64d68\"]}}, \"Overrides\": {\"ContainerOverrides\": [{\"Name\": \"scribe\", \"Environment\": [{\"Name\": \"VIRTUAL_PARTICIPANT_ID\", \"Value\": \"66aa1966-700a-4ec2-9e1f-9ea5d413c462\"}, {\"Name\": \"MEETING_PLATFORM\", \"Value\": \"TEAMS\"}, {\"Name\": \"MEETING_ID\", \"Value\": \"261592284580947\"}, {\"Name\": \"MEETING_PASSWORD\", \"Value\": \"<REDACTED>\"}, {\"Name\": \"MEETING_NAME\", \"Value\": \"synthera meetings crud functionality testing\"}, {\"Name\": \"MEETING_TIME\", \"Value\": \"1784394600\"}, {\"Name\": \"LMA_USER\", \"Value\": \"microsoftentraid_7d48b272-2665-4ef5-ae4e-40b3459ce6f1\"}, {\"Name\": \"GRAPHQL_ENDPOINT\", \"Value\": \"https://kujxnwymnnfkfpavveu5doevc4.appsync-api.us-east-1.amazonaws.com/graphql\"}, {\"Name\": \"CALL_DATA_STREAM_NAME\", \"Value\": \"LMASA-CallDataStream-G7f4Y5Yq2P94\"}, {\"Name\": \"RECORDINGS_BUCKET_NAME\", \"Value\": \"lmasa-recordingsbucket-8virmwlgow36\"}, {\"Name\": \"VP_TASK_REGISTRY_TABLE_NAME\", \"Value\": \"LMASA-AISTACK-4VKHCQQY3CJR-VPTaskRegistry\"}]}]}, \"EnableExecuteCommand\": false}",
+      "RetryPolicy": {
+        "MaximumEventAgeInSeconds": 86400,
+        "MaximumRetryAttempts": 185
+      },
+      "RoleArn": "arn:aws:iam::528757797189:role/LMASA-VIRTUALPARTICIPANTST-VPSchedulerExecutionRole-X4Ig7X8qtTtT"
+    }
+  },
+  "5df4f7ba-a607-402f-b57b-f75f0c7ac48a": {
+    "ActionAfterCompletion": "DELETE",
+    "Arn": "arn:aws:scheduler:us-east-1:528757797189:schedule/LMASA-vp-schedules/5df4f7ba-a607-402f-b57b-f75f0c7ac48a",
+    "CreationDate": "2026-07-09 11:02:28.552000-04:00",
+    "FlexibleTimeWindow": {
+      "Mode": "OFF"
+    },
+    "GroupName": "LMASA-vp-schedules",
+    "LastModificationDate": "2026-07-09 11:02:28.552000-04:00",
+    "Name": "5df4f7ba-a607-402f-b57b-f75f0c7ac48a",
+    "ScheduleExpression": "at(2026-07-18T12:58:00)",
+    "ScheduleExpressionTimezone": "UTC",
+    "State": "ENABLED",
+    "Target": {
+      "Arn": "arn:aws:scheduler:::aws-sdk:ecs:runTask",
+      "Input": "{\"ClientToken\": \"5df4f7ba-a607-402f-b57b-f75f0c7ac48a\", \"TaskDefinition\": \"arn:aws:ecs:us-east-1:528757797189:task-definition/LMASA-VIRTUALPARTICIPANTSTACK-1IAVIZT1439R2VirtualParticipantTaskDef:3\", \"Cluster\": \"arn:aws:ecs:us-east-1:528757797189:cluster/LMASA-VIRTUALPARTICIPANTSTACK-1IAVIZT1439R2-Cluster-hEH0LkElgiwp\", \"LaunchType\": \"FARGATE\", \"NetworkConfiguration\": {\"AwsvpcConfiguration\": {\"AssignPublicIp\": \"DISABLED\", \"SecurityGroups\": [\"sg-0fce20b5b14d24cd8\"], \"Subnets\": [\"subnet-035b862c6058f28f2\", \"subnet-00ab6bb3680d64d68\"]}}, \"Overrides\": {\"ContainerOverrides\": [{\"Name\": \"scribe\", \"Environment\": [{\"Name\": \"VIRTUAL_PARTICIPANT_ID\", \"Value\": \"5df4f7ba-a607-402f-b57b-f75f0c7ac48a\"}, {\"Name\": \"MEETING_PLATFORM\", \"Value\": \"TEAMS\"}, {\"Name\": \"MEETING_ID\", \"Value\": \"226053079587611\"}, {\"Name\": \"MEETING_PASSWORD\", \"Value\": \"<REDACTED>\"}, {\"Name\": \"MEETING_NAME\", \"Value\": \"Updated Topic 17:07:46\"}, {\"Name\": \"MEETING_TIME\", \"Value\": \"1784379600\"}, {\"Name\": \"LMA_USER\", \"Value\": \"microsoftentraid_7d48b272-2665-4ef5-ae4e-40b3459ce6f1\"}, {\"Name\": \"GRAPHQL_ENDPOINT\", \"Value\": \"https://kujxnwymnnfkfpavveu5doevc4.appsync-api.us-east-1.amazonaws.com/graphql\"}, {\"Name\": \"CALL_DATA_STREAM_NAME\", \"Value\": \"LMASA-CallDataStream-G7f4Y5Yq2P94\"}, {\"Name\": \"RECORDINGS_BUCKET_NAME\", \"Value\": \"lmasa-recordingsbucket-8virmwlgow36\"}, {\"Name\": \"VP_TASK_REGISTRY_TABLE_NAME\", \"Value\": \"LMASA-AISTACK-4VKHCQQY3CJR-VPTaskRegistry\"}]}]}, \"EnableExecuteCommand\": false}",
+      "RetryPolicy": {
+        "MaximumEventAgeInSeconds": 86400,
+        "MaximumRetryAttempts": 185
+      },
+      "RoleArn": "arn:aws:iam::528757797189:role/LMASA-VIRTUALPARTICIPANTST-VPSchedulerExecutionRole-X4Ig7X8qtTtT"
+    }
+  },
+  "74d5f9e7-0fca-4e98-8a98-f1aac52cd1ab": {
+    "ActionAfterCompletion": "DELETE",
+    "Arn": "arn:aws:scheduler:us-east-1:528757797189:schedule/LMASA-vp-schedules/74d5f9e7-0fca-4e98-8a98-f1aac52cd1ab",
+    "CreationDate": "2026-07-13 11:38:20.704000-04:00",
+    "FlexibleTimeWindow": {
+      "Mode": "OFF"
+    },
+    "GroupName": "LMASA-vp-schedules",
+    "LastModificationDate": "2026-07-13 11:38:20.704000-04:00",
+    "Name": "74d5f9e7-0fca-4e98-8a98-f1aac52cd1ab",
+    "ScheduleExpression": "at(2026-07-22T19:39:00)",
+    "ScheduleExpressionTimezone": "UTC",
+    "State": "ENABLED",
+    "Target": {
+      "Arn": "arn:aws:scheduler:::aws-sdk:ecs:runTask",
+      "Input": "{\"ClientToken\": \"74d5f9e7-0fca-4e98-8a98-f1aac52cd1ab\", \"TaskDefinition\": \"arn:aws:ecs:us-east-1:528757797189:task-definition/LMASA-VIRTUALPARTICIPANTSTACK-1IAVIZT1439R2VirtualParticipantTaskDef:3\", \"Cluster\": \"arn:aws:ecs:us-east-1:528757797189:cluster/LMASA-VIRTUALPARTICIPANTSTACK-1IAVIZT1439R2-Cluster-hEH0LkElgiwp\", \"LaunchType\": \"FARGATE\", \"NetworkConfiguration\": {\"AwsvpcConfiguration\": {\"AssignPublicIp\": \"DISABLED\", \"SecurityGroups\": [\"sg-0fce20b5b14d24cd8\"], \"Subnets\": [\"subnet-035b862c6058f28f2\", \"subnet-00ab6bb3680d64d68\"]}}, \"Overrides\": {\"ContainerOverrides\": [{\"Name\": \"scribe\", \"Environment\": [{\"Name\": \"VIRTUAL_PARTICIPANT_ID\", \"Value\": \"74d5f9e7-0fca-4e98-8a98-f1aac52cd1ab\"}, {\"Name\": \"MEETING_PLATFORM\", \"Value\": \"TEAMS\"}, {\"Name\": \"MEETING_ID\", \"Value\": \"235283963376759\"}, {\"Name\": \"MEETING_PASSWORD\", \"Value\": \"<REDACTED>\"}, {\"Name\": \"MEETING_NAME\", \"Value\": \"synthera meeting testing\"}, {\"Name\": \"MEETING_TIME\", \"Value\": \"1784749260\"}, {\"Name\": \"LMA_USER\", \"Value\": \"microsoftentraid_7d48b272-2665-4ef5-ae4e-40b3459ce6f1\"}, {\"Name\": \"GRAPHQL_ENDPOINT\", \"Value\": \"https://kujxnwymnnfkfpavveu5doevc4.appsync-api.us-east-1.amazonaws.com/graphql\"}, {\"Name\": \"CALL_DATA_STREAM_NAME\", \"Value\": \"LMASA-CallDataStream-G7f4Y5Yq2P94\"}, {\"Name\": \"RECORDINGS_BUCKET_NAME\", \"Value\": \"lmasa-recordingsbucket-8virmwlgow36\"}, {\"Name\": \"VP_TASK_REGISTRY_TABLE_NAME\", \"Value\": \"LMASA-AISTACK-4VKHCQQY3CJR-VPTaskRegistry\"}]}]}, \"EnableExecuteCommand\": false}",
+      "RetryPolicy": {
+        "MaximumEventAgeInSeconds": 86400,
+        "MaximumRetryAttempts": 185
+      },
+      "RoleArn": "arn:aws:iam::528757797189:role/LMASA-VIRTUALPARTICIPANTST-VPSchedulerExecutionRole-X4Ig7X8qtTtT"
+    }
+  },
+  "39ed42ba-c04d-4e1c-a19f-ab9138c0ce27": {
+    "ActionAfterCompletion": "DELETE",
+    "Arn": "arn:aws:scheduler:us-east-1:528757797189:schedule/LMASA-vp-schedules/39ed42ba-c04d-4e1c-a19f-ab9138c0ce27",
+    "CreationDate": "2026-07-09 14:18:03.891000-04:00",
+    "FlexibleTimeWindow": {
+      "Mode": "OFF"
+    },
+    "GroupName": "LMASA-vp-schedules",
+    "LastModificationDate": "2026-07-09 14:18:03.891000-04:00",
+    "Name": "39ed42ba-c04d-4e1c-a19f-ab9138c0ce27",
+    "ScheduleExpression": "at(2026-07-18T12:58:00)",
+    "ScheduleExpressionTimezone": "UTC",
+    "State": "ENABLED",
+    "Target": {
+      "Arn": "arn:aws:scheduler:::aws-sdk:ecs:runTask",
+      "Input": "{\"ClientToken\": \"39ed42ba-c04d-4e1c-a19f-ab9138c0ce27\", \"TaskDefinition\": \"arn:aws:ecs:us-east-1:528757797189:task-definition/LMASA-VIRTUALPARTICIPANTSTACK-1IAVIZT1439R2VirtualParticipantTaskDef:3\", \"Cluster\": \"arn:aws:ecs:us-east-1:528757797189:cluster/LMASA-VIRTUALPARTICIPANTSTACK-1IAVIZT1439R2-Cluster-hEH0LkElgiwp\", \"LaunchType\": \"FARGATE\", \"NetworkConfiguration\": {\"AwsvpcConfiguration\": {\"AssignPublicIp\": \"DISABLED\", \"SecurityGroups\": [\"sg-0fce20b5b14d24cd8\"], \"Subnets\": [\"subnet-035b862c6058f28f2\", \"subnet-00ab6bb3680d64d68\"]}}, \"Overrides\": {\"ContainerOverrides\": [{\"Name\": \"scribe\", \"Environment\": [{\"Name\": \"VIRTUAL_PARTICIPANT_ID\", \"Value\": \"39ed42ba-c04d-4e1c-a19f-ab9138c0ce27\"}, {\"Name\": \"MEETING_PLATFORM\", \"Value\": \"TEAMS\"}, {\"Name\": \"MEETING_ID\", \"Value\": \"226053079587611\"}, {\"Name\": \"MEETING_PASSWORD\", \"Value\": \"<REDACTED>\"}, {\"Name\": \"MEETING_NAME\", \"Value\": \"Updated Topic 17:07:46\"}, {\"Name\": \"MEETING_TIME\", \"Value\": \"1784379600\"}, {\"Name\": \"LMA_USER\", \"Value\": \"microsoftentraid_7d48b272-2665-4ef5-ae4e-40b3459ce6f1\"}, {\"Name\": \"GRAPHQL_ENDPOINT\", \"Value\": \"https://kujxnwymnnfkfpavveu5doevc4.appsync-api.us-east-1.amazonaws.com/graphql\"}, {\"Name\": \"CALL_DATA_STREAM_NAME\", \"Value\": \"LMASA-CallDataStream-G7f4Y5Yq2P94\"}, {\"Name\": \"RECORDINGS_BUCKET_NAME\", \"Value\": \"lmasa-recordingsbucket-8virmwlgow36\"}, {\"Name\": \"VP_TASK_REGISTRY_TABLE_NAME\", \"Value\": \"LMASA-AISTACK-4VKHCQQY3CJR-VPTaskRegistry\"}]}]}, \"EnableExecuteCommand\": false}",
+      "RetryPolicy": {
+        "MaximumEventAgeInSeconds": 86400,
+        "MaximumRetryAttempts": 185
+      },
+      "RoleArn": "arn:aws:iam::528757797189:role/LMASA-VIRTUALPARTICIPANTST-VPSchedulerExecutionRole-X4Ig7X8qtTtT"
+    }
+  },
+  "9a1af480-a393-4613-9fb5-1b72c81df356": {
+    "ActionAfterCompletion": "DELETE",
+    "Arn": "arn:aws:scheduler:us-east-1:528757797189:schedule/LMASA-vp-schedules/9a1af480-a393-4613-9fb5-1b72c81df356",
+    "CreationDate": "2026-07-13 16:05:18.132000-04:00",
+    "FlexibleTimeWindow": {
+      "Mode": "OFF"
+    },
+    "GroupName": "LMASA-vp-schedules",
+    "LastModificationDate": "2026-07-13 16:05:18.132000-04:00",
+    "Name": "9a1af480-a393-4613-9fb5-1b72c81df356",
+    "ScheduleExpression": "at(2026-07-30T15:38:00)",
+    "ScheduleExpressionTimezone": "UTC",
+    "State": "ENABLED",
+    "Target": {
+      "Arn": "arn:aws:scheduler:::aws-sdk:ecs:runTask",
+      "Input": "{\"ClientToken\": \"9a1af480-a393-4613-9fb5-1b72c81df356\", \"TaskDefinition\": \"arn:aws:ecs:us-east-1:528757797189:task-definition/LMASA-VIRTUALPARTICIPANTSTACK-1IAVIZT1439R2VirtualParticipantTaskDef:3\", \"Cluster\": \"arn:aws:ecs:us-east-1:528757797189:cluster/LMASA-VIRTUALPARTICIPANTSTACK-1IAVIZT1439R2-Cluster-hEH0LkElgiwp\", \"LaunchType\": \"FARGATE\", \"NetworkConfiguration\": {\"AwsvpcConfiguration\": {\"AssignPublicIp\": \"DISABLED\", \"SecurityGroups\": [\"sg-0fce20b5b14d24cd8\"], \"Subnets\": [\"subnet-035b862c6058f28f2\", \"subnet-00ab6bb3680d64d68\"]}}, \"Overrides\": {\"ContainerOverrides\": [{\"Name\": \"scribe\", \"Environment\": [{\"Name\": \"VIRTUAL_PARTICIPANT_ID\", \"Value\": \"9a1af480-a393-4613-9fb5-1b72c81df356\"}, {\"Name\": \"MEETING_PLATFORM\", \"Value\": \"TEAMS\"}, {\"Name\": \"MEETING_ID\", \"Value\": \"230685367539203\"}, {\"Name\": \"MEETING_PASSWORD\", \"Value\": \"<REDACTED>\"}, {\"Name\": \"MEETING_NAME\", \"Value\": \"Meeting Panel Discussion\"}, {\"Name\": \"MEETING_TIME\", \"Value\": \"1785426000\"}, {\"Name\": \"LMA_USER\", \"Value\": \"microsoftentraid_1434e8e6-2c06-4231-972c-4c173686d1bc\"}, {\"Name\": \"GRAPHQL_ENDPOINT\", \"Value\": \"https://kujxnwymnnfkfpavveu5doevc4.appsync-api.us-east-1.amazonaws.com/graphql\"}, {\"Name\": \"CALL_DATA_STREAM_NAME\", \"Value\": \"LMASA-CallDataStream-G7f4Y5Yq2P94\"}, {\"Name\": \"RECORDINGS_BUCKET_NAME\", \"Value\": \"lmasa-recordingsbucket-8virmwlgow36\"}, {\"Name\": \"VP_TASK_REGISTRY_TABLE_NAME\", \"Value\": \"LMASA-AISTACK-4VKHCQQY3CJR-VPTaskRegistry\"}]}]}, \"EnableExecuteCommand\": false}",
+      "RetryPolicy": {
+        "MaximumEventAgeInSeconds": 86400,
+        "MaximumRetryAttempts": 185
+      },
+      "RoleArn": "arn:aws:iam::528757797189:role/LMASA-VIRTUALPARTICIPANTST-VPSchedulerExecutionRole-X4Ig7X8qtTtT"
+    }
+  },
+  "dc152d57-9c71-4b43-907a-d52106ccde6f": {
+    "ActionAfterCompletion": "DELETE",
+    "Arn": "arn:aws:scheduler:us-east-1:528757797189:schedule/LMASA-vp-schedules/dc152d57-9c71-4b43-907a-d52106ccde6f",
+    "CreationDate": "2026-07-09 11:02:30.291000-04:00",
+    "FlexibleTimeWindow": {
+      "Mode": "OFF"
+    },
+    "GroupName": "LMASA-vp-schedules",
+    "LastModificationDate": "2026-07-09 11:02:30.291000-04:00",
+    "Name": "dc152d57-9c71-4b43-907a-d52106ccde6f",
+    "ScheduleExpression": "at(2026-07-22T22:03:00)",
+    "ScheduleExpressionTimezone": "UTC",
+    "State": "ENABLED",
+    "Target": {
+      "Arn": "arn:aws:scheduler:::aws-sdk:ecs:runTask",
+      "Input": "{\"ClientToken\": \"dc152d57-9c71-4b43-907a-d52106ccde6f\", \"TaskDefinition\": \"arn:aws:ecs:us-east-1:528757797189:task-definition/LMASA-VIRTUALPARTICIPANTSTACK-1IAVIZT1439R2VirtualParticipantTaskDef:3\", \"Cluster\": \"arn:aws:ecs:us-east-1:528757797189:cluster/LMASA-VIRTUALPARTICIPANTSTACK-1IAVIZT1439R2-Cluster-hEH0LkElgiwp\", \"LaunchType\": \"FARGATE\", \"NetworkConfiguration\": {\"AwsvpcConfiguration\": {\"AssignPublicIp\": \"DISABLED\", \"SecurityGroups\": [\"sg-0fce20b5b14d24cd8\"], \"Subnets\": [\"subnet-035b862c6058f28f2\", \"subnet-00ab6bb3680d64d68\"]}}, \"Overrides\": {\"ContainerOverrides\": [{\"Name\": \"scribe\", \"Environment\": [{\"Name\": \"VIRTUAL_PARTICIPANT_ID\", \"Value\": \"dc152d57-9c71-4b43-907a-d52106ccde6f\"}, {\"Name\": \"MEETING_PLATFORM\", \"Value\": \"TEAMS\"}, {\"Name\": \"MEETING_ID\", \"Value\": \"AAMkAGU3NDI5MDFhLWY2YTItNDA2Ny04M2ZhLTIyMmM0MzRhYjNlNABGAAAAAACEswXoF0puT5aaJJG82N4kBwDUZiPuFjHnS4xC4yfVkwysAAAAAAENAADUZiPuFjHnS4xC4yfVkwysAABxmJL9AAA=\"}, {\"Name\": \"MEETING_PASSWORD\", \"Value\": \"<REDACTED>\"}, {\"Name\": \"MEETING_NAME\", \"Value\": \"testing meeting invite single only\"}, {\"Name\": \"MEETING_TIME\", \"Value\": \"1784757900\"}, {\"Name\": \"LMA_USER\", \"Value\": \"microsoftentraid_7d48b272-2665-4ef5-ae4e-40b3459ce6f1\"}, {\"Name\": \"GRAPHQL_ENDPOINT\", \"Value\": \"https://kujxnwymnnfkfpavveu5doevc4.appsync-api.us-east-1.amazonaws.com/graphql\"}, {\"Name\": \"CALL_DATA_STREAM_NAME\", \"Value\": \"LMASA-CallDataStream-G7f4Y5Yq2P94\"}, {\"Name\": \"RECORDINGS_BUCKET_NAME\", \"Value\": \"lmasa-recordingsbucket-8virmwlgow36\"}, {\"Name\": \"VP_TASK_REGISTRY_TABLE_NAME\", \"Value\": \"LMASA-AISTACK-4VKHCQQY3CJR-VPTaskRegistry\"}]}]}, \"EnableExecuteCommand\": false}",
+      "RetryPolicy": {
+        "MaximumEventAgeInSeconds": 86400,
+        "MaximumRetryAttempts": 185
+      },
+      "RoleArn": "arn:aws:iam::528757797189:role/LMASA-VIRTUALPARTICIPANTST-VPSchedulerExecutionRole-X4Ig7X8qtTtT"
+    }
+  },
+  "3e437077-46ed-47b0-a189-eb707b0350e2": {
+    "ActionAfterCompletion": "DELETE",
+    "Arn": "arn:aws:scheduler:us-east-1:528757797189:schedule/LMASA-vp-schedules/3e437077-46ed-47b0-a189-eb707b0350e2",
+    "CreationDate": "2026-07-09 14:01:18.698000-04:00",
+    "FlexibleTimeWindow": {
+      "Mode": "OFF"
+    },
+    "GroupName": "LMASA-vp-schedules",
+    "LastModificationDate": "2026-07-09 14:01:18.698000-04:00",
+    "Name": "3e437077-46ed-47b0-a189-eb707b0350e2",
+    "ScheduleExpression": "at(2026-07-18T12:58:00)",
+    "ScheduleExpressionTimezone": "UTC",
+    "State": "ENABLED",
+    "Target": {
+      "Arn": "arn:aws:scheduler:::aws-sdk:ecs:runTask",
+      "Input": "{\"ClientToken\": \"3e437077-46ed-47b0-a189-eb707b0350e2\", \"TaskDefinition\": \"arn:aws:ecs:us-east-1:528757797189:task-definition/LMASA-VIRTUALPARTICIPANTSTACK-1IAVIZT1439R2VirtualParticipantTaskDef:3\", \"Cluster\": \"arn:aws:ecs:us-east-1:528757797189:cluster/LMASA-VIRTUALPARTICIPANTSTACK-1IAVIZT1439R2-Cluster-hEH0LkElgiwp\", \"LaunchType\": \"FARGATE\", \"NetworkConfiguration\": {\"AwsvpcConfiguration\": {\"AssignPublicIp\": \"DISABLED\", \"SecurityGroups\": [\"sg-0fce20b5b14d24cd8\"], \"Subnets\": [\"subnet-035b862c6058f28f2\", \"subnet-00ab6bb3680d64d68\"]}}, \"Overrides\": {\"ContainerOverrides\": [{\"Name\": \"scribe\", \"Environment\": [{\"Name\": \"VIRTUAL_PARTICIPANT_ID\", \"Value\": \"3e437077-46ed-47b0-a189-eb707b0350e2\"}, {\"Name\": \"MEETING_PLATFORM\", \"Value\": \"TEAMS\"}, {\"Name\": \"MEETING_ID\", \"Value\": \"226053079587611\"}, {\"Name\": \"MEETING_PASSWORD\", \"Value\": \"<REDACTED>\"}, {\"Name\": \"MEETING_NAME\", \"Value\": \"Updated Topic 17:07:46\"}, {\"Name\": \"MEETING_TIME\", \"Value\": \"1784379600\"}, {\"Name\": \"LMA_USER\", \"Value\": \"microsoftentraid_5b3fe156-6142-4297-a633-dcb04244cd30\"}, {\"Name\": \"GRAPHQL_ENDPOINT\", \"Value\": \"https://kujxnwymnnfkfpavveu5doevc4.appsync-api.us-east-1.amazonaws.com/graphql\"}, {\"Name\": \"CALL_DATA_STREAM_NAME\", \"Value\": \"LMASA-CallDataStream-G7f4Y5Yq2P94\"}, {\"Name\": \"RECORDINGS_BUCKET_NAME\", \"Value\": \"lmasa-recordingsbucket-8virmwlgow36\"}, {\"Name\": \"VP_TASK_REGISTRY_TABLE_NAME\", \"Value\": \"LMASA-AISTACK-4VKHCQQY3CJR-VPTaskRegistry\"}]}]}, \"EnableExecuteCommand\": false}",
+      "RetryPolicy": {
+        "MaximumEventAgeInSeconds": 86400,
+        "MaximumRetryAttempts": 185
+      },
+      "RoleArn": "arn:aws:iam::528757797189:role/LMASA-VIRTUALPARTICIPANTST-VPSchedulerExecutionRole-X4Ig7X8qtTtT"
+    }
+  },
+  "80161fc9-9d8d-4628-9d18-949de9242fa3": {
+    "ActionAfterCompletion": "DELETE",
+    "Arn": "arn:aws:scheduler:us-east-1:528757797189:schedule/LMASA-vp-schedules/80161fc9-9d8d-4628-9d18-949de9242fa3",
+    "CreationDate": "2026-07-08 18:05:53.406000-04:00",
+    "FlexibleTimeWindow": {
+      "Mode": "OFF"
+    },
+    "GroupName": "LMASA-vp-schedules",
+    "LastModificationDate": "2026-07-08 18:05:53.406000-04:00",
+    "Name": "80161fc9-9d8d-4628-9d18-949de9242fa3",
+    "ScheduleExpression": "at(2026-07-22T22:03:00)",
+    "ScheduleExpressionTimezone": "UTC",
+    "State": "ENABLED",
+    "Target": {
+      "Arn": "arn:aws:scheduler:::aws-sdk:ecs:runTask",
+      "Input": "{\"ClientToken\": \"80161fc9-9d8d-4628-9d18-949de9242fa3\", \"TaskDefinition\": \"arn:aws:ecs:us-east-1:528757797189:task-definition/LMASA-VIRTUALPARTICIPANTSTACK-1IAVIZT1439R2VirtualParticipantTaskDef:3\", \"Cluster\": \"arn:aws:ecs:us-east-1:528757797189:cluster/LMASA-VIRTUALPARTICIPANTSTACK-1IAVIZT1439R2-Cluster-hEH0LkElgiwp\", \"LaunchType\": \"FARGATE\", \"NetworkConfiguration\": {\"AwsvpcConfiguration\": {\"AssignPublicIp\": \"DISABLED\", \"SecurityGroups\": [\"sg-0fce20b5b14d24cd8\"], \"Subnets\": [\"subnet-035b862c6058f28f2\", \"subnet-00ab6bb3680d64d68\"]}}, \"Overrides\": {\"ContainerOverrides\": [{\"Name\": \"scribe\", \"Environment\": [{\"Name\": \"VIRTUAL_PARTICIPANT_ID\", \"Value\": \"80161fc9-9d8d-4628-9d18-949de9242fa3\"}, {\"Name\": \"MEETING_PLATFORM\", \"Value\": \"TEAMS\"}, {\"Name\": \"MEETING_ID\", \"Value\": \"23475315488147\"}, {\"Name\": \"MEETING_PASSWORD\", \"Value\": \"<REDACTED>\"}, {\"Name\": \"MEETING_NAME\", \"Value\": \"testing meeting invite\"}, {\"Name\": \"MEETING_TIME\", \"Value\": \"1784757900\"}, {\"Name\": \"LMA_USER\", \"Value\": \"microsoftentraid_4b28c7c9-6ba9-4f0d-bd87-ceeae0856713\"}, {\"Name\": \"GRAPHQL_ENDPOINT\", \"Value\": \"https://kujxnwymnnfkfpavveu5doevc4.appsync-api.us-east-1.amazonaws.com/graphql\"}, {\"Name\": \"CALL_DATA_STREAM_NAME\", \"Value\": \"LMASA-CallDataStream-G7f4Y5Yq2P94\"}, {\"Name\": \"RECORDINGS_BUCKET_NAME\", \"Value\": \"lmasa-recordingsbucket-8virmwlgow36\"}, {\"Name\": \"VP_TASK_REGISTRY_TABLE_NAME\", \"Value\": \"LMASA-AISTACK-4VKHCQQY3CJR-VPTaskRegistry\"}]}]}, \"EnableExecuteCommand\": false}",
+      "RetryPolicy": {
+        "MaximumEventAgeInSeconds": 86400,
+        "MaximumRetryAttempts": 185
+      },
+      "RoleArn": "arn:aws:iam::528757797189:role/LMASA-VIRTUALPARTICIPANTST-VPSchedulerExecutionRole-X4Ig7X8qtTtT"
+    }
+  }
+}

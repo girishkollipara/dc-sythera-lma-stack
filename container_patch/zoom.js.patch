@@ -1,0 +1,19 @@
+--- a/zoom.js
++++ b/zoom.js
+@@ -2,6 +2,7 @@
+ import { transcriptionService } from './scribe.js';
+ import { voiceAssistant } from './voice-assistant.js';
+ import { simliAvatar } from './simli-avatar.js';
++import { typeNameReliably } from './name-entry.js';
+ export default class Zoom {
+     async waitForButtonWithRetry(page, selectors, maxRetries = 10, delayMs = 500) {
+         for (let attempt = 1; attempt <= maxRetries; attempt++) {
+@@ -155,7 +156,7 @@
+             console.log('Entering name.');
+             try {
+                 const nameTextElement = await page.waitForSelector('#input-for-name');
+-                await nameTextElement?.type(details.scribeIdentity);
++                await typeNameReliably(nameTextElement, details.scribeIdentity);
+                 await nameTextElement?.press('Enter');
+             }
+             catch (error) {

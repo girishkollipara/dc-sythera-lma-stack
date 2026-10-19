@@ -1,21 +1,81 @@
 [
  {
+  "name": "UnshareVirtualParticipantTransact",
+  "functionId": "2hf3o6i42bdxlpuqk4j7mthteu",
+  "dataSourceName": "VirtualParticipantTable",
+  "runtime": "APPSYNC_JS"
+ },
+ {
+  "name": "ListCallsQuery",
+  "functionId": "ccdn4s5b7jez3m5gzxx2uremee",
+  "dataSourceName": "CallEventSourcing",
+  "runtime": "VTL"
+ },
+ {
   "name": "GetCallAuth",
   "functionId": "eoj5g4ptcverzhl5bpgdfrvd2q",
   "dataSourceName": "CallEventSourcing",
   "runtime": "VTL"
  },
  {
-  "name": "GetCallForAddSeg",
-  "functionId": "ygbufyqq3fbtzp3r4hcchrjogy",
+  "name": "VPGetSharedIds",
+  "functionId": "ephqsg3zdrcc7bvlmrzogtajtq",
+  "dataSourceName": "VirtualParticipantShareIndex",
+  "runtime": "APPSYNC_JS"
+ },
+ {
+  "name": "GetUserProjectsJS",
+  "functionId": "fqtxuulpn5atlohvb4od2outfi",
+  "dataSourceName": "ProjectMembership",
+  "runtime": "APPSYNC_JS"
+ },
+ {
+  "name": "ListCallsDateShardQuery",
+  "functionId": "jfdqw2g7azejnduhhpx66hwstq",
   "dataSourceName": "CallEventSourcing",
   "runtime": "VTL"
+ },
+ {
+  "name": "ListCallsDateRangeQuery",
+  "functionId": "jrsm6nhdwva6xar6ukkyfks6zy",
+  "dataSourceName": "CallEventSourcing",
+  "runtime": "APPSYNC_JS"
  },
  {
   "name": "GetCallForSeg",
   "functionId": "kdackkhwifgrjat5joiot3husu",
   "dataSourceName": "CallEventSourcing",
   "runtime": "VTL"
+ },
+ {
+  "name": "QuerySegmentsSentiment",
+  "functionId": "mfxbudlypnau3crnj634lclvdy",
+  "dataSourceName": "CallEventSourcing",
+  "runtime": "VTL"
+ },
+ {
+  "name": "ListCallsDateHourQuery",
+  "functionId": "oe6uotzisvcqrmsnmwr7jeaiwq",
+  "dataSourceName": "CallEventSourcing",
+  "runtime": "VTL"
+ },
+ {
+  "name": "ShareVirtualParticipantTransact",
+  "functionId": "otzceu33evamdivknibb4cmrn4",
+  "dataSourceName": "VirtualParticipantTable",
+  "runtime": "APPSYNC_JS"
+ },
+ {
+  "name": "VPOwnerQueryOrAdminScan",
+  "functionId": "ppngnsuyjnhfpfji2dpqvx3lja",
+  "dataSourceName": "VirtualParticipantTable",
+  "runtime": "APPSYNC_JS"
+ },
+ {
+  "name": "GetCallCountQuery",
+  "functionId": "rih3eo4xxnhodc6iib6zyvukyu",
+  "dataSourceName": "CallEventSourcing",
+  "runtime": "APPSYNC_JS"
  },
  {
   "name": "GetCallForSub",
@@ -30,28 +90,10 @@
   "runtime": "VTL"
  },
  {
-  "name": "GetUserProjectsJS",
-  "functionId": "fqtxuulpn5atlohvb4od2outfi",
-  "dataSourceName": "ProjectMembership",
+  "name": "VirtualParticipantGetOldSharedWith",
+  "functionId": "vw5rsc7ihvhcfgplsrsy6xfd3q",
+  "dataSourceName": "VirtualParticipantTable",
   "runtime": "APPSYNC_JS"
- },
- {
-  "name": "ListCallsDateHourQuery",
-  "functionId": "oe6uotzisvcqrmsnmwr7jeaiwq",
-  "dataSourceName": "CallEventSourcing",
-  "runtime": "VTL"
- },
- {
-  "name": "ListCallsDateShardQuery",
-  "functionId": "jfdqw2g7azejnduhhpx66hwstq",
-  "dataSourceName": "CallEventSourcing",
-  "runtime": "VTL"
- },
- {
-  "name": "ListCallsQuery",
-  "functionId": "ccdn4s5b7jez3m5gzxx2uremee",
-  "dataSourceName": "CallEventSourcing",
-  "runtime": "VTL"
  },
  {
   "name": "PutSegment",
@@ -66,9 +108,15 @@
   "runtime": "VTL"
  },
  {
-  "name": "QuerySegmentsSentiment",
-  "functionId": "mfxbudlypnau3crnj634lclvdy",
+  "name": "GetCallForAddSeg",
+  "functionId": "ygbufyqq3fbtzp3r4hcchrjogy",
   "dataSourceName": "CallEventSourcing",
   "runtime": "VTL"
+ },
+ {
+  "name": "VPBatchGetSharedAndMerge",
+  "functionId": "z6whlpuewrdfvb4cp5cjopbtuu",
+  "dataSourceName": "VirtualParticipantTable",
+  "runtime": "APPSYNC_JS"
  }
 ]

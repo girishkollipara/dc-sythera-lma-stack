@@ -1,0 +1,3 @@
+{"identity":{"sub":"s","issuer":"i","username":"carol","claims":{},"sourceIp":["1.2.3.4"],"defaultAuthStrategy":"ALLOW","groups":[]},
+ "stash":{"myProjectIds":[],"callProjectId":"projA","callExcluded":[]},
+ "result":{"items":[{"Owner":"alice","SharedWith":[],"SegmentId":"a"},{"Owner":"carol","SharedWith":[],"SegmentId":"b"}],"nextToken":null}}

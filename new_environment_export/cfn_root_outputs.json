@@ -19,7 +19,7 @@
  "MCPServerClientId": "1l3lfbp0v9v2acf7vvlesa53f4",
  "LLMDefaultPromptSummaryTemplate": "https://us-east-1.console.aws.amazon.com/dynamodbv2/home?region=us-east-1#edit-item?itemMode=2&pk=DefaultSummaryPromptTemplates&route=ROUTE_ITEM_EXPLORER&sk=&table=LMASA-LLMTEMPLATESTACK-1VS98GJBZTK08-LLMPromptTemplateTable-ISML4PNGS7ZB",
  "CognitoUserPoolClientId": "5p2g7f97mp476fgujtn433cd7s",
- "MCPServerClientSecret": "1agjcfat1ghajvcdm7ic5hpqj91t9csdu8ehev0j5qnunh417eqo",
+ "MCPServerClientSecret": "<REDACTED - read from the live Lambda/Secrets Manager, never commit>",
  "SNSCategoryTopicName": "LMASA-AISTACK-4VKHCQQY3CJR-CategorySNSTopic-XHZMPiUmbcdz",
  "MCPServerApiKeyEndpoint": "https://e8xr047hkh.execute-api.us-east-1.amazonaws.com/mcp",
  "QuickSightManifestUrl": "https://lmasa-recordingsbucket-8virmwlgow36.s3.us-east-1.amazonaws.com/quicksight-recordingsbucket-manifest.json",

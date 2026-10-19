@@ -1,0 +1,16 @@
+--- a/details.js
++++ b/details.js
+@@ -55,6 +55,13 @@
+             // Timeouts
+             waitingTimeout: 300000, // 5 minutes
+             meetingTimeout: 14400000, // 4 hours
++            // Auto-leave (no humans / no speech). Missing or 0 = that check is off.
++            // Comma-separated lists, e.g. "'s AI Assistant, Otter.ai, Fireflies, Notetaker"
++            botNameSuffix: (process.env.BOT_NAME_SUFFIX || '').split(',').map((s) => s.trim()).filter(Boolean),
++            botNamePrefix: (process.env.BOT_NAME_PREFIX || '').split(',').map((s) => s.trim()).filter(Boolean),
++            noHumansGraceMs: (parseInt(process.env.NO_HUMANS_GRACE_SECONDS || '0') || 0) * 1000,
++            idleTimeoutMs: (parseInt(process.env.IDLE_TIMEOUT_MINUTES || '0') || 0) * 60 * 1000,
++            watchdogCheckMs: (parseInt(process.env.WATCHDOG_CHECK_SECONDS || '0') || 0) * 1000,
+             // Scribe Identity
+             scribeIdentity: replacePlaceholders(lmaIdentity),
+             scribeName: 'LMA',

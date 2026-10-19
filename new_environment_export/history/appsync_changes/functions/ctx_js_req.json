@@ -1,0 +1,1 @@
+{"identity":{"sub":"s","issuer":"i","username":"bob","claims":{},"sourceIp":["1.2.3.4"],"defaultAuthStrategy":"ALLOW","groups":[]},"arguments":{},"stash":{},"result":{}}

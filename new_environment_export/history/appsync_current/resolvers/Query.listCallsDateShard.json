@@ -1,0 +1,10 @@
+{
+    "typeName": "Query",
+    "fieldName": "listCallsDateShard",
+    "dataSourceName": "CallEventSourcing",
+    "resolverArn": "arn:aws:appsync:us-east-1:528757797189:apis/lo3gpjswjjdqrh6xn5xkgipeme/types/Query/resolvers/listCallsDateShard",
+    "requestMappingTemplate": "#set( $shardsInDay = 6 )\n#set( $shardDivider = 24 / $shardsInDay )\n#set( $Integer = 0 )\n#set( $now = $util.time.nowISO8601() )\n\n#set( $hourNow = $Integer.parseInt($now.substring(11, 13)) )\n#set( $shardNow = $hourNow / $shardDivider )\n\n#set( $date = $util.defaultIfNullOrBlank($ctx.args.date, $now.substring(0, 10)) )\n#set( $shard = $util.defaultIfNull($ctx.args.shard, $shardNow) )\n\n#if( $shard >= $shardsInDay )\n  $util.error(\"Invalid shard parameter value - must positive and less than ${shardsInDay}\")\n#end\n\n#set( $hourShard = $hour / $shardDivider )\n#set( $shardPad = $date.format(\"%02d\", $shard) )\n\n#set( $PK = \"cls#${date}#s#${shardPad}\" )\n\n{\n  \"version\" : \"2018-05-29\",\n  \"operation\" : \"Query\",\n  \"query\" : {\n    \"expression\": \"PK = :PK\",\n    \"expressionValues\": {\n      \":PK\": $util.dynamodb.toDynamoDBJson($PK),\n    }\n  }\n}",
+    "responseMappingTemplate": "#if ( $ctx.error )\n  $util.error($ctx.error.message, $ctx.error.type)\n#end\n\n#if(!$context.identity.groups.contains(\"Admin\"))\n  #set($myResults = [])\n  #foreach($item in $context.result.items)\n      #if($item.Owner == $context.identity.username || $item.SharedWith.contains($context.identity.username))\n          #set($added = $myResults.add($item))\n      #end\n  #end\n  $util.toJson({\"Calls\": $myResults, \"nextToken\": $ctx.result.nextToken})\n#else\n\t$util.toJson({\"Calls\": $ctx.result.items, \"nextToken\": $ctx.result.nextToken})\n#end",
+    "kind": "UNIT",
+    "maxBatchSize": 0
+}

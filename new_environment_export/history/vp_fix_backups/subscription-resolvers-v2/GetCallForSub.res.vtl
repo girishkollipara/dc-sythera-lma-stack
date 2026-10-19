@@ -1,0 +1,11 @@
+## Stash the call's identity fields for the code-based access check.
+#if(!$ctx.error && $ctx.result)
+  $util.qr($ctx.stash.put("callFound", true))
+  $util.qr($ctx.stash.put("callOwner", $util.defaultIfNull($ctx.result.Owner, "")))
+  $util.qr($ctx.stash.put("callSharedWith", $util.defaultIfNull($ctx.result.SharedWith, "")))
+  $util.qr($ctx.stash.put("callProjectId", $ctx.result.ProjectId))
+  $util.qr($ctx.stash.put("callExcluded", $util.defaultIfNull($ctx.result.ExcludedUsers, [])))
+#else
+  $util.qr($ctx.stash.put("callFound", false))
+#end
+{}

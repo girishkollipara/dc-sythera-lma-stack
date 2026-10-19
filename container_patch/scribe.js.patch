@@ -1,0 +1,21 @@
+--- a/scribe.js
++++ b/scribe.js
+@@ -25,6 +25,8 @@
+     wakePhrases;
+     preConnectTriggered = false;
+     wakeDetectionTimestamp = null;
++    // Time of the last final transcript - read by the meeting handler's idle check
++    lastSpeechAt = Date.now();
+     constructor() {
+         // In local test mode, explicitly use default provider which checks credentials file first
+         // Otherwise use default credential chain (EC2 instance role in production)
+@@ -274,6 +276,9 @@
+         if (transcript) {
+             console.log(`📝 Transcribed: "${transcript}" (IsPartial: ${isPartial})`);
+         }
++        if (!isPartial && transcript) {
++            this.lastSpeechAt = timestamp;
++        }
+         // Detect wake phrase in partials to pre-warm the voice agent connection
+         if (isPartial && transcript && !this.preConnectTriggered) {
+             if (this.detectWakePhrase(transcript)) {

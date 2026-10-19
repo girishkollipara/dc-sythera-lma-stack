@@ -1,0 +1,29 @@
+{
+ "Role": {
+  "Path": "/",
+  "RoleName": "LMASA-AppSyncProjectMembershipRole",
+  "RoleId": "AROAXWHDLWFCRME33MHF5",
+  "Arn": "arn:aws:iam::528757797189:role/LMASA-AppSyncProjectMembershipRole",
+  "CreateDate": "2026-07-07T21:37:40+00:00",
+  "AssumeRolePolicyDocument": {
+   "Version": "2012-10-17",
+   "Statement": [
+    {
+     "Effect": "Allow",
+     "Principal": {
+      "Service": "appsync.amazonaws.com"
+     },
+     "Action": "sts:AssumeRole"
+    }
+   ]
+  },
+  "Description": "AppSync read access to LMA ProjectMembership table",
+  "MaxSessionDuration": 3600,
+  "RoleLastUsed": {
+   "LastUsedDate": "2026-10-19T16:36:22+00:00",
+   "Region": "us-east-1"
+  }
+ },
+ "AttachedPolicies": [],
+ "CloudFormationOwned": false
+}

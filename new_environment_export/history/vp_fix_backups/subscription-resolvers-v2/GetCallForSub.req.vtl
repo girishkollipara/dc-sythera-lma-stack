@@ -1,0 +1,13 @@
+## Subscription access check: fetch the call so we can read Owner/SharedWith/ProjectId.
+## CallId may be absent (non-scoped subscribe) - fetch a key that cannot exist so the
+## response falls back to the owner/shared filter.
+#set( $cid = $util.defaultIfNullOrBlank($ctx.args.CallId, "__none__") )
+#set( $PK = "c#${cid}" )
+{
+  "version": "2018-05-29",
+  "operation": "GetItem",
+  "key": {
+    "PK": $util.dynamodb.toDynamoDBJson($PK),
+    "SK": $util.dynamodb.toDynamoDBJson($PK)
+  }
+}

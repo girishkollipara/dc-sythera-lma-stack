@@ -40,7 +40,7 @@
    "Resource": "arn:aws:states:::ecs:runTask",
    "Parameters": {
     "Cluster": "arn:aws:ecs:us-east-1:528757797189:cluster/LMASA-VIRTUALPARTICIPANTSTACK-1IAVIZT1439R2-Cluster-hEH0LkElgiwp",
-    "TaskDefinition": "arn:aws:ecs:us-east-1:528757797189:task-definition/LMASA-VIRTUALPARTICIPANTSTACK-1IAVIZT1439R2VirtualParticipantTaskDef:4",
+    "TaskDefinition": "arn:aws:ecs:us-east-1:528757797189:task-definition/LMASA-VIRTUALPARTICIPANTSTACK-1IAVIZT1439R2VirtualParticipantTaskDef:15",
     "LaunchType": "FARGATE",
     "NetworkConfiguration": {
      "AwsvpcConfiguration": {
@@ -138,7 +138,7 @@
        }
       },
       "TaskCount": 1,
-      "TaskDefinitionArn": "arn:aws:ecs:us-east-1:528757797189:task-definition/LMASA-VIRTUALPARTICIPANTSTACK-1IAVIZT1439R2VirtualParticipantTaskDef:4"
+      "TaskDefinitionArn": "arn:aws:ecs:us-east-1:528757797189:task-definition/LMASA-VIRTUALPARTICIPANTSTACK-1IAVIZT1439R2VirtualParticipantTaskDef:15"
      },
      "Input": {
       "containerOverrides": [
@@ -230,7 +230,7 @@
    "Resource": "arn:aws:states:::ecs:runTask",
    "Parameters": {
     "Cluster": "arn:aws:ecs:us-east-1:528757797189:cluster/LMASA-VIRTUALPARTICIPANTSTACK-1IAVIZT1439R2-Cluster-hEH0LkElgiwp",
-    "TaskDefinition": "arn:aws:ecs:us-east-1:528757797189:task-definition/LMASA-VIRTUALPARTICIPANTSTACK-1IAVIZT1439R2VirtualParticipantTaskDef:4",
+    "TaskDefinition": "arn:aws:ecs:us-east-1:528757797189:task-definition/LMASA-VIRTUALPARTICIPANTSTACK-1IAVIZT1439R2VirtualParticipantTaskDef:15",
     "LaunchType": "FARGATE",
     "NetworkConfiguration": {
      "AwsvpcConfiguration": {
@@ -332,7 +332,7 @@
        }
       },
       "TaskCount": 1,
-      "TaskDefinitionArn": "arn:aws:ecs:us-east-1:528757797189:task-definition/LMASA-VIRTUALPARTICIPANTSTACK-1IAVIZT1439R2VirtualParticipantTaskDef:4"
+      "TaskDefinitionArn": "arn:aws:ecs:us-east-1:528757797189:task-definition/LMASA-VIRTUALPARTICIPANTSTACK-1IAVIZT1439R2VirtualParticipantTaskDef:15"
      },
      "Input": {
       "containerOverrides": [

@@ -1,0 +1,1 @@
+{"arguments":{"CallId":"t1"},"identity":{"sub":"s-mallory","issuer":"https://iss","username":"mallory","claims":{},"sourceIp":["1.2.3.4"],"defaultAuthStrategy":"ALLOW","groups":null},"stash":{"myProjectIds":[]},"result":{"PK":"c#t1","Owner":"alice","SharedWith":[],"CallId":"t1"}}

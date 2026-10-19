@@ -1,0 +1,46 @@
+{
+ "FunctionName": "SyntheraProjectChatbot",
+ "FunctionArn": "arn:aws:lambda:us-east-1:528757797189:function:SyntheraProjectChatbot",
+ "Runtime": "python3.12",
+ "Role": "arn:aws:iam::528757797189:role/service-role/SyntheraProjectChatbot-role-3f67bzsj",
+ "Handler": "project_chatbot_resource.lambda_handler",
+ "CodeSize": 3159,
+ "Description": "",
+ "Timeout": 600,
+ "MemorySize": 512,
+ "LastModified": "2026-06-30T06:31:20.000+0000",
+ "CodeSha256": "eaC9T4hNYP/7++kc0cnnlf3ZSyV6opoFARTGoID5ycc=",
+ "Version": "$LATEST",
+ "Environment": {
+  "Variables": {
+   "KB_ID": "OUKFZOGTZF",
+   "APPSYNC_GRAPHQL_URL": "https://kujxnwymnnfkfpavveu5doevc4.appsync-api.us-east-1.amazonaws.com/graphql",
+   "BEDROCK_REGION": "us-east-1",
+   "KB_MODEL_ID": "arn:aws:bedrock:us-east-1:528757797189:inference-profile/us.amazon.nova-lite-v1:0"
+  }
+ },
+ "TracingConfig": {
+  "Mode": "PassThrough"
+ },
+ "RevisionId": "f956d3e8-2b01-4075-9622-de78398b77ec",
+ "State": "Active",
+ "LastUpdateStatus": "Successful",
+ "PackageType": "Zip",
+ "Architectures": [
+  "x86_64"
+ ],
+ "EphemeralStorage": {
+  "Size": 512
+ },
+ "SnapStart": {
+  "ApplyOn": "None",
+  "OptimizationStatus": "Off"
+ },
+ "RuntimeVersionConfig": {
+  "RuntimeVersionArn": "arn:aws:lambda:us-east-1::runtime:c1ab740f3656a72d7917665a940f8634df245489445f5a660de5a634d06c5433"
+ },
+ "LoggingConfig": {
+  "LogFormat": "Text",
+  "LogGroup": "/aws/lambda/SyntheraProjectChatbot"
+ }
+}

@@ -1,0 +1,29 @@
+{
+ "Role": {
+  "Path": "/",
+  "RoleName": "LMASA-AISTACK-4VKHCQQY3CJR-AppSyncDynamoDbRole-K65SfE5yoWP2",
+  "RoleId": "AROAXWHDLWFCTFOIVS774",
+  "Arn": "arn:aws:iam::528757797189:role/LMASA-AISTACK-4VKHCQQY3CJR-AppSyncDynamoDbRole-K65SfE5yoWP2",
+  "CreateDate": "2026-05-14T12:00:16+00:00",
+  "AssumeRolePolicyDocument": {
+   "Version": "2012-10-17",
+   "Statement": [
+    {
+     "Effect": "Allow",
+     "Principal": {
+      "Service": "appsync.amazonaws.com"
+     },
+     "Action": "sts:AssumeRole"
+    }
+   ]
+  },
+  "Description": "",
+  "MaxSessionDuration": 3600,
+  "RoleLastUsed": {
+   "LastUsedDate": "2026-10-19T16:36:22+00:00",
+   "Region": "us-east-1"
+  }
+ },
+ "AttachedPolicies": [],
+ "CloudFormationOwned": true
+}

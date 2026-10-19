@@ -1,0 +1,122 @@
+[
+    {
+        "name": "CallEventSourcing",
+        "type": "AMAZON_DYNAMODB",
+        "table": "LMASA-AISTACK-4VKHCQQY3CJR-EventSourcingTable-V49M8Y0JQODE",
+        "lambda": null
+    },
+    {
+        "name": "ChatButtonConfigTable",
+        "type": "AMAZON_DYNAMODB",
+        "table": "LMASA-CHATBUTTONCONFIGSTACK-1LA747GZ52FBJ-ChatButtonConfigTable-1CF70C7IP19ZG",
+        "lambda": null
+    },
+    {
+        "name": "KnowledgeBase",
+        "type": "AWS_LAMBDA",
+        "table": null,
+        "lambda": "arn:aws:lambda:us-east-1:528757797189:function:LMASA-AISTACK-4VKHCQQY3CJ-QueryKnowledgeBaseResolv-YmdIMTHNfw96"
+    },
+    {
+        "name": "LLMPromptTemplateTable",
+        "type": "AMAZON_DYNAMODB",
+        "table": "LMASA-LLMTEMPLATESTACK-1VS98GJBZTK08-LLMPromptTemplateTable-ISML4PNGS7ZB",
+        "lambda": null
+    },
+    {
+        "name": "MCPApiKeyManager",
+        "type": "AWS_LAMBDA",
+        "table": null,
+        "lambda": "arn:aws:lambda:us-east-1:528757797189:function:LMASA-MCPApiKeyManager"
+    },
+    {
+        "name": "MCPServerManager",
+        "type": "AWS_LAMBDA",
+        "table": null,
+        "lambda": "arn:aws:lambda:us-east-1:528757797189:function:LMASA-AISTACK-4VKHCQQY3CJR-MCPServerManager"
+    },
+    {
+        "name": "MeetingInvitationParser",
+        "type": "AWS_LAMBDA",
+        "table": null,
+        "lambda": "arn:aws:lambda:us-east-1:528757797189:function:LMASA-AISTACK-4VKHCQQY3CJ-MeetingInvitationParserF-fW5BYeoPicK2"
+    },
+    {
+        "name": "Meetings",
+        "type": "AWS_LAMBDA",
+        "table": null,
+        "lambda": "arn:aws:lambda:us-east-1:528757797189:function:LMASA-MeetingControlsLambda"
+    },
+    {
+        "name": "NovaSonicConfigTable",
+        "type": "AMAZON_DYNAMODB",
+        "table": "LMASA-NOVASONICONFIGSTACK-1PSWUQD03O5BX-NovaSonicConfigTable-MVW52T0R16QE",
+        "lambda": null
+    },
+    {
+        "name": "OAuthManager",
+        "type": "AWS_LAMBDA",
+        "table": null,
+        "lambda": "arn:aws:lambda:us-east-1:528757797189:function:LMASA-AISTACK-4VKHCQQY3CJR-OAuthManager"
+    },
+    {
+        "name": "StrandsChat",
+        "type": "AWS_LAMBDA",
+        "table": null,
+        "lambda": "arn:aws:lambda:us-east-1:528757797189:function:LMASA-AISTACK-4VKHCQQY3CJ-StrandsChatInterfaceFunc-censx0kuReyh"
+    },
+    {
+        "name": "Subscription",
+        "type": "NONE",
+        "table": null,
+        "lambda": null
+    },
+    {
+        "name": "SyntheraProjectChatbot",
+        "type": "AWS_LAMBDA",
+        "table": null,
+        "lambda": "arn:aws:lambda:us-east-1:528757797189:function:SyntheraProjectChatbot"
+    },
+    {
+        "name": "UpdateChatButtonConfigLambda",
+        "type": "AWS_LAMBDA",
+        "table": null,
+        "lambda": "arn:aws:lambda:us-east-1:528757797189:function:LMASA-AISTACK-4VKHCQQY3CJ-UpdateChatButtonConfigRe-V3ZBwk47o8fu"
+    },
+    {
+        "name": "UpdateLLMPromptTemplateLambda",
+        "type": "AWS_LAMBDA",
+        "table": null,
+        "lambda": "arn:aws:lambda:us-east-1:528757797189:function:LMASA-AISTACK-4VKHCQQY3CJ-UpdateLLMPromptTemplateR-HgNuaHdOZf9w"
+    },
+    {
+        "name": "UpdateNovaSonicConfigLambda",
+        "type": "AWS_LAMBDA",
+        "table": null,
+        "lambda": "arn:aws:lambda:us-east-1:528757797189:function:LMASA-AISTACK-4VKHCQQY3CJ-UpdateNovaSonicConfigRes-Csbu4B7Obhk9"
+    },
+    {
+        "name": "UploadMeetingInitiator",
+        "type": "AWS_LAMBDA",
+        "table": null,
+        "lambda": "arn:aws:lambda:us-east-1:528757797189:function:LMASA-UploadMeetingInitiator"
+    },
+    {
+        "name": "UserManagement",
+        "type": "AWS_LAMBDA",
+        "table": null,
+        "lambda": "arn:aws:lambda:us-east-1:528757797189:function:LMASA-AISTACK-4VKHCQQY3CJR-UserManagement"
+    },
+    {
+        "name": "VirtualParticipantLambda",
+        "type": "AWS_LAMBDA",
+        "table": null,
+        "lambda": "arn:aws:lambda:us-east-1:528757797189:function:LMASA-AISTACK-4VKHCQQY3CJR-VirtualParticipantManager"
+    },
+    {
+        "name": "VirtualParticipantTable",
+        "type": "AMAZON_DYNAMODB",
+        "table": "LMASA-AISTACK-4VKHCQQY3CJR-VirtualParticipant",
+        "lambda": null
+    }
+]

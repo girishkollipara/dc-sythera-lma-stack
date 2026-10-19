@@ -1,0 +1,12 @@
+{
+ "functionId": "z6whlpuewrdfvb4cp5cjopbtuu",
+ "functionArn": "arn:aws:appsync:us-east-1:528757797189:apis/lo3gpjswjjdqrh6xn5xkgipeme/functions/z6whlpuewrdfvb4cp5cjopbtuu",
+ "name": "VPBatchGetSharedAndMerge",
+ "dataSourceName": "VirtualParticipantTable",
+ "maxBatchSize": 0,
+ "runtime": {
+  "name": "APPSYNC_JS",
+  "runtimeVersion": "1.0.0"
+ },
+ "code": "import { util, runtime } from '@aws-appsync/utils';\n\nconst VP_TABLE = 'LMASA-AISTACK-4VKHCQQY3CJR-VirtualParticipant';\n\n// Insertion sort via for...of only - the AppSync JS runtime doesn't support\n// classic C-style for(;;) / while loops, or Array.prototype.sort with a\n// comparator callback.\nfunction insertSorted(sortedArr, item) {\n  const result = [];\n  let inserted = false;\n  for (const existing of sortedArr) {\n    if (!inserted) {\n      const a = item.createdAt ? item.createdAt : '';\n      const b = existing.createdAt ? existing.createdAt : '';\n      if (a >= b) {\n        result.push(item);\n        inserted = true;\n      }\n    }\n    result.push(existing);\n  }\n  if (!inserted) {\n    result.push(item);\n  }\n  return result;\n}\n\nfunction mergeAndSort(owned, shared) {\n  const combined = owned.concat(shared);\n  const seen = {};\n  let sorted = [];\n  for (const item of combined) {\n    if (item && item.id && !seen[item.id]) {\n      seen[item.id] = true;\n      sorted = insertSorted(sorted, item);\n    }\n  }\n  return sorted;\n}\n\n// Fetches the full VP records for whatever ids VPGetSharedIds found, then\n// merges them with the owned/scanned items from VPOwnerQueryOrAdminScan,\n// dedupes, and sorts newest-first. Admins pass through unfiltered (matches\n// today's behavior). If there's nothing shared, skips the BatchGetItem call\n// entirely and returns the owned-only result right away.\nexport function request(ctx) {\n  const owned = ctx.stash.primaryItems ? ctx.stash.primaryItems : [];\n\n  if (ctx.stash.isAdmin) {\n    return runtime.earlyReturn(owned);\n  }\n\n  const ids = ctx.stash.sharedVpIds ? ctx.stash.sharedVpIds : [];\n  if (ids.length === 0) {\n    return runtime.earlyReturn(mergeAndSort(owned, []));\n  }\n\n  const tables = {};\n  tables[VP_TABLE] = {\n    keys: ids.map((id) => util.dynamodb.toMapValues({ id })),\n  };\n  return { operation: 'BatchGetItem', tables };\n}\n\nexport function response(ctx) {\n  const owned = ctx.stash.primaryItems ? ctx.stash.primaryItems : [];\n  const data = ctx.result.data ? ctx.result.data : {};\n  const shared = data[VP_TABLE] ? data[VP_TABLE] : [];\n  return mergeAndSort(owned, shared);\n}\n"
+}

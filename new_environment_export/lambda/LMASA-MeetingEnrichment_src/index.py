@@ -18,7 +18,8 @@ writes) and all MODIFY events. The MODIFY exclusion also prevents this function'
 writes from re-triggering it.
 
 This function ALSO tags meetings with their ProjectId (see ``project_tagger``): it
-looks the meeting's project up in MongoDB (active_meetings_board, by CallId) and
+looks the meeting's project up in MongoDB (active_meetings_board, by any bot's
+CallId in lma_sessions) and
 writes ``ProjectId`` onto the call + list records so project members can see it.
 That tagging is event-type aware and idempotent (it skips already-tagged rows), so
 it stays safe even if MODIFY events are ever delivered.

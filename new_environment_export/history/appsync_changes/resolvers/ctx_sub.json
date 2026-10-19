@@ -1,0 +1,3 @@
+{"identity":{"sub":"s","issuer":"i","username":"bob","claims":{},"sourceIp":["1.2.3.4"],"defaultAuthStrategy":"ALLOW","groups":[]},
+ "arguments":{},"stash":{"myProjectIds":["projA","projB"]},"source":{},
+ "info":{"fieldName":"onAddTranscriptSegment","parentTypeName":"Subscription","selectionSetGraphQL":"{ Owner SharedWith ProjectId }","selectionSetList":["Owner","SharedWith","ProjectId"],"variables":{}}}

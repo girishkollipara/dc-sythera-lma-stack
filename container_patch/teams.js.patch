@@ -1,0 +1,185 @@
+--- a/teams.js
++++ b/teams.js
+@@ -3,6 +3,7 @@
+ import { createStatusManager } from "./status-manager.js";
+ import { voiceAssistant } from './voice-assistant.js';
+ import { simliAvatar } from './simli-avatar.js';
++import { typeNameReliably } from './name-entry.js';
+ // const bedrockClient = new BedrockRuntimeClient();
+ export default class Teams {
+     async sendMessages(page, messages) {
+@@ -25,7 +26,7 @@
+         }
+         console.log("Entering name.");
+         const nameTextElement = await page.waitForSelector('[data-tid="prejoin-display-name-input"]');
+-        await nameTextElement?.type(details.scribeIdentity, { delay: 100 });
++        await typeNameReliably(nameTextElement, details.scribeIdentity);
+         await nameTextElement?.press("Enter");
+         // Only click mute button if voice assistant is NOT enabled
+         if (!voiceAssistant.isEnabled()) {
+@@ -125,12 +126,35 @@
+                 await page.goto('about:blank');
+             }
+         });
++        // Forward the in-page attendee/roster debug lines to the container log. Only these -
++        // the speaker-detection lines fire on every stage mutation and would flood it.
++        page.on('console', (msg) => {
++            const text = msg.text();
++            if (/^DEBUG: (Badge|Teams roster|Teams attendee|Teams human-count|Roster)/.test(text)) {
++                console.log(`[page] ${text}`);
++            }
++        });
+         console.log("Listening for attendee changes.");
+         await page.evaluate(() => {
+             const checkAttendeeCount = () => {
+                 const badgeElement = document.querySelector('span[data-tid="toolbar-item-badge"]');
+-                const hasOthers = badgeElement && parseInt(badgeElement.textContent || '0') > 1;
+-                console.log(`DEBUG: Badge element found: ${!!badgeElement}, count: ${badgeElement?.textContent || 'N/A'}, hasOthers: ${hasOthers}`);
++                if (!badgeElement) {
++                    // Badge not found right now - likely a momentary UI reflow (e.g. right
++                    // after someone else joins/leaves), NOT confirmation everyone is gone.
++                    // Stay silent rather than guessing "alone" and leaving incorrectly.
++                    console.log('DEBUG: Badge element not found - skipping this check.');
++                    return;
++                }
++                const badgeText = (badgeElement.textContent || '').trim();
++                const count = parseInt(badgeText, 10);
++                if (badgeText === '' || Number.isNaN(count)) {
++                    // Badge present but blank - Teams clears it while a side panel (e.g. People)
++                    // is open. That is not a participant count, so don't report "alone".
++                    console.log(`DEBUG: Badge element found but empty ("${badgeText}") - skipping this check.`);
++                    return;
++                }
++                const hasOthers = count > 1;
++                console.log(`DEBUG: Badge element found: true, count: ${count}, hasOthers: ${hasOthers}`);
+                 window.attendeeChange(hasOthers);
+             };
+             // Check initial state
+@@ -298,6 +322,118 @@
+             await this.sendMessages(page, details.startMessages);
+             transcriptionService.startTranscription();
+         }
++        // Auto-leave, in addition to the badge check above. The badge counts other
++        // bots as people, so a room of only bots never empties. Two extra rules:
++        //   1. No humans in the roster for NO_HUMANS_GRACE_SECONDS
++        //   2. No final transcript for IDLE_TIMEOUT_MINUTES
++        // A bot is a roster name containing any BOT_NAME_SUFFIX entry or starting with any
++        // BOT_NAME_PREFIX entry (both comma-separated lists, case-insensitive).
++        console.log(`Auto-leave config: suffix=${JSON.stringify(details.botNameSuffix)}, prefix=${JSON.stringify(details.botNamePrefix)}, ` +
++            `noHumansGraceMs=${details.noHumansGraceMs}, idleTimeoutMs=${details.idleTimeoutMs}, ` +
++            `watchdogCheckMs=${details.watchdogCheckMs}`);
++        let noHumansSince = null;
++        const botNameRuleSet = details.botNameSuffix.length > 0 || details.botNamePrefix.length > 0;
++        if (botNameRuleSet && details.noHumansGraceMs > 0) {
++            // humanCount -1 = tiles could not be read. That neither starts nor resets the clock:
++            // the last bot left alone gets a "waiting for others" screen with no tiles and no
++            // badge (observed 2026-09-28), and it must still leave. Only a seen human resets.
++            await page.exposeFunction('humanAttendeeChange', async (humanCount, names) => {
++                console.log(`DEBUG: Roster humans: ${humanCount < 0 ? 'unknown' : humanCount} of ${names.length} [${names.join(' | ')}]`);
++                if (humanCount < 0) {
++                    if (noHumansSince !== null) {
++                        console.log('Roster unreadable - keeping the no-humans clock running.');
++                    }
++                    return;
++                }
++                if (humanCount > 0) {
++                    noHumansSince = null;
++                }
++                else if (noHumansSince === null) {
++                    noHumansSince = Date.now();
++                    console.log('No humans in roster - starting no-humans clock.');
++                }
++            });
++            console.log("Listening for human-only attendee changes.");
++            await page.evaluate((botSuffix, botPrefix) => {
++                // Names come from the video tiles on the stage: each participant tile is
++                // [data-stream-type="Video"] with the display name as its data-tid, e.g.
++                // "Niketh Sai Avirneni", "Bot2's AI Assistant (Unverified)". Verified in a live
++                // Teams meeting 2026-09-28. The People panel is never opened - opening it blanks
++                // the toolbar badge, which made bots leave early on 2026-09-25.
++                const TILE_SELECTOR = '[data-stream-type="Video"][data-tid]';
++                const isBot = (name) => {
++                    const lower = name.toLowerCase();
++                    return botSuffix.some((s) => lower.includes(s.toLowerCase())) ||
++                        botPrefix.some((p) => lower.startsWith(p.toLowerCase()));
++                };
++                // Report (and log) only when something changed - this runs every 5 s.
++                let lastReport = '';
++                const report = (humanCount, names, skipReason) => {
++                    const key = `${humanCount}|${names.join('|')}`;
++                    if (key === lastReport)
++                        return;
++                    lastReport = key;
++                    if (skipReason)
++                        console.log(`DEBUG: Roster ${skipReason} - skipping this check.`);
++                    window.humanAttendeeChange(humanCount, names);
++                };
++                const checkHumans = () => {
++                    const names = [...new Set(Array.from(document.querySelectorAll(TILE_SELECTOR))
++                        .map((el) => (el.getAttribute('data-tid') || '').trim())
++                        .filter((name) => name !== ''))].sort();
++                    // No tiles = stage not rendered (reflow, screen share layout), not an empty call.
++                    if (names.length === 0) {
++                        report(-1, names, 'tiles not found');
++                        return;
++                    }
++                    // Fewer tiles than the badge count = Teams is not showing everyone (big
++                    // meeting, pagination). A human may be off-screen, so don't count.
++                    const badgeCount = parseInt((document.querySelector('span[data-tid="toolbar-item-badge"]')?.textContent || '').trim(), 10);
++                    if (!Number.isNaN(badgeCount) && names.length < badgeCount) {
++                        report(-1, names, `tiles incomplete (${names.length} tiles, badge ${badgeCount})`);
++                        return;
++                    }
++                    report(names.filter((name) => !isBot(name)).length, names);
++                };
++                checkHumans();
++                setInterval(checkHumans, 5000);
++                console.log('DEBUG: Roster human-count monitoring set up on video tiles (every 5 s)');
++            }, details.botNameSuffix, details.botNamePrefix);
++        }
++        else {
++            console.log('No-humans check disabled (BOT_NAME_SUFFIX/BOT_NAME_PREFIX or NO_HUMANS_GRACE_SECONDS not set).');
++        }
++        if (details.idleTimeoutMs <= 0) {
++            console.log('Idle check disabled (IDLE_TIMEOUT_MINUTES not set).');
++        }
++        // Count silence from when the bot is in the meeting, not from process start
++        transcriptionService.lastSpeechAt = Date.now();
++        let watchdog = null;
++        if (details.watchdogCheckMs > 0) {
++            watchdog = setInterval(async () => {
++                const now = Date.now();
++                const noHumans = details.noHumansGraceMs > 0 &&
++                    noHumansSince !== null && now - noHumansSince >= details.noHumansGraceMs;
++                const silent = details.idleTimeoutMs > 0 &&
++                    now - transcriptionService.lastSpeechAt >= details.idleTimeoutMs;
++                if (!noHumans && !silent) {
++                    return;
++                }
++                console.log(`LMA Virtual Participant leaving: noHumans=${noHumans}, silent=${silent}`);
++                if (watchdog)
++                    clearInterval(watchdog);
++                details.start = false;
++                try {
++                    await page.goto('about:blank');
++                }
++                catch (error) {
++                    console.log(`DEBUG: Auto-leave navigation failed (page may already be closed): ${error}`);
++                }
++            }, details.watchdogCheckMs);
++        }
++        else {
++            console.log('Auto-leave watchdog disabled (WATCHDOG_CHECK_SECONDS not set).');
++        }
+         console.log("Waiting for meeting end.");
+         try {
+             // Wait for multiple Teams meeting end indicators
+@@ -322,6 +458,8 @@
+             console.log("Meeting timed out.");
+         }
+         finally {
++            if (watchdog)
++                clearInterval(watchdog);
+             details.start = false;
+             // Update status to COMPLETED
+             if (details.invite.virtualParticipantId) {

@@ -205,6 +205,18 @@
   }
  },
  {
+  "dataSourceArn": "arn:aws:appsync:us-east-1:528757797189:apis/lo3gpjswjjdqrh6xn5xkgipeme/datasources/VirtualParticipantShareIndex",
+  "name": "VirtualParticipantShareIndex",
+  "type": "AMAZON_DYNAMODB",
+  "serviceRoleArn": "arn:aws:iam::528757797189:role/LMASA-AISTACK-4VKHCQQY3CJ-VirtualParticipantDataSou-IJlzjslOWLIo",
+  "dynamodbConfig": {
+   "tableName": "LMASA-VirtualParticipantShareIndex",
+   "awsRegion": "us-east-1",
+   "useCallerCredentials": false,
+   "versioned": false
+  }
+ },
+ {
   "dataSourceArn": "arn:aws:appsync:us-east-1:528757797189:apis/lo3gpjswjjdqrh6xn5xkgipeme/datasources/VirtualParticipantTable",
   "name": "VirtualParticipantTable",
   "type": "AMAZON_DYNAMODB",

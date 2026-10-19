@@ -1,0 +1,396 @@
+[
+    {
+        "type": "Query",
+        "field": "getCall",
+        "kind": "UNIT",
+        "dataSource": "CallEventSourcing"
+    },
+    {
+        "type": "Query",
+        "field": "getChatButtonConfig",
+        "kind": "UNIT",
+        "dataSource": "ChatButtonConfigTable"
+    },
+    {
+        "type": "Query",
+        "field": "getLLMPromptTemplate",
+        "kind": "UNIT",
+        "dataSource": "LLMPromptTemplateTable"
+    },
+    {
+        "type": "Query",
+        "field": "getMCPServer",
+        "kind": "UNIT",
+        "dataSource": "MCPServerManager"
+    },
+    {
+        "type": "Query",
+        "field": "getNovaSonicConfig",
+        "kind": "UNIT",
+        "dataSource": "NovaSonicConfigTable"
+    },
+    {
+        "type": "Query",
+        "field": "getTranscriptSegments",
+        "kind": "UNIT",
+        "dataSource": "CallEventSourcing"
+    },
+    {
+        "type": "Query",
+        "field": "getTranscriptSegmentsWithSentiment",
+        "kind": "UNIT",
+        "dataSource": "CallEventSourcing"
+    },
+    {
+        "type": "Query",
+        "field": "getVirtualParticipant",
+        "kind": "UNIT",
+        "dataSource": "VirtualParticipantTable"
+    },
+    {
+        "type": "Query",
+        "field": "listCalls",
+        "kind": "UNIT",
+        "dataSource": "CallEventSourcing"
+    },
+    {
+        "type": "Query",
+        "field": "listCallsDateHour",
+        "kind": "UNIT",
+        "dataSource": "CallEventSourcing"
+    },
+    {
+        "type": "Query",
+        "field": "listCallsDateShard",
+        "kind": "UNIT",
+        "dataSource": "CallEventSourcing"
+    },
+    {
+        "type": "Query",
+        "field": "listInstalledMCPServers",
+        "kind": "UNIT",
+        "dataSource": "MCPServerManager"
+    },
+    {
+        "type": "Query",
+        "field": "listMCPApiKeys",
+        "kind": "UNIT",
+        "dataSource": "MCPApiKeyManager"
+    },
+    {
+        "type": "Query",
+        "field": "listUsers",
+        "kind": "UNIT",
+        "dataSource": "UserManagement"
+    },
+    {
+        "type": "Query",
+        "field": "listVirtualParticipants",
+        "kind": "UNIT",
+        "dataSource": "VirtualParticipantTable"
+    },
+    {
+        "type": "Query",
+        "field": "parseMeetingInvitation",
+        "kind": "UNIT",
+        "dataSource": "MeetingInvitationParser"
+    },
+    {
+        "type": "Query",
+        "field": "queryKnowledgeBase",
+        "kind": "UNIT",
+        "dataSource": "KnowledgeBase"
+    }
+]
+[
+    {
+        "type": "Mutation",
+        "field": "addCallCategory",
+        "kind": "UNIT",
+        "dataSource": "CallEventSourcing"
+    },
+    {
+        "type": "Mutation",
+        "field": "addCallSummaryText",
+        "kind": "UNIT",
+        "dataSource": "CallEventSourcing"
+    },
+    {
+        "type": "Mutation",
+        "field": "addChatToken",
+        "kind": "UNIT",
+        "dataSource": "Subscription"
+    },
+    {
+        "type": "Mutation",
+        "field": "addIssuesDetected",
+        "kind": "UNIT",
+        "dataSource": "CallEventSourcing"
+    },
+    {
+        "type": "Mutation",
+        "field": "addTranscriptSegment",
+        "kind": "UNIT",
+        "dataSource": "CallEventSourcing"
+    },
+    {
+        "type": "Mutation",
+        "field": "createCall",
+        "kind": "UNIT",
+        "dataSource": "CallEventSourcing"
+    },
+    {
+        "type": "Mutation",
+        "field": "createUploadMeeting",
+        "kind": "UNIT",
+        "dataSource": "UploadMeetingInitiator"
+    },
+    {
+        "type": "Mutation",
+        "field": "createUser",
+        "kind": "UNIT",
+        "dataSource": "UserManagement"
+    },
+    {
+        "type": "Mutation",
+        "field": "createVirtualParticipant",
+        "kind": "UNIT",
+        "dataSource": "VirtualParticipantTable"
+    },
+    {
+        "type": "Mutation",
+        "field": "deleteCall",
+        "kind": "UNIT",
+        "dataSource": "CallEventSourcing"
+    },
+    {
+        "type": "Mutation",
+        "field": "deleteMeetings",
+        "kind": "UNIT",
+        "dataSource": "Meetings"
+    },
+    {
+        "type": "Mutation",
+        "field": "deleteTranscriptSegment",
+        "kind": "UNIT",
+        "dataSource": "CallEventSourcing"
+    },
+    {
+        "type": "Mutation",
+        "field": "deleteUser",
+        "kind": "UNIT",
+        "dataSource": "UserManagement"
+    },
+    {
+        "type": "Mutation",
+        "field": "deleteVirtualParticipants",
+        "kind": "UNIT",
+        "dataSource": "VirtualParticipantLambda"
+    },
+    {
+        "type": "Mutation",
+        "field": "endVirtualParticipant",
+        "kind": "UNIT",
+        "dataSource": "VirtualParticipantLambda"
+    },
+    {
+        "type": "Mutation",
+        "field": "generateMCPApiKey",
+        "kind": "UNIT",
+        "dataSource": "MCPApiKeyManager"
+    },
+    {
+        "type": "Mutation",
+        "field": "handleOAuthCallback",
+        "kind": "UNIT",
+        "dataSource": "OAuthManager"
+    },
+    {
+        "type": "Mutation",
+        "field": "initOAuthFlow",
+        "kind": "UNIT",
+        "dataSource": "OAuthManager"
+    },
+    {
+        "type": "Mutation",
+        "field": "installMCPServer",
+        "kind": "UNIT",
+        "dataSource": "MCPServerManager"
+    },
+    {
+        "type": "Mutation",
+        "field": "revokeMCPApiKey",
+        "kind": "UNIT",
+        "dataSource": "MCPApiKeyManager"
+    },
+    {
+        "type": "Mutation",
+        "field": "sendChatMessage",
+        "kind": "UNIT",
+        "dataSource": "StrandsChat"
+    },
+    {
+        "type": "Mutation",
+        "field": "sendProjectChatMessage",
+        "kind": "UNIT",
+        "dataSource": "SyntheraProjectChatbot"
+    },
+    {
+        "type": "Mutation",
+        "field": "shareCall",
+        "kind": "UNIT",
+        "dataSource": "CallEventSourcing"
+    },
+    {
+        "type": "Mutation",
+        "field": "shareMeetings",
+        "kind": "UNIT",
+        "dataSource": "Meetings"
+    },
+    {
+        "type": "Mutation",
+        "field": "shareTranscriptSegment",
+        "kind": "UNIT",
+        "dataSource": "CallEventSourcing"
+    },
+    {
+        "type": "Mutation",
+        "field": "shareVirtualParticipant",
+        "kind": "UNIT",
+        "dataSource": "VirtualParticipantTable"
+    },
+    {
+        "type": "Mutation",
+        "field": "toggleVNCPreview",
+        "kind": "UNIT",
+        "dataSource": "CallEventSourcing"
+    },
+    {
+        "type": "Mutation",
+        "field": "uninstallMCPServer",
+        "kind": "UNIT",
+        "dataSource": "MCPServerManager"
+    },
+    {
+        "type": "Mutation",
+        "field": "unshareCall",
+        "kind": "UNIT",
+        "dataSource": "Subscription"
+    },
+    {
+        "type": "Mutation",
+        "field": "unshareVirtualParticipant",
+        "kind": "UNIT",
+        "dataSource": "VirtualParticipantTable"
+    },
+    {
+        "type": "Mutation",
+        "field": "updateAgent",
+        "kind": "UNIT",
+        "dataSource": "CallEventSourcing"
+    },
+    {
+        "type": "Mutation",
+        "field": "updateCallAggregation",
+        "kind": "UNIT",
+        "dataSource": "CallEventSourcing"
+    },
+    {
+        "type": "Mutation",
+        "field": "updateCallStatus",
+        "kind": "UNIT",
+        "dataSource": "CallEventSourcing"
+    },
+    {
+        "type": "Mutation",
+        "field": "updateChatButtonConfig",
+        "kind": "UNIT",
+        "dataSource": "UpdateChatButtonConfigLambda"
+    },
+    {
+        "type": "Mutation",
+        "field": "updateLLMPromptTemplate",
+        "kind": "UNIT",
+        "dataSource": "UpdateLLMPromptTemplateLambda"
+    },
+    {
+        "type": "Mutation",
+        "field": "updateMCPServer",
+        "kind": "UNIT",
+        "dataSource": "MCPServerManager"
+    },
+    {
+        "type": "Mutation",
+        "field": "updateNovaSonicConfig",
+        "kind": "UNIT",
+        "dataSource": "UpdateNovaSonicConfigLambda"
+    },
+    {
+        "type": "Mutation",
+        "field": "updatePcaUrl",
+        "kind": "UNIT",
+        "dataSource": "CallEventSourcing"
+    },
+    {
+        "type": "Mutation",
+        "field": "updateRecordingUrl",
+        "kind": "UNIT",
+        "dataSource": "CallEventSourcing"
+    },
+    {
+        "type": "Mutation",
+        "field": "updateVirtualParticipant",
+        "kind": "UNIT",
+        "dataSource": "VirtualParticipantTable"
+    }
+]
+[
+    {
+        "type": "Subscription",
+        "field": "onAddTranscriptSegment",
+        "kind": "UNIT",
+        "dataSource": "Subscription"
+    },
+    {
+        "type": "Subscription",
+        "field": "onCreateCall",
+        "kind": "UNIT",
+        "dataSource": "Subscription"
+    },
+    {
+        "type": "Subscription",
+        "field": "onDeleteCall",
+        "kind": "UNIT",
+        "dataSource": "Subscription"
+    },
+    {
+        "type": "Subscription",
+        "field": "onShareMeetings",
+        "kind": "UNIT",
+        "dataSource": "Subscription"
+    },
+    {
+        "type": "Subscription",
+        "field": "onUnshareCall",
+        "kind": "UNIT",
+        "dataSource": "Subscription"
+    },
+    {
+        "type": "Subscription",
+        "field": "onUpdateCall",
+        "kind": "UNIT",
+        "dataSource": "Subscription"
+    },
+    {
+        "type": "Subscription",
+        "field": "onUpdateVirtualParticipant",
+        "kind": "UNIT",
+        "dataSource": "Subscription"
+    },
+    {
+        "type": "Subscription",
+        "field": "onVNCPreviewToggle",
+        "kind": "UNIT",
+        "dataSource": "Subscription"
+    }
+]

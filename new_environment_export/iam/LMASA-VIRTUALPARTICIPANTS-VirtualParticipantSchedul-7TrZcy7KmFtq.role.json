@@ -1,27 +1,38 @@
 {
-    "Role": {
-        "Path": "/",
-        "RoleName": "LMASA-VIRTUALPARTICIPANTS-VirtualParticipantSchedul-7TrZcy7KmFtq",
-        "RoleId": "AROAXWHDLWFC2CKEXDT7N",
-        "Arn": "arn:aws:iam::528757797189:role/LMASA-VIRTUALPARTICIPANTS-VirtualParticipantSchedul-7TrZcy7KmFtq",
-        "CreateDate": "2026-05-14T12:23:31+00:00",
-        "AssumeRolePolicyDocument": {
-            "Version": "2012-10-17",
-            "Statement": [
-                {
-                    "Effect": "Allow",
-                    "Principal": {
-                        "Service": "lambda.amazonaws.com"
-                    },
-                    "Action": "sts:AssumeRole"
-                }
-            ]
-        },
-        "Description": "",
-        "MaxSessionDuration": 3600,
-        "RoleLastUsed": {
-            "LastUsedDate": "2026-07-28T18:10:49+00:00",
-            "Region": "us-east-1"
-        }
+ "Role": {
+  "Path": "/",
+  "RoleName": "LMASA-VIRTUALPARTICIPANTS-VirtualParticipantSchedul-7TrZcy7KmFtq",
+  "RoleId": "AROAXWHDLWFC2CKEXDT7N",
+  "Arn": "arn:aws:iam::528757797189:role/LMASA-VIRTUALPARTICIPANTS-VirtualParticipantSchedul-7TrZcy7KmFtq",
+  "CreateDate": "2026-05-14T12:23:31+00:00",
+  "AssumeRolePolicyDocument": {
+   "Version": "2012-10-17",
+   "Statement": [
+    {
+     "Effect": "Allow",
+     "Principal": {
+      "Service": "lambda.amazonaws.com"
+     },
+     "Action": "sts:AssumeRole"
     }
+   ]
+  },
+  "Description": "",
+  "MaxSessionDuration": 3600,
+  "RoleLastUsed": {
+   "LastUsedDate": "2026-10-19T16:39:11+00:00",
+   "Region": "us-east-1"
+  }
+ },
+ "AttachedPolicies": [
+  {
+   "PolicyName": "AWSLambdaBasicExecutionRole",
+   "PolicyArn": "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+  },
+  {
+   "PolicyName": "AWSXRayDaemonWriteAccess",
+   "PolicyArn": "arn:aws:iam::aws:policy/AWSXRayDaemonWriteAccess"
+  }
+ ],
+ "CloudFormationOwned": true
 }

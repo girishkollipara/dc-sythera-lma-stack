@@ -1,0 +1,12 @@
+{
+ "functionId": "ppngnsuyjnhfpfji2dpqvx3lja",
+ "functionArn": "arn:aws:appsync:us-east-1:528757797189:apis/lo3gpjswjjdqrh6xn5xkgipeme/functions/ppngnsuyjnhfpfji2dpqvx3lja",
+ "name": "VPOwnerQueryOrAdminScan",
+ "dataSourceName": "VirtualParticipantTable",
+ "maxBatchSize": 0,
+ "runtime": {
+  "name": "APPSYNC_JS",
+  "runtimeVersion": "1.0.0"
+ },
+ "code": "import { util } from '@aws-appsync/utils';\n\n// Admins keep today's exact behavior (unfiltered Scan, same single-page\n// cap as before this change - not fixed here, out of scope for this pass).\n// Everyone else gets a real indexed lookup of what they own, newest first.\n// Stashes isAdmin + primaryItems either way; later pipeline steps decide\n// whether to skip their own work based on isAdmin.\nexport function request(ctx) {\n  const groups = ctx.identity.groups ? ctx.identity.groups : [];\n  const isAdmin = groups.includes('Admin');\n  ctx.stash.isAdmin = isAdmin;\n\n  if (isAdmin) {\n    return { operation: 'Scan' };\n  }\n\n  return {\n    operation: 'Query',\n    index: 'OwnerIndex',\n    query: {\n      expression: '#o = :owner',\n      expressionNames: { '#o': 'Owner' },\n      expressionValues: util.dynamodb.toMapValues({ ':owner': ctx.identity.username }),\n    },\n    scanIndexForward: false,\n  };\n}\n\nexport function response(ctx) {\n  ctx.stash.primaryItems = ctx.result.items ? ctx.result.items : [];\n  return {};\n}\n"
+}

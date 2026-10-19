@@ -1,0 +1,43 @@
+{
+ "Table": {
+  "AttributeDefinitions": [
+   {
+    "AttributeName": "PK",
+    "AttributeType": "S"
+   }
+  ],
+  "TableName": "LMASA-VirtualParticipantShareIndex",
+  "KeySchema": [
+   {
+    "AttributeName": "PK",
+    "KeyType": "HASH"
+   }
+  ],
+  "TableStatus": "ACTIVE",
+  "CreationDateTime": "2026-08-10T15:33:44.753000-04:00",
+  "ProvisionedThroughput": {
+   "NumberOfDecreasesToday": 0,
+   "ReadCapacityUnits": 0,
+   "WriteCapacityUnits": 0
+  },
+  "TableSizeBytes": 58,
+  "ItemCount": 1,
+  "TableArn": "arn:aws:dynamodb:us-east-1:528757797189:table/LMASA-VirtualParticipantShareIndex",
+  "TableId": "0d2f7e33-812f-4763-b7f4-bc0b158bc9e7",
+  "BillingModeSummary": {
+   "BillingMode": "PAY_PER_REQUEST",
+   "LastUpdateToPayPerRequestDateTime": "2026-08-10T15:33:44.753000-04:00"
+  },
+  "SSEDescription": {
+   "Status": "ENABLED",
+   "SSEType": "KMS",
+   "KMSMasterKeyArn": "arn:aws:kms:us-east-1:528757797189:key/1fed6af6-44f8-42c1-9e07-d1d8075ae926"
+  },
+  "DeletionProtectionEnabled": false,
+  "WarmThroughput": {
+   "ReadUnitsPerSecond": 12000,
+   "WriteUnitsPerSecond": 4000,
+   "Status": "ACTIVE"
+  }
+ }
+}

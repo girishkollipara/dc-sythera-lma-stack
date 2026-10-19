@@ -1,0 +1,608 @@
+{
+ "services": [
+  {
+   "serviceArn": "arn:aws:ecs:us-east-1:528757797189:service/LMASA-VIRTUALPARTICIPANTSTACK-1IAVIZT1439R2-Cluster-hEH0LkElgiwp/LMASA-vp-service-FARGATE",
+   "serviceName": "LMASA-vp-service-FARGATE",
+   "clusterArn": "arn:aws:ecs:us-east-1:528757797189:cluster/LMASA-VIRTUALPARTICIPANTSTACK-1IAVIZT1439R2-Cluster-hEH0LkElgiwp",
+   "loadBalancers": [
+    {
+     "targetGroupArn": "arn:aws:elasticloadbalancing:us-east-1:528757797189:targetgroup/LMASA-VNCTa-04QCZFIMYKA8/67236a7104aa7957",
+     "containerName": "scribe",
+     "containerPort": 5901
+    }
+   ],
+   "serviceRegistries": [],
+   "status": "ACTIVE",
+   "desiredCount": 0,
+   "runningCount": 0,
+   "pendingCount": 0,
+   "launchType": "FARGATE",
+   "platformVersion": "LATEST",
+   "platformFamily": "Linux",
+   "taskDefinition": "arn:aws:ecs:us-east-1:528757797189:task-definition/LMASA-VIRTUALPARTICIPANTSTACK-1IAVIZT1439R2VirtualParticipantTaskDef:15",
+   "deploymentConfiguration": {
+    "deploymentCircuitBreaker": {
+     "enable": false,
+     "rollback": false,
+     "resetOnHealthyTask": true,
+     "thresholdConfiguration": {
+      "type": "BOUNDED_PERCENT",
+      "value": 50
+     }
+    },
+    "maximumPercent": 200,
+    "minimumHealthyPercent": 100,
+    "strategy": "ROLLING",
+    "bakeTimeInMinutes": 0
+   },
+   "deployments": [
+    {
+     "id": "ecs-svc/8541288132822301208",
+     "status": "PRIMARY",
+     "taskDefinition": "arn:aws:ecs:us-east-1:528757797189:task-definition/LMASA-VIRTUALPARTICIPANTSTACK-1IAVIZT1439R2VirtualParticipantTaskDef:15",
+     "desiredCount": 0,
+     "pendingCount": 0,
+     "runningCount": 0,
+     "failedTasks": 0,
+     "createdAt": "2026-10-07T12:59:16.539000-04:00",
+     "updatedAt": "2026-10-07T13:00:14.354000-04:00",
+     "launchType": "FARGATE",
+     "platformVersion": "1.4.0",
+     "platformFamily": "Linux",
+     "networkConfiguration": {
+      "awsvpcConfiguration": {
+       "subnets": [
+        "subnet-00ab6bb3680d64d68",
+        "subnet-035b862c6058f28f2"
+       ],
+       "securityGroups": [
+        "sg-0fce20b5b14d24cd8"
+       ],
+       "assignPublicIp": "DISABLED"
+      }
+     },
+     "rolloutState": "COMPLETED",
+     "rolloutStateReason": "ECS deployment ecs-svc/8541288132822301208 completed."
+    }
+   ],
+   "roleArn": "arn:aws:iam::528757797189:role/aws-service-role/ecs.amazonaws.com/AWSServiceRoleForECS",
+   "events": [
+    {
+     "id": "5cb60277-a5d6-4948-9430-1125a9397fb6",
+     "createdAt": "2026-10-19T07:15:37.595000-04:00",
+     "message": "(service LMASA-vp-service-FARGATE) has reached a steady state."
+    },
+    {
+     "id": "b3dc983e-b01d-48d1-b283-3398f2c85d6b",
+     "createdAt": "2026-10-19T01:15:23.997000-04:00",
+     "message": "(service LMASA-vp-service-FARGATE) has reached a steady state."
+    },
+    {
+     "id": "1fb403dc-dc3d-4612-9d70-87cbda4e37fe",
+     "createdAt": "2026-10-18T19:15:13.762000-04:00",
+     "message": "(service LMASA-vp-service-FARGATE) has reached a steady state."
+    },
+    {
+     "id": "3b73259a-dc8b-40d3-a1df-5ff7baaf804f",
+     "createdAt": "2026-10-18T13:14:45.314000-04:00",
+     "message": "(service LMASA-vp-service-FARGATE) has reached a steady state."
+    },
+    {
+     "id": "ef556b85-fae4-42d4-a6cd-a72ddccc7c2e",
+     "createdAt": "2026-10-18T07:14:16.368000-04:00",
+     "message": "(service LMASA-vp-service-FARGATE) has reached a steady state."
+    },
+    {
+     "id": "ad5b9a90-3da3-4a25-87ff-b603982e870c",
+     "createdAt": "2026-10-18T01:14:13.647000-04:00",
+     "message": "(service LMASA-vp-service-FARGATE) has reached a steady state."
+    },
+    {
+     "id": "25daa627-775e-49f4-b60e-ec7dd2d9fcc2",
+     "createdAt": "2026-10-17T19:14:07.735000-04:00",
+     "message": "(service LMASA-vp-service-FARGATE) has reached a steady state."
+    },
+    {
+     "id": "401e4d06-64a0-49aa-b020-68b8955e4a83",
+     "createdAt": "2026-10-17T13:13:26.838000-04:00",
+     "message": "(service LMASA-vp-service-FARGATE) has reached a steady state."
+    },
+    {
+     "id": "cfac1195-6378-42d2-a78b-700bf12c2e9d",
+     "createdAt": "2026-10-17T07:13:03.122000-04:00",
+     "message": "(service LMASA-vp-service-FARGATE) has reached a steady state."
+    },
+    {
+     "id": "c794dfa9-c6d3-49b4-8b56-bf9e948017f5",
+     "createdAt": "2026-10-17T01:12:35.744000-04:00",
+     "message": "(service LMASA-vp-service-FARGATE) has reached a steady state."
+    },
+    {
+     "id": "4587dee4-7cb6-4693-9dcc-4145faeeed3b",
+     "createdAt": "2026-10-16T19:12:18.856000-04:00",
+     "message": "(service LMASA-vp-service-FARGATE) has reached a steady state."
+    },
+    {
+     "id": "b03fd20d-b2fc-4b9d-8ebf-e3ce429cc918",
+     "createdAt": "2026-10-16T13:12:06.239000-04:00",
+     "message": "(service LMASA-vp-service-FARGATE) has reached a steady state."
+    },
+    {
+     "id": "dbbb8b9c-98d9-448a-93ca-63a7e0d913cf",
+     "createdAt": "2026-10-16T07:12:00.426000-04:00",
+     "message": "(service LMASA-vp-service-FARGATE) has reached a steady state."
+    },
+    {
+     "id": "e8cb3661-120b-4eab-bfb5-b409abf82eed",
+     "createdAt": "2026-10-16T01:11:49.259000-04:00",
+     "message": "(service LMASA-vp-service-FARGATE) has reached a steady state."
+    },
+    {
+     "id": "9329593c-fbdf-4f89-a964-011f51aaf4d9",
+     "createdAt": "2026-10-15T19:11:14.126000-04:00",
+     "message": "(service LMASA-vp-service-FARGATE) has reached a steady state."
+    },
+    {
+     "id": "48aea5e0-cc73-4b73-8534-9e377b9085c1",
+     "createdAt": "2026-10-15T13:10:42.892000-04:00",
+     "message": "(service LMASA-vp-service-FARGATE) has reached a steady state."
+    },
+    {
+     "id": "3ccbb33c-c3cb-4012-8357-86e2c6d2ad89",
+     "createdAt": "2026-10-15T07:09:59.604000-04:00",
+     "message": "(service LMASA-vp-service-FARGATE) has reached a steady state."
+    },
+    {
+     "id": "f7257f9c-78d0-4709-8239-f39fb1148ca3",
+     "createdAt": "2026-10-15T01:09:47.215000-04:00",
+     "message": "(service LMASA-vp-service-FARGATE) has reached a steady state."
+    },
+    {
+     "id": "7722bfe7-7f3e-4fbf-913f-e2b576a4bfa9",
+     "createdAt": "2026-10-14T19:09:12.114000-04:00",
+     "message": "(service LMASA-vp-service-FARGATE) has reached a steady state."
+    },
+    {
+     "id": "10388dac-7095-4805-89da-05cf46e4e48e",
+     "createdAt": "2026-10-14T13:08:39.363000-04:00",
+     "message": "(service LMASA-vp-service-FARGATE) has reached a steady state."
+    },
+    {
+     "id": "07399764-fe92-4cfd-90b9-3f25e3132879",
+     "createdAt": "2026-10-14T07:08:03.347000-04:00",
+     "message": "(service LMASA-vp-service-FARGATE) has reached a steady state."
+    },
+    {
+     "id": "6e833093-9e54-4ff3-88c4-f0bb63d0862e",
+     "createdAt": "2026-10-14T01:07:26.536000-04:00",
+     "message": "(service LMASA-vp-service-FARGATE) has reached a steady state."
+    },
+    {
+     "id": "23719764-785f-4b16-a56c-83ba87a2f22a",
+     "createdAt": "2026-10-13T19:07:08.279000-04:00",
+     "message": "(service LMASA-vp-service-FARGATE) has reached a steady state."
+    },
+    {
+     "id": "4e1824cd-720a-4078-a394-c37dcf3a2a26",
+     "createdAt": "2026-10-13T13:07:08.262000-04:00",
+     "message": "(service LMASA-vp-service-FARGATE) has reached a steady state."
+    },
+    {
+     "id": "04719484-3e57-468c-8031-fc506ead1942",
+     "createdAt": "2026-10-13T07:06:22.571000-04:00",
+     "message": "(service LMASA-vp-service-FARGATE) has reached a steady state."
+    },
+    {
+     "id": "c463940d-fcb6-4996-841a-7e022247e55b",
+     "createdAt": "2026-10-13T01:06:02.893000-04:00",
+     "message": "(service LMASA-vp-service-FARGATE) has reached a steady state."
+    },
+    {
+     "id": "0155f0c5-61f2-4f63-9f19-fc00eff7e9b4",
+     "createdAt": "2026-10-12T19:05:44.696000-04:00",
+     "message": "(service LMASA-vp-service-FARGATE) has reached a steady state."
+    },
+    {
+     "id": "8c476c9e-fd14-47cc-813e-546ec36b755b",
+     "createdAt": "2026-10-12T13:05:30.905000-04:00",
+     "message": "(service LMASA-vp-service-FARGATE) has reached a steady state."
+    },
+    {
+     "id": "6fe51add-c20f-4990-a4f2-dafde2b128f9",
+     "createdAt": "2026-10-12T07:05:17.918000-04:00",
+     "message": "(service LMASA-vp-service-FARGATE) has reached a steady state."
+    },
+    {
+     "id": "e6bafc23-0b06-4b6a-abbd-3da113ed03ce",
+     "createdAt": "2026-10-12T01:04:39.937000-04:00",
+     "message": "(service LMASA-vp-service-FARGATE) has reached a steady state."
+    },
+    {
+     "id": "510ac51f-1699-424f-bd10-6c637e2df330",
+     "createdAt": "2026-10-11T19:04:34.194000-04:00",
+     "message": "(service LMASA-vp-service-FARGATE) has reached a steady state."
+    },
+    {
+     "id": "6a23eb0b-d8a9-4858-82eb-25b223d46677",
+     "createdAt": "2026-10-11T13:04:20.699000-04:00",
+     "message": "(service LMASA-vp-service-FARGATE) has reached a steady state."
+    },
+    {
+     "id": "b224e894-1665-422b-ac07-26e7fc885cf2",
+     "createdAt": "2026-10-11T07:04:18.757000-04:00",
+     "message": "(service LMASA-vp-service-FARGATE) has reached a steady state."
+    },
+    {
+     "id": "bc0ca077-1d80-43ab-b5c5-078ce2cb835f",
+     "createdAt": "2026-10-11T01:03:51.456000-04:00",
+     "message": "(service LMASA-vp-service-FARGATE) has reached a steady state."
+    },
+    {
+     "id": "d39b3ccd-5736-4883-8975-dab8217b9871",
+     "createdAt": "2026-10-10T19:03:47.507000-04:00",
+     "message": "(service LMASA-vp-service-FARGATE) has reached a steady state."
+    },
+    {
+     "id": "2df193cf-b138-4dd1-bd15-2cbbeb0515e4",
+     "createdAt": "2026-10-10T13:03:38.656000-04:00",
+     "message": "(service LMASA-vp-service-FARGATE) has reached a steady state."
+    },
+    {
+     "id": "88e62d79-f2e7-480d-9f91-ee415c3605d5",
+     "createdAt": "2026-10-10T07:03:38.537000-04:00",
+     "message": "(service LMASA-vp-service-FARGATE) has reached a steady state."
+    },
+    {
+     "id": "695d5ffe-1822-4e82-a980-4737c4b271e2",
+     "createdAt": "2026-10-10T01:03:31.881000-04:00",
+     "message": "(service LMASA-vp-service-FARGATE) has reached a steady state."
+    },
+    {
+     "id": "3d53528a-ea98-4163-8316-fd644c5e071d",
+     "createdAt": "2026-10-09T19:03:25.481000-04:00",
+     "message": "(service LMASA-vp-service-FARGATE) has reached a steady state."
+    },
+    {
+     "id": "07cd53a1-06d4-48eb-a51e-5d3b0cb2a886",
+     "createdAt": "2026-10-09T13:02:51.731000-04:00",
+     "message": "(service LMASA-vp-service-FARGATE) has reached a steady state."
+    },
+    {
+     "id": "f85ed969-5bab-4388-8ae1-5d924b5f949b",
+     "createdAt": "2026-10-09T07:02:14.551000-04:00",
+     "message": "(service LMASA-vp-service-FARGATE) has reached a steady state."
+    },
+    {
+     "id": "49fd66ca-2107-4ec1-80d5-55f892b16655",
+     "createdAt": "2026-10-09T01:02:08.435000-04:00",
+     "message": "(service LMASA-vp-service-FARGATE) has reached a steady state."
+    },
+    {
+     "id": "ba2596cc-6a9d-43d7-9557-fa508c807e57",
+     "createdAt": "2026-10-08T19:01:33.474000-04:00",
+     "message": "(service LMASA-vp-service-FARGATE) has reached a steady state."
+    },
+    {
+     "id": "37a8cee6-5cdc-42a4-8fae-46fc72ac3949",
+     "createdAt": "2026-10-08T13:01:29.794000-04:00",
+     "message": "(service LMASA-vp-service-FARGATE) has reached a steady state."
+    },
+    {
+     "id": "3ec55481-fb16-44fe-826d-038707424535",
+     "createdAt": "2026-10-08T07:00:54.212000-04:00",
+     "message": "(service LMASA-vp-service-FARGATE) has reached a steady state."
+    },
+    {
+     "id": "207b87ab-c7c6-4576-836b-944e2a139326",
+     "createdAt": "2026-10-08T01:00:33.393000-04:00",
+     "message": "(service LMASA-vp-service-FARGATE) has reached a steady state."
+    },
+    {
+     "id": "f80151c4-7ddf-42dc-8c7a-5c874ab2d35f",
+     "createdAt": "2026-10-07T19:00:30.332000-04:00",
+     "message": "(service LMASA-vp-service-FARGATE) has reached a steady state."
+    },
+    {
+     "id": "bfbdfada-dc1c-46e1-bd52-6ca122129abb",
+     "createdAt": "2026-10-07T13:00:14.365000-04:00",
+     "message": "(service LMASA-vp-service-FARGATE) has reached a steady state."
+    },
+    {
+     "id": "1a10e016-6f98-491f-b5f9-5e8c74719740",
+     "createdAt": "2026-10-07T13:00:14.364000-04:00",
+     "message": "(service LMASA-vp-service-FARGATE) (deployment ecs-svc/8541288132822301208) deployment completed."
+    },
+    {
+     "id": "40a0d9a1-fa70-4926-8a45-126dffedbbae",
+     "createdAt": "2026-10-07T10:44:29.498000-04:00",
+     "message": "(service LMASA-vp-service-FARGATE) has reached a steady state."
+    },
+    {
+     "id": "cb96e3f3-c120-4656-b5bc-380787500f81",
+     "createdAt": "2026-10-07T04:44:24.382000-04:00",
+     "message": "(service LMASA-vp-service-FARGATE) has reached a steady state."
+    },
+    {
+     "id": "c5c4c278-ecfe-44a2-88b9-3ee9456bc487",
+     "createdAt": "2026-10-06T22:43:49.906000-04:00",
+     "message": "(service LMASA-vp-service-FARGATE) has reached a steady state."
+    },
+    {
+     "id": "9da75060-fc78-4205-808e-99958c1f8c67",
+     "createdAt": "2026-10-06T16:43:12.033000-04:00",
+     "message": "(service LMASA-vp-service-FARGATE) has reached a steady state."
+    },
+    {
+     "id": "c74f7f07-1370-4ba5-8182-21f8c6f84a7a",
+     "createdAt": "2026-10-06T10:43:06.825000-04:00",
+     "message": "(service LMASA-vp-service-FARGATE) has reached a steady state."
+    },
+    {
+     "id": "33c9af57-b120-43b2-88c2-e086a89d1bc6",
+     "createdAt": "2026-10-06T04:42:23.949000-04:00",
+     "message": "(service LMASA-vp-service-FARGATE) has reached a steady state."
+    },
+    {
+     "id": "13645113-c4ef-471e-8451-c59a62eeefd0",
+     "createdAt": "2026-10-05T22:41:59.511000-04:00",
+     "message": "(service LMASA-vp-service-FARGATE) has reached a steady state."
+    },
+    {
+     "id": "6e134fbe-10c9-4331-b01a-b72183dc3d58",
+     "createdAt": "2026-10-05T16:41:45.201000-04:00",
+     "message": "(service LMASA-vp-service-FARGATE) has reached a steady state."
+    },
+    {
+     "id": "0f58737f-a7e5-4f3d-99b2-3e246751d5fb",
+     "createdAt": "2026-10-05T10:41:26.074000-04:00",
+     "message": "(service LMASA-vp-service-FARGATE) has reached a steady state."
+    },
+    {
+     "id": "768e836c-7395-470a-ab7d-916ebf5ddbad",
+     "createdAt": "2026-10-05T04:40:55.890000-04:00",
+     "message": "(service LMASA-vp-service-FARGATE) has reached a steady state."
+    },
+    {
+     "id": "a0a5b7c7-6a13-43e2-878e-3334992281a9",
+     "createdAt": "2026-10-04T22:40:44.168000-04:00",
+     "message": "(service LMASA-vp-service-FARGATE) has reached a steady state."
+    },
+    {
+     "id": "6e3871b6-c4df-4809-821f-fe7cca8ffd3f",
+     "createdAt": "2026-10-04T16:40:20.463000-04:00",
+     "message": "(service LMASA-vp-service-FARGATE) has reached a steady state."
+    },
+    {
+     "id": "4790ec8c-d600-413d-b6d7-f8f2f210a956",
+     "createdAt": "2026-10-04T10:40:20.264000-04:00",
+     "message": "(service LMASA-vp-service-FARGATE) has reached a steady state."
+    },
+    {
+     "id": "6204d15f-9bc2-452f-92a0-7c68656f240b",
+     "createdAt": "2026-10-04T04:39:39.315000-04:00",
+     "message": "(service LMASA-vp-service-FARGATE) has reached a steady state."
+    },
+    {
+     "id": "3ec29930-795c-459c-9c55-2386c7792c5b",
+     "createdAt": "2026-10-03T22:39:23.506000-04:00",
+     "message": "(service LMASA-vp-service-FARGATE) has reached a steady state."
+    },
+    {
+     "id": "25400716-4a2b-4ff9-965e-4c1d271badbb",
+     "createdAt": "2026-10-03T16:39:09.174000-04:00",
+     "message": "(service LMASA-vp-service-FARGATE) has reached a steady state."
+    },
+    {
+     "id": "867f1aeb-b8bc-41c4-8eb1-a5a93e4306b1",
+     "createdAt": "2026-10-03T10:39:00.214000-04:00",
+     "message": "(service LMASA-vp-service-FARGATE) has reached a steady state."
+    },
+    {
+     "id": "566f0144-0eba-4ce3-83dd-cf174ef7b425",
+     "createdAt": "2026-10-03T04:38:45.963000-04:00",
+     "message": "(service LMASA-vp-service-FARGATE) has reached a steady state."
+    },
+    {
+     "id": "db60171b-adae-4cd8-949b-8dd029ef2b6e",
+     "createdAt": "2026-10-02T22:38:30.350000-04:00",
+     "message": "(service LMASA-vp-service-FARGATE) has reached a steady state."
+    },
+    {
+     "id": "573c6adf-2972-4f9a-99a3-f24fed3ad263",
+     "createdAt": "2026-10-02T16:37:46.559000-04:00",
+     "message": "(service LMASA-vp-service-FARGATE) has reached a steady state."
+    },
+    {
+     "id": "67371474-e1e6-4a75-bc27-11f3285aa1e9",
+     "createdAt": "2026-10-02T10:37:06.645000-04:00",
+     "message": "(service LMASA-vp-service-FARGATE) has reached a steady state."
+    },
+    {
+     "id": "7d733bfa-94f6-47ba-9aa0-cf0622b06b67",
+     "createdAt": "2026-10-02T04:36:27.257000-04:00",
+     "message": "(service LMASA-vp-service-FARGATE) has reached a steady state."
+    },
+    {
+     "id": "5be12234-5115-4cdd-b1a4-e92dd1aa410e",
+     "createdAt": "2026-10-01T22:35:55.913000-04:00",
+     "message": "(service LMASA-vp-service-FARGATE) has reached a steady state."
+    },
+    {
+     "id": "a94cdc58-8787-4f4e-b43a-d3357d3778f7",
+     "createdAt": "2026-10-01T16:35:26.186000-04:00",
+     "message": "(service LMASA-vp-service-FARGATE) has reached a steady state."
+    },
+    {
+     "id": "fa2709c4-723d-4169-a988-38f42f8fd8b1",
+     "createdAt": "2026-10-01T10:34:51.874000-04:00",
+     "message": "(service LMASA-vp-service-FARGATE) has reached a steady state."
+    },
+    {
+     "id": "f892e23c-4f4b-4733-ae50-a96c99951f16",
+     "createdAt": "2026-10-01T04:34:14.787000-04:00",
+     "message": "(service LMASA-vp-service-FARGATE) has reached a steady state."
+    },
+    {
+     "id": "526faacd-9330-43e1-a3d0-274615e0004e",
+     "createdAt": "2026-09-30T22:33:48.679000-04:00",
+     "message": "(service LMASA-vp-service-FARGATE) has reached a steady state."
+    },
+    {
+     "id": "e2b0683c-ad4b-444b-be1f-5644fefc954f",
+     "createdAt": "2026-09-30T16:33:13.121000-04:00",
+     "message": "(service LMASA-vp-service-FARGATE) has reached a steady state."
+    },
+    {
+     "id": "a25cc447-ac98-4908-9550-63d359b653e0",
+     "createdAt": "2026-09-30T10:32:46.891000-04:00",
+     "message": "(service LMASA-vp-service-FARGATE) has reached a steady state."
+    },
+    {
+     "id": "9a811138-7886-4b68-a9b3-631ad58af262",
+     "createdAt": "2026-09-30T04:32:26.380000-04:00",
+     "message": "(service LMASA-vp-service-FARGATE) has reached a steady state."
+    },
+    {
+     "id": "f77647ed-1313-4ade-b4ff-3219229394e1",
+     "createdAt": "2026-09-29T22:31:54.330000-04:00",
+     "message": "(service LMASA-vp-service-FARGATE) has reached a steady state."
+    },
+    {
+     "id": "fc3c8d7d-25d7-4a28-aaf2-9c3ebc661b93",
+     "createdAt": "2026-09-29T16:31:51.408000-04:00",
+     "message": "(service LMASA-vp-service-FARGATE) has reached a steady state."
+    },
+    {
+     "id": "f45b02d8-ad86-4d61-900b-cd52ac56a2dc",
+     "createdAt": "2026-09-29T10:31:12.982000-04:00",
+     "message": "(service LMASA-vp-service-FARGATE) has reached a steady state."
+    },
+    {
+     "id": "e1ee90d6-da0c-4145-a6c9-0e9ce5d0265d",
+     "createdAt": "2026-09-29T10:31:12.981000-04:00",
+     "message": "(service LMASA-vp-service-FARGATE) (deployment ecs-svc/4615901888267649099) deployment completed."
+    },
+    {
+     "id": "5e90fe96-3507-4f31-8ce0-ab2d10aab403",
+     "createdAt": "2026-09-29T08:17:55.122000-04:00",
+     "message": "(service LMASA-vp-service-FARGATE) has reached a steady state."
+    },
+    {
+     "id": "b55573ef-e029-4cf6-8e66-adb32e1bc1f1",
+     "createdAt": "2026-09-29T02:17:52.216000-04:00",
+     "message": "(service LMASA-vp-service-FARGATE) has reached a steady state."
+    },
+    {
+     "id": "5137bd57-7a50-4067-b96b-b1c9cd611e29",
+     "createdAt": "2026-09-28T20:17:24.469000-04:00",
+     "message": "(service LMASA-vp-service-FARGATE) has reached a steady state."
+    },
+    {
+     "id": "c3a79a91-9e83-4ff3-8a22-13af89268016",
+     "createdAt": "2026-09-28T14:16:45.395000-04:00",
+     "message": "(service LMASA-vp-service-FARGATE) has reached a steady state."
+    },
+    {
+     "id": "6a35d0a8-363b-4794-8821-134ca16358f3",
+     "createdAt": "2026-09-28T14:16:45.394000-04:00",
+     "message": "(service LMASA-vp-service-FARGATE) (deployment ecs-svc/5579233904416505015) deployment completed."
+    },
+    {
+     "id": "a2e30e77-cc41-44d7-b0d1-7a162115568a",
+     "createdAt": "2026-09-28T10:16:35.055000-04:00",
+     "message": "(service LMASA-vp-service-FARGATE) has reached a steady state."
+    },
+    {
+     "id": "f97bd9e5-330c-442e-bc81-d324aeef4d87",
+     "createdAt": "2026-09-28T04:16:16.460000-04:00",
+     "message": "(service LMASA-vp-service-FARGATE) has reached a steady state."
+    },
+    {
+     "id": "89da71b6-a1f2-4cc1-a029-60b18e653d41",
+     "createdAt": "2026-09-27T22:15:58.355000-04:00",
+     "message": "(service LMASA-vp-service-FARGATE) has reached a steady state."
+    },
+    {
+     "id": "f32b343c-cfa2-46d2-a32d-c44ef0cdd59a",
+     "createdAt": "2026-09-27T16:15:18.640000-04:00",
+     "message": "(service LMASA-vp-service-FARGATE) has reached a steady state."
+    },
+    {
+     "id": "e1d9ef34-c913-4a91-abe8-942046981476",
+     "createdAt": "2026-09-27T10:15:07.008000-04:00",
+     "message": "(service LMASA-vp-service-FARGATE) has reached a steady state."
+    },
+    {
+     "id": "1527077b-b7bd-4c15-9a49-0310086468e4",
+     "createdAt": "2026-09-27T04:14:40.247000-04:00",
+     "message": "(service LMASA-vp-service-FARGATE) has reached a steady state."
+    },
+    {
+     "id": "e628915e-3eb4-4552-ad20-1cd0f4b55103",
+     "createdAt": "2026-09-26T22:14:26.336000-04:00",
+     "message": "(service LMASA-vp-service-FARGATE) has reached a steady state."
+    },
+    {
+     "id": "7b0e25af-ac62-42fa-867c-9ffe3455e2ba",
+     "createdAt": "2026-09-26T16:14:09.612000-04:00",
+     "message": "(service LMASA-vp-service-FARGATE) has reached a steady state."
+    },
+    {
+     "id": "ed401d57-1d4e-4966-89c6-525d90d90e60",
+     "createdAt": "2026-09-26T10:13:29.829000-04:00",
+     "message": "(service LMASA-vp-service-FARGATE) has reached a steady state."
+    },
+    {
+     "id": "aa0e60bb-4384-45e6-8892-6c3f38505c03",
+     "createdAt": "2026-09-26T04:13:18.878000-04:00",
+     "message": "(service LMASA-vp-service-FARGATE) has reached a steady state."
+    },
+    {
+     "id": "61868abb-7f80-4674-8747-0e38b538790d",
+     "createdAt": "2026-09-25T22:13:01.023000-04:00",
+     "message": "(service LMASA-vp-service-FARGATE) has reached a steady state."
+    },
+    {
+     "id": "93b1c461-3d54-4651-8e62-4f343dccdc5d",
+     "createdAt": "2026-09-25T16:12:59.292000-04:00",
+     "message": "(service LMASA-vp-service-FARGATE) has reached a steady state."
+    }
+   ],
+   "createdAt": "2026-06-08T11:30:05.306000-04:00",
+   "currentServiceRevisions": [
+    {
+     "arn": "arn:aws:ecs:us-east-1:528757797189:service-revision/LMASA-VIRTUALPARTICIPANTSTACK-1IAVIZT1439R2-Cluster-hEH0LkElgiwp/LMASA-vp-service-FARGATE/8541288132822301208",
+     "requestedTaskCount": 0,
+     "runningTaskCount": 0,
+     "pendingTaskCount": 0
+    }
+   ],
+   "placementConstraints": [],
+   "placementStrategy": [],
+   "networkConfiguration": {
+    "awsvpcConfiguration": {
+     "subnets": [
+      "subnet-00ab6bb3680d64d68",
+      "subnet-035b862c6058f28f2"
+     ],
+     "securityGroups": [
+      "sg-0fce20b5b14d24cd8"
+     ],
+     "assignPublicIp": "DISABLED"
+    }
+   },
+   "healthCheckGracePeriodSeconds": 0,
+   "schedulingStrategy": "REPLICA",
+   "deploymentController": {
+    "type": "ECS"
+   },
+   "createdBy": "arn:aws:iam::528757797189:user/vksolleti",
+   "enableECSManagedTags": false,
+   "propagateTags": "NONE",
+   "enableExecuteCommand": false,
+   "availabilityZoneRebalancing": "ENABLED",
+   "resourceManagementType": "CUSTOMER"
+  }
+ ],
+ "failures": []
+}

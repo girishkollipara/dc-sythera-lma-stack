@@ -17,7 +17,9 @@ REGION=us-east-1
 ACCT=528757797189
 REPO=lmasa-virtualparticipantstack-1iavizt1439r2-imagerepo-l3yrnekcbuxx
 REGISTRY="${ACCT}.dkr.ecr.${REGION}.amazonaws.com"
-PATCHED="${REGISTRY}/${REPO}:name-fix-v1"
+# name-fix-v7 is what task definition :15 runs (2026-10-19). It contains the v1
+# name-entry layer plus the auto-leave layer (details.js, scribe.js, teams.js).
+PATCHED="${REGISTRY}/${REPO}:name-fix-v7"
 ORIGINAL="${REGISTRY}/${REPO}:pre-name-fix-20260514"
 OUT="$(cd "$(dirname "$0")" && pwd)/container_patch"
 
@@ -38,7 +40,7 @@ pull_and_copy () {
   echo "==> locating handler files inside the image"
   # The VP app lives under /app in the LMA 0.3.2 container.
   docker export "$cid" | tar -tf - 2>/dev/null \
-    | grep -E '(teams|zoom|name-entry)\.js$' \
+    | grep -E '^srv/dist/(teams|zoom|name-entry|details|scribe)\.js$' \
     | grep -v node_modules > "$OUT/paths${suffix}.txt" || true
   echo "    found $(wc -l < "$OUT/paths${suffix}.txt") candidate files"
 
@@ -56,7 +58,7 @@ pull_and_copy "$PATCHED"  ""
 pull_and_copy "$ORIGINAL" ".orig"
 
 echo "==> diffing patched vs original"
-for f in teams.js zoom.js; do
+for f in teams.js zoom.js details.js scribe.js; do
   if [ -f "$OUT/$f" ] && [ -f "$OUT/$f.orig" ]; then
     diff -u "$OUT/$f.orig" "$OUT/$f" > "$OUT/$f.patch" || true
     echo "    $f.patch  ($(grep -c '^[+-]' "$OUT/$f.patch" || true) changed lines)"
@@ -65,7 +67,9 @@ done
 
 echo
 echo "Done. Files in: $OUT"
-echo "Expected per VP_CHANGES_APPLIED.md 2.6:"
-echo "  teams.js      2 lines changed (1 import, 1 call)"
-echo "  zoom.js       2 lines changed (1 import, 1 call)"
+echo "Expected for name-fix-v7:"
+echo "  zoom.js       name-entry import + call"
+echo "  teams.js      name-entry import + call, badge hardening, no-humans/idle auto-leave"
+echo "  details.js    BOT_NAME_* / NO_HUMANS_GRACE_SECONDS / IDLE_TIMEOUT_MINUTES / WATCHDOG_CHECK_SECONDS"
+echo "  scribe.js     lastSpeechAt for the idle check"
 echo "  name-entry.js new file (no .orig counterpart)"

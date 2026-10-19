@@ -1,0 +1,48 @@
+{
+ "UserPoolClient": {
+  "UserPoolId": "us-east-1_pOCRCo1Wx",
+  "ClientName": "LMASA-COGNITOSTACK-U9VMZPR645VS-Client",
+  "ClientId": "5p2g7f97mp476fgujtn433cd7s",
+  "LastModifiedDate": "2026-06-16T14:06:03.714000-04:00",
+  "CreationDate": "2026-05-14T07:58:07.490000-04:00",
+  "RefreshTokenValidity": 30,
+  "AccessTokenValidity": 1,
+  "IdTokenValidity": 1,
+  "TokenValidityUnits": {},
+  "SupportedIdentityProviders": [
+   "MicrosoftEntraID"
+  ],
+  "CallbackURLs": [
+   "http://localhost:3000/",
+   "http://localhost:5173/leads",
+   "https://bmpfinegchjaiocjnfjfcgeohdiblomp.chromiumapp.org/",
+   "https://dcg.syntheraai.com/leads",
+   "https://demo.syntheraai.com/",
+   "https://demo.syntheraai.com/leads",
+   "https://dev.syntheraai.com/",
+   "https://dev.syntheraai.com/leads",
+   "https://djlyyfmco0koo.cloudfront.net/leads"
+  ],
+  "LogoutURLs": [
+   "http://localhost:5173/",
+   "https://dcg.syntheraai.com/",
+   "https://demo.syntheraai.com/",
+   "https://dev.syntheraai.com/",
+   "https://djlyyfmco0koo.cloudfront.net/"
+  ],
+  "AllowedOAuthFlows": [
+   "code"
+  ],
+  "AllowedOAuthScopes": [
+   "email",
+   "openid",
+   "phone",
+   "profile"
+  ],
+  "AllowedOAuthFlowsUserPoolClient": true,
+  "PreventUserExistenceErrors": "ENABLED",
+  "EnableTokenRevocation": true,
+  "EnablePropagateAdditionalUserContextData": false,
+  "AuthSessionValidity": 3
+ }
+}

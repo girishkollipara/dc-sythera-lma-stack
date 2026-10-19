@@ -1,0 +1,23 @@
+{
+ "RoleName": "SyntheraProjectChatbot-role-3f67bzsj",
+ "PolicyName": "syn_projectlevel_chatbot_IAM",
+ "PolicyDocument": {
+  "Version": "2012-10-17",
+  "Statement": [
+   {
+    "Effect": "Allow",
+    "Action": "appsync:GraphQL",
+    "Resource": "arn:aws:appsync:us-east-1:528757797189:apis/lo3gpjswjjdqrh6xn5xkgipeme/*"
+   },
+   {
+    "Effect": "Allow",
+    "Action": [
+     "bedrock:Retrieve",
+     "bedrock:InvokeModel",
+     "bedrock:InvokeModelWithResponseStream"
+    ],
+    "Resource": "*"
+   }
+  ]
+ }
+}

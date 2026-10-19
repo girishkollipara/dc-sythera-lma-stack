@@ -1,0 +1,12 @@
+{
+ "functionId": "ephqsg3zdrcc7bvlmrzogtajtq",
+ "functionArn": "arn:aws:appsync:us-east-1:528757797189:apis/lo3gpjswjjdqrh6xn5xkgipeme/functions/ephqsg3zdrcc7bvlmrzogtajtq",
+ "name": "VPGetSharedIds",
+ "dataSourceName": "VirtualParticipantShareIndex",
+ "maxBatchSize": 0,
+ "runtime": {
+  "name": "APPSYNC_JS",
+  "runtimeVersion": "1.0.0"
+ },
+ "code": "import { util, runtime } from '@aws-appsync/utils';\n\n// Looks up which VP ids were shared with the caller, via the\n// VirtualParticipantShareIndex mirror table kept in sync by\n// share/unshareVirtualParticipant. Admins don't need this - skip straight\n// to the next pipeline step.\nexport function request(ctx) {\n  if (ctx.stash.isAdmin) {\n    return runtime.earlyReturn({});\n  }\n  return {\n    operation: 'GetItem',\n    key: util.dynamodb.toMapValues({ PK: `u#${ctx.identity.username}` }),\n  };\n}\n\nexport function response(ctx) {\n  const item = ctx.result;\n  ctx.stash.sharedVpIds = item && item.VpIds ? item.VpIds : [];\n  return {};\n}\n"
+}

@@ -1,0 +1,33 @@
+{
+ "Role": {
+  "Path": "/service-role/",
+  "RoleName": "SyntheraProjectChatbot-role-3f67bzsj",
+  "RoleId": "AROAXWHDLWFC6XPEWD7YV",
+  "Arn": "arn:aws:iam::528757797189:role/service-role/SyntheraProjectChatbot-role-3f67bzsj",
+  "CreateDate": "2026-06-25T20:08:10+00:00",
+  "AssumeRolePolicyDocument": {
+   "Version": "2012-10-17",
+   "Statement": [
+    {
+     "Effect": "Allow",
+     "Principal": {
+      "Service": "lambda.amazonaws.com"
+     },
+     "Action": "sts:AssumeRole"
+    }
+   ]
+  },
+  "MaxSessionDuration": 3600,
+  "RoleLastUsed": {
+   "LastUsedDate": "2026-10-15T16:21:03+00:00",
+   "Region": "us-east-1"
+  }
+ },
+ "AttachedPolicies": [
+  {
+   "PolicyName": "AWSLambdaBasicExecutionRole-c1eb0a71-e3b7-4fe9-a99f-ad9937533c23",
+   "PolicyArn": "arn:aws:iam::528757797189:policy/service-role/AWSLambdaBasicExecutionRole-c1eb0a71-e3b7-4fe9-a99f-ad9937533c23"
+  }
+ ],
+ "CloudFormationOwned": false
+}

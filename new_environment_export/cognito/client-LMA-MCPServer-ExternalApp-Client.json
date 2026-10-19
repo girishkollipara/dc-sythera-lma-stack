@@ -1,0 +1,35 @@
+{
+ "UserPoolClient": {
+  "UserPoolId": "us-east-1_pOCRCo1Wx",
+  "ClientName": "LMA-MCPServer-ExternalApp-Client",
+  "ClientId": "1l3lfbp0v9v2acf7vvlesa53f4",
+  "LastModifiedDate": "2026-05-15T14:03:50.059000-04:00",
+  "CreationDate": "2026-05-14T08:06:31.192000-04:00",
+  "RefreshTokenValidity": 30,
+  "TokenValidityUnits": {},
+  "SupportedIdentityProviders": [
+   "COGNITO",
+   "MicrosoftEntraID"
+  ],
+  "CallbackURLs": [
+   "http://localhost:3000/callback",
+   "https://us-east-1.quicksight.aws.amazon.com/sn/oauthcallback",
+   "https://us-west-2.quicksight.aws.amazon.com/sn/oauthcallback"
+  ],
+  "LogoutURLs": [
+   "https://d37y4bgk8vdlu.cloudfront.net/"
+  ],
+  "AllowedOAuthFlows": [
+   "code"
+  ],
+  "AllowedOAuthScopes": [
+   "email",
+   "openid",
+   "profile"
+  ],
+  "AllowedOAuthFlowsUserPoolClient": true,
+  "EnableTokenRevocation": true,
+  "EnablePropagateAdditionalUserContextData": false,
+  "AuthSessionValidity": 3
+ }
+}

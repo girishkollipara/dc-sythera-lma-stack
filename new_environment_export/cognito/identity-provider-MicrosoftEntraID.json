@@ -1,0 +1,25 @@
+{
+ "IdentityProvider": {
+  "UserPoolId": "us-east-1_pOCRCo1Wx",
+  "ProviderName": "MicrosoftEntraID",
+  "ProviderType": "SAML",
+  "ProviderDetails": {
+   "ActiveEncryptionCertificate": "MIICvTCCAaWgAwIBAgIJAPgVPi7cb97IMA0GCSqGSIb3DQEBCwUAMB4xHDAaBgNVBAMME3VzLWVhc3QtMV9wT0NSQ28xV3gwHhcNMjYwNTE1MTgwMzIwWhcNMzYwNTE1MDQxNTIwWjAeMRwwGgYDVQQDDBN1cy1lYXN0LTFfcE9DUkNvMVd4MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAyTbRTuT8CCcy9vqxFiPh7VZQn6Po5QMhjiT9zAjZmjhgnbcy5UQF63iqn3iRsdgSeyyYf4hxu3q5VjCGZwGn9x5kFU5PWfP3qBO17XNU+Lkpl6EnCu2LaHSofzb8OrzfWsx+BEH22ToQtfcEXqY7p00Qlzz4wJ/QuT3869PAB5mr/lpuJV4fAvIGItXtvD0uVSibhrm966pX1X6zGIpEfVUBKMaCvEcGoUjK1qWM6B2egW/Iw2+EekQJmwuq1TWUgoMH2Hqj4+jE73ZCXK3vGpXgXSNGPB1EvFm3vw2qsv4vVtk0v0AP5hxFSY6tpRmYjuy2L2XdJN5ZAnBkuLiLGwIDAQABMA0GCSqGSIb3DQEBCwUAA4IBAQA748xs90vSIN9Ompo3cCl1MIpMJDTqOfMAWEwxPkBmiwTuJlLeK59iIovtsH8da7BxyiVaf5ooWqRVbKvgAKPC0CGnx+EQ2MJ/oh0d4ynjkR1+0yxDxRUM0R0fTEeZDEQfqhBRGdIC21YMbPbF/8TC6r+FmqqVvhg9kMhKGBZkhfmQi1/WU+8q7p0a1xt90gKI7x5+ziZWhy9M2WXT3z0BjjH5C7oJIR6QeiN9aQsPo6rHGuYYO2UZFNQDraDlsRJrWm6TsTSPwUDObduQnfKypVJkQ/cAvnE0N8lWhpknWcw4NGZZr5cpcn19prf2gr10f5UI+XTrHuYb416Rbc1S",
+   "MetadataURL": "https://login.microsoftonline.com/c8b74fdb-1f4b-462f-957a-796844398af2/federationmetadata/2007-06/federationmetadata.xml?appid=1ce0f2f0-ea32-435f-84c7-305d78de96c5",
+   "SLORedirectBindingURI": "https://login.microsoftonline.com/c8b74fdb-1f4b-462f-957a-796844398af2/saml2",
+   "SSORedirectBindingURI": "https://login.microsoftonline.com/c8b74fdb-1f4b-462f-957a-796844398af2/saml2"
+  },
+  "AttributeMapping": {
+   "custom:department": "department",
+   "custom:jobtitle": "jobtitle",
+   "email": "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/emailaddress",
+   "family_name": "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/surname",
+   "given_name": "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/givenname",
+   "name": "http://schemas.xmlsoap.org/ws/2005/05/identity/claims/name",
+   "username": "http://schemas.microsoft.com/identity/claims/objectidentifier"
+  },
+  "IdpIdentifiers": [],
+  "LastModifiedDate": "2026-06-23T16:56:47.377000-04:00",
+  "CreationDate": "2026-05-15T14:03:20.112000-04:00"
+ }
+}

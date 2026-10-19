@@ -1,0 +1,100 @@
+{
+ "RoleName": "dc-synthera-ws-lambda-exec-role-dev",
+ "PolicyName": "synthera-ws-lambda-inline",
+ "PolicyDocument": {
+  "Version": "2012-10-17",
+  "Statement": [
+   {
+    "Sid": "SQSTrigger",
+    "Effect": "Allow",
+    "Action": [
+     "sqs:ReceiveMessage",
+     "sqs:DeleteMessage",
+     "sqs:GetQueueAttributes",
+     "sqs:ChangeMessageVisibility"
+    ],
+    "Resource": "arn:aws:sqs:us-east-1:528757797189:dc-synthera-active-meeting-qa-push-dev"
+   },
+   {
+    "Sid": "ApiGwManageConnections",
+    "Effect": "Allow",
+    "Action": "execute-api:ManageConnections",
+    "Resource": "arn:aws:execute-api:us-east-1:528757797189:*/*/@connections/*"
+   },
+   {
+    "Sid": "S3SOWArtifacts",
+    "Effect": "Allow",
+    "Action": [
+     "s3:GetObject",
+     "s3:HeadObject"
+    ],
+    "Resource": "arn:aws:s3:::syntheraai-ppt-transcript/*"
+   },
+   {
+    "Sid": "S3SOWOutput",
+    "Effect": "Allow",
+    "Action": [
+     "s3:PutObject",
+     "s3:GetObject"
+    ],
+    "Resource": "arn:aws:s3:::syntheraai-ppt-transcript/sow_ppt_files/*"
+   },
+   {
+    "Sid": "S3LMATranscripts",
+    "Effect": "Allow",
+    "Action": [
+     "s3:GetObject",
+     "s3:HeadObject"
+    ],
+    "Resource": "arn:aws:s3:::lmasa-recordingsbucket-8virmwlgow36/*"
+   },
+   {
+    "Sid": "BedrockLLM",
+    "Effect": "Allow",
+    "Action": [
+     "bedrock:InvokeModel"
+    ],
+    "Resource": "*"
+   },
+   {
+    "Sid": "BedrockKnowledgeBase",
+    "Effect": "Allow",
+    "Action": [
+     "bedrock:Retrieve"
+    ],
+    "Resource": "arn:aws:bedrock:us-east-1:528757797189:knowledge-base/S9TYXFBOYB"
+   },
+   {
+    "Sid": "S3LiveTranscriptCopyRead",
+    "Effect": "Allow",
+    "Action": [
+     "s3:GetObject"
+    ],
+    "Resource": "arn:aws:s3:::synthera-kds-demo-bucket/callid=*"
+   },
+   {
+    "Sid": "S3LiveTranscriptCopyList",
+    "Effect": "Allow",
+    "Action": [
+     "s3:ListBucket"
+    ],
+    "Resource": "arn:aws:s3:::synthera-kds-demo-bucket",
+    "Condition": {
+     "StringLike": {
+      "s3:prefix": [
+       "callid=*"
+      ]
+     }
+    }
+   },
+   {
+    "Sid": "S3LMATranscriptsList",
+    "Effect": "Allow",
+    "Action": [
+     "s3:ListBucket"
+    ],
+    "Resource": "arn:aws:s3:::lmasa-recordingsbucket-8virmwlgow36"
+   }
+  ]
+ }
+}

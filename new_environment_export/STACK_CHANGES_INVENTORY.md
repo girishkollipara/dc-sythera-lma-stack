@@ -1,14 +1,21 @@
 # LMA Stack — Complete Change Inventory & New-Environment Export
 
+> **New here? Start with [PORTING_GUIDE_0.3.10.md](PORTING_GUIDE_0.3.10.md)** — the step-by-step guide
+> for applying these changes to LMA 0.3.10. This file is the detailed reference behind it.
+
 _Exported live from account **528757797189** / **us-east-1** on **2026-07-28** by `aws` CLI + boto3._
-_Source stack: **LMASA** (`CREATE_COMPLETE`), LMA **0.3.2**._
+_**Refreshed 2026-10-19** with `export_live.py` (read-only) — see §0a for everything that changed since._
+_Source stack: **LMASA** (`CREATE_COMPLETE`, never updated by CloudFormation), LMA **0.3.2**._
 
 **What this is.** Every change made to this stack outside CloudFormation, in one list, together with
 the live artifacts needed to recreate each one in a new environment. Everything referenced here is in
 this folder.
 
-**Read alongside:** [../NEW_ENVIRONMENT_PLAYBOOK.md](../NEW_ENVIRONMENT_PLAYBOOK.md) (order of
-operations, traps) and [../MAKE_CHANGES_PERMANENT.md](../MAKE_CHANGES_PERMANENT.md) (survives-vs-wiped).
+**Read alongside:** [history/NEW_ENVIRONMENT_PLAYBOOK.md](history/NEW_ENVIRONMENT_PLAYBOOK.md) (order of
+operations, traps) and [history/MAKE_CHANGES_PERMANENT.md](history/MAKE_CHANGES_PERMANENT.md) (survives-vs-wiped).
+`history/` also holds the design notes and the **before** snapshots (`appsync_current/`,
+`vp_fix_backups/`) — see [history/README.md](history/README.md). Paths below written as `../X` now live at `history/X`,
+except `permanent_patches/` and `apply_customizations.py`, which were not kept (superseded by this export; unsafe to run).
 
 > **The rule that governs all of it:** every change below was applied **live via the AWS API**, never
 > through CloudFormation. A stock deploy of a new environment contains **none** of them — they are
@@ -29,6 +36,95 @@ Checks run against live during the export. All four passed:
 
 The saved artifacts in `permanent_patches/` were accurate as of this export. Two gaps were **closed**
 by this run (§8), one remains **open** (§9).
+
+---
+
+## 0a. Refresh 2026-10-19 — Changes Made Live Since 2026-07-28
+
+Found by diffing a fresh export against the 07-28 one, cross-checked against CloudTrail write events
+on `LMASA` resources (people only; CloudFormation and the VPScheduler's per-meeting schedules excluded).
+All were applied **live via the AWS API**, not CloudFormation — a new environment has none of them.
+
+| # | Change | When / who | Artifact |
+|---|---|---|---|
+| 15 | **VP container `name-fix-v7`** — auto-leave when only bots remain (`NO_HUMANS_GRACE_SECONDS`) or nobody has spoken (`IDLE_TIMEOUT_MINUTES`); Teams badge check no longer reads a blank/missing badge as "alone" | images v2–v7 08-18 → 09-29 (yogi9, niketh) | `../container_patch/` (now v7), `ecr/describe-images.json` |
+| 16 | **ECS task def `:15`** — image `name-fix-v7` + 5 new env vars (`BOT_NAME_SUFFIX`, `BOT_NAME_PREFIX`, `NO_HUMANS_GRACE_SECONDS`, `IDLE_TIMEOUT_MINUTES`, `WATCHDOG_CHECK_SECONDS`). VPScheduler `TASK_DEFINITION_ARN`, both Step Function `RunTask` states, and service `LMASA-vp-service-FARGATE` all point at `:15` | 10-07 (niketh) | `ecs/taskdef_rev15.json`, `ecs/service.json` |
+| 17 | **IAM `ECSTaskExecution`** — `ecs:RunTask` now lists `:3`–`:15` (not `:5`/`:9`); `SchedulerLambdaPolicy` also gained `:10` | 08-18 → 10-07 | `iam/…VPSchedulerExecutionRole…__ECSTaskExecution.json` |
+| 18 | **VP sharing rewrite** — new table `LMASA-VirtualParticipantShareIndex` + datasource; `shareVirtualParticipant` / `unshareVirtualParticipant` / `listVirtualParticipants` turned into JS pipelines (6 new functions: `ShareVirtualParticipantTransact`, `UnshareVirtualParticipantTransact`, `VirtualParticipantGetOldSharedWith`, `VPGetSharedIds`, `VPBatchGetSharedAndMerge`, `VPOwnerQueryOrAdminScan`) | 08-10 (yogi9) | `appsync/`, `dynamodb/VirtualParticipantShareIndex.json` |
+| 19 | **`VirtualParticipant` table GSIs** — `OwnerIndex` (Owner, createdAt) and `MeetingIdIndex` (meetingId) | 08-10, 10-06 (yogi9) | `dynamodb/VirtualParticipant.json` |
+| 20 | **Date-range meeting queries** — `EventSourcingTable` GSI `TypeDateIndex` (ItemType, SK); `createCall` now writes `ItemType="call"`; new `Query.listCallsDateRange` + `Query.getCallCount` (functions `ListCallsDateRangeQuery`, `GetCallCountQuery`); schema type `CallCount` | 08-10, 10-06 (yogi9, niketh) | `appsync/`, `dynamodb/EventSourcingTable.json` |
+| 21 | **IAM inline policies on 2 stack roles** — `VirtualParticipantDataSou…__DynamoDBAccess`, `AppSyncDynamoDbRole…__dynamoDB` (access to the new table / indexes) | 08-10 (yogi9) | `iam/LMASA-AISTACK-…` |
+| 22 | **AppSync `AWS_IAM` auth** added alongside Cognito, so Synthera's backend can call LMA with its own role. `createVirtualParticipant` trusts `ownerUsername`/`ownerEmail` from input **only** for IAM callers; schema input gained `ownerEmail`, `ownerUsername` | 08-03 resolver (yogi9), 10-09 API (root) | `appsync/graphql-api.json`, `appsync/resolvers/Mutation.createVirtualParticipant.json` |
+| 23 | **Synthera-side IAM grants** to call LMA AppSync (roles outside LMA, reference only) | 08-03, 10-15 (yogi9) | `iam/external/` |
+| 24 | **Enrichment Lambda** — project lookup now matches **any** bot of the meeting (`lma_sessions.call_id`) instead of one `lma_call_id` | 10-06 (yogi9) | `lambda/enrichment_lambda_source/project_tagger.py` |
+| 25 | **ProjectMembership datasource role** `LMASA-AppSyncProjectMembershipRole` and the **`SyntheraProjectChatbot`** Lambda datasource role — both hand-made, now exported | (before 07-28, missed then) | `iam/` |
+| 26 | **Project chatbot** — `Mutation.sendProjectChatMessage` → Lambda datasource `SyntheraProjectChatbot`, input `SendProjectChatMessageInput`, `SendChatMessageOutput.Sources`. Found only by diffing against upstream 0.3.2; no write-up exists | before 07-08 (missed then) | §3.3a |
+| 27 | **`Mutation.addTranscriptSegment`** → pipeline (`GetCallForAddSeg` → `PutSegment`), stamps `ProjectId` on segments — live since July but missing from the 07-28 list | July (missed then) | §3.3a |
+
+Not LMA changes, ignored: the `LMASA-qa` stacks and their SSM parameters (CloudFormation, from the
+Jenkins pipeline); two AppSync test functions `TestIsolate*` (created and deleted 08-10).
+
+**Still not captured:** row data in any table, and the `SyntheraProjectChatbot` Lambda itself (it is
+Synthera code outside this stack — only its AppSync datasource role is here).
+
+---
+
+## 0b. Everything Else vs Stock 0.3.2 — CloudFormation Drift Detection (2026-10-19)
+
+CloudTrail only reaches back 90 days (to ~07-21), so earlier hand changes were found by running
+CloudFormation drift detection on all 12 `LMASA` stacks (compares live resources with what the 0.3.2
+template deployed, all `${…}` resolved) and by diffing Lambda code against upstream tag `v0.3.2`.
+Raw report: `drift/cfn_drift_2026-10-19.json`. It independently confirms the 15 resolvers in §3.3a.
+
+★ = **not recorded anywhere before this pass.**
+
+**IAM — 5 stack roles changed** (hand-made roles are listed in §6 / `iam/`)
+
+| Role | Change vs 0.3.2 |
+|---|---|
+| `AppSyncDynamoDbRole` | + `dynamodb:BatchGetItem`, + `EventSourcingTable/index/*` (TypeDateIndex) |
+| `VirtualParticipantDataSourceRole` | + `BatchGetItem`, `TransactWriteItems`, + `VirtualParticipant/index/*`, + `LMASA-VirtualParticipantShareIndex` |
+| ★ `MeetingControlsResolverFunctionExecutionRole` | + `cognito-idp:ListUsers` on the user pool |
+| `VPSchedulerExecutionRole` | `ecs:RunTask` `:1` → `:3,:4,:6–:8,:10–:15` |
+| `VirtualParticipantSchedulerRole` | `ecs:RunTask` `:1` → `:3,:10`; + inline policy `VPSchedulerCognitoLookup` (`cognito-idp:AdminGetUser`) |
+
+**Step Function `LMAVirtualParticipantScheduler`** — + 4 states (`Identity Choice Schedule`,
+`CreateScheduleWithIdentity`, `Identity Choice Run`, `RunTaskWithIdentity`); `Time Choice` re-routed
+to them; `CreateSchedule` / `RunTask` parameters changed (task def `:1` → `:15`). Matches §5.
+
+**Lambda**
+
+| Function | Change vs 0.3.2 | In 0.3.10? |
+|---|---|---|
+| `LMASA-VPScheduler` | Code: 114 → 204 lines (Cognito name lookup, identity split). Env: `TASK_DEFINITION_ARN` → `:15`, ★ **`VP_LAUNCH_TYPE` `EC2` → `FARGATE`**, + `COGNITO_USER_POOL_ID`, `INTRO_MESSAGE_TEMPLATE` | No (0.3.10 adds a `MICROVM` launch type; choose the parameter deliberately) |
+| ★ `LMASA-MeetingControlsLambda` | **Code:** share-by-email now resolves each email to the Cognito username (`resolve_usernames`, needed because Entra ID usernames are GUIDs). + env `COGNITO_USER_POOL_ID`. **Timeout 60 → 180 s** | No |
+| ★ `CognitoUserPoolEmailDomainVerifyFunction` | `ALLOWED_SIGNUP_EMAIL_DOMAINS` + `snaddevelopers.com` (a stack parameter in stock — set it at deploy) | n/a |
+| 34 functions | + tag `Application_Or_Project=Synthera` (account tagging, 09-22 — why most `LastModified` dates are 09-22) | n/a |
+| `SyntheraProjectChatbot` (not in a stack) | Hand-made, behind `sendProjectChatMessage`. Exported: `lambda/SyntheraProjectChatbot*`, role in `iam/` | n/a |
+
+**Cognito** ★ — none of this was recorded
+
+| Resource | Change |
+|---|---|
+| Identity provider **`MicrosoftEntraID`** (SAML, 05-15, not in any stack) | Corporate SSO. Metadata URL + attribute mapping in `cognito/identity-provider-MicrosoftEntraID.json` |
+| User pool | + custom attributes `custom:jobtitle`, `custom:department`, `custom:manager` (filled from Entra ID) |
+| Web `UserPoolClient` | Identity provider `COGNITO` → **`MicrosoftEntraID` only**; + callback/logout URLs for `dev.`/`demo.`/`dcg.syntheraai.com`, a CloudFront app, `localhost`, and a Chrome-extension URL; explicit auth flows and read attributes removed |
+| `MCPServerExternalAppClient` | + `MicrosoftEntraID`; password / refresh-token auth flows removed |
+
+**Other drift**
+
+| Resource | Change | Note |
+|---|---|---|
+| ★ `EventSourcingTable` | **TTL (`ExpiresAfter`) disabled** | Meetings no longer expire — keep it disabled in the new template if that is intended |
+| ★ `RecordingsBucket` | Lifecycle expiry **90 → 36 500 days** | Recordings kept ~100 years |
+| ★ 50 log groups | Retention → **3 days** (were 7/14/90) | Account-wide cost setting |
+| ★ Both CloudFront distributions | Minimum TLS **`TLSv1.2_2021` → `TLSv1`** | ⚠️ Security downgrade — confirm it was intentional |
+| ★ VNC ALB + target group | + tag `Application_Or_Project=Synthera` | Tagging |
+| `VirtualParticipant` / `EventSourcing` tables | New GSIs (§0a #19, #20) | Known |
+| ECR transcriber repo, API Gateway stage | Principal / ARN written in another format | Noise — no real change |
+
+Not covered by drift detection (no CloudFormation owner): hand-made tables, roles, Lambdas,
+AppSync data sources and the Entra ID provider — those are in this export directly.
 
 ---
 
@@ -102,9 +198,11 @@ Those two filters are what stop the invocation storm from transcript segments
 ⚠️ The stream ARN ends in a creation timestamp — it cannot be constructed by hand. Read it from the
 new table (playbook trap 6).
 
-⚠️ `DOCDB_PASS` is a **live plaintext credential** in this Lambda's environment. It is redacted from
-this document but present in `lambda/LMASA-MeetingEnrichment.config.json`. Rotate it and give the new
-environment a Secrets Manager reference instead of copying it forward.
+⚠️ `DOCDB_PASS` is a **live plaintext credential** in this Lambda's environment. Since the 10-19
+refresh it is redacted in `lambda/LMASA-MeetingEnrichment.config.json` too — but the 07-28 commit
+pushed it, so it is **still in git history**. Rotate it and give the new environment a Secrets
+Manager reference instead of copying it forward. Same for `MCPServerClientSecret` (was in
+`cfn_root_outputs.json` / `cfn_root_stack.json`).
 
 ---
 
@@ -142,6 +240,62 @@ SharedWithNames: [String]
 `Query.listCallsDateShard`, `Query.getTranscriptSegments`, `Query.getTranscriptSegmentsWithSentiment`,
 `Subscription.onAddTranscriptSegment`, `Subscription.onCreateCall`, `Subscription.onUpdateCall`.
 
+### 3.3a Complete AppSync diff vs stock LMA 0.3.2 (verified 2026-10-19)
+
+§3.2/§3.3 above were written on 07-28 and are **incomplete**. This list comes from comparing the
+live API against upstream tag `v0.3.2` (`lma-ai-stack.yaml` + `source/appsync/`) field by field —
+kind, data source, pipeline, request/response templates, JS code — and cross-checking against the
+07-08 snapshot in `history/appsync_current/`. 48 of 67 resolvers are byte-identical to stock
+(`Mutation.shareMeetings` differs only by build-stripped comments).
+
+**Resolvers — 15 modified, 3 added**
+
+| Resolver | Change | Feature | When |
+|---|---|---|---|
+| `Query.getCall` | UNIT → PIPELINE | Project access | 07 |
+| `Query.getTranscriptSegments` | UNIT → PIPELINE | Project access | 07 |
+| `Query.getTranscriptSegmentsWithSentiment` | UNIT → PIPELINE | Project access | 07 |
+| `Query.listCalls` | UNIT → PIPELINE | Project access | 07 |
+| `Query.listCallsDateHour` | UNIT → PIPELINE | Project access | 07 |
+| `Query.listCallsDateShard` | UNIT → PIPELINE | Project access | 07 |
+| `Mutation.addTranscriptSegment` | UNIT → PIPELINE (`GetCallForAddSeg` → `PutSegment`) — stamps `ProjectId` on segments. **Missing from the 07-28 list** | Project access | 07 |
+| `Subscription.onAddTranscriptSegment` | UNIT → PIPELINE (`GetCallForSub`) | Live-subscription fix | 07-21 |
+| `Subscription.onUpdateCall` | UNIT → PIPELINE (`GetCallForSub`) | Live-subscription fix | 07-21 |
+| `Subscription.onCreateCall` | UNIT → PIPELINE, owner/shared only | Live-subscription fix | 07-21 |
+| `Mutation.createVirtualParticipant` | `ownerEmail` passthrough (07-20), then IAM-caller branch trusting `ownerUsername`/`ownerEmail` (08-03) | VP display name, Synthera backend | 07-20, 08-03 |
+| `Mutation.createCall` | writes `ItemType = "call"` | Date-range list | 08-10 |
+| `Mutation.shareVirtualParticipant` | VTL UNIT → JS PIPELINE | VP sharing | 08-10 |
+| `Mutation.unshareVirtualParticipant` | VTL UNIT → JS PIPELINE | VP sharing | 08-10 |
+| `Query.listVirtualParticipants` | VTL Scan → JS PIPELINE (owner index / share index) | VP sharing | 08-10 |
+| `Mutation.sendProjectChatMessage` | **NEW** — invokes Lambda `SyntheraProjectChatbot`. **Undocumented anywhere; predates 07-08** | Project chatbot | < 07-08 |
+| `Query.listCallsDateRange` | **NEW** (with a `projectId` filter upstream lacks) | Date-range list | 08-10, 10-06 |
+| `Query.getCallCount` | **NEW** | Date-range list | 08-10 |
+
+**Pipeline functions — 20, all new** (stock 0.3.2 has none)
+
+| Feature | Functions |
+|---|---|
+| Project access (12, July) | `GetUserProjects`, `GetUserProjectsJS`, `GetCallAuth`, `GetCallForSeg`, `GetCallForAddSeg`, `GetCallForSub`, `ListCallsQuery`, `ListCallsDateHourQuery`, `ListCallsDateShardQuery`, `PutSegment`, `QuerySegments`, `QuerySegmentsSentiment` |
+| Date-range list (2, 08-10) | `ListCallsDateRangeQuery` (updated 10-06), `GetCallCountQuery` |
+| VP sharing (6, 08-10) | `ShareVirtualParticipantTransact`, `UnshareVirtualParticipantTransact`, `VirtualParticipantGetOldSharedWith`, `VPGetSharedIds`, `VPBatchGetSharedAndMerge`, `VPOwnerQueryOrAdminScan` |
+
+**Data sources — 3 added:** `ProjectMembership` (DynamoDB), `VirtualParticipantShareIndex` (DynamoDB),
+`SyntheraProjectChatbot` (Lambda, outside this stack).
+
+**Schema — vs 0.3.2**
+
+| Added | Feature |
+|---|---|
+| `Call` + `CallListItem`: `OwnerEmail`, `OwnerName`, `SharedWithEmails`, `SharedWithNames` | Display names |
+| `CreateVirtualParticipantInput`: `ownerEmail`, `ownerUsername` | VP display name / Synthera backend |
+| `type CallCount`; `Query.getCallCount`; `Query.listCallsDateRange(…, projectId)` | Date-range list |
+| `input SendProjectChatMessageInput`; `Mutation.sendProjectChatMessage`; `SendChatMessageOutput.Sources` | Project chatbot |
+
+**API setting:** `AWS_IAM` added as an additional auth provider (10-09).
+
+**For the 0.3.10 port:** upstream 0.3.10 already ships `TypeDateIndex`, `listCallsDateRange`,
+`getCallCount` and `AWS_IAM` auth — re-add only the `projectId` filter. Everything else above is ours.
+
 ### 3.4 Why this half is easy
 
 These artifacts contain **no account IDs, API IDs, table names or ARNs** — resolvers reference only
@@ -174,6 +328,10 @@ ECR repo `lmasa-virtualparticipantstack-1iavizt1439r2-imagerepo-l3yrnekcbuxx`, 6
 | `sha256:58a82af8…` | `name-fix-v1`, `latest` — **the patched image** |
 | 4 others | untagged |
 
+> **10-19:** the live revision is now `:15` (`name-fix-v7`); `taskdef_rev4.json` was replaced by
+> `taskdef_rev15.json`. Between `:3` and `:15` the image **and 5 auto-leave env vars** differ (§0a #16).
+> Everything below about `rev4` applies to `rev15`.
+>
 > ### ⚠️ Do not register `ecs/taskdef_rev4.json` in a new environment
 >
 > It carries **50 environment variables from this environment** — ECR image URI,
@@ -264,7 +422,11 @@ meetings, do a separate export/import (or DynamoDB point-in-time restore to the 
 
 ---
 
-## 9. Gap Still Open — Container Patch
+## 9. Container Patch — Closed 2026-10-19
+
+Recovered from the images into `../container_patch/` and updated to `name-fix-v7` (base, v1 and v7
+pulled and diffed; v7 = v1 + `details.js`, `scribe.js`, `teams.js`). Each changed file has a `.orig`
+(stock 14-May) and a `.patch`. `extract_container_patch.sh` now targets v7. The original notes follow.
 
 `vp_fix_backups/container_patch/` is referenced by three documents but **does not exist in the repo**.
 `name-entry.js` and the patched `teams.js` / `zoom.js` survive **only inside the ECR image**.
